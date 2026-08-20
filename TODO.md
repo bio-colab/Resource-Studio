@@ -425,3 +425,42 @@
 | 2026-08-20 | WPF regression gate | مكتمل ومختبر | dotnet build: 0 warnings/0 errors؛ UI automation: passed |
 
 الفجوات المتبقية: اختبار إيقاف عملية طويلة فعلية عبر fixture معزول، F6/TabIndex/access-key matrix كاملة، screen-reader verification، واختبارات failure/resize الشاملة لكل نافذة.
+
+
+## main-goal extension: Forensic-goal — Forensic integrity of PE transformation
+
+هذه الدورة تعمّق البنية الحالية ولا تنشئ Forensics Module مستقلًا. الأولوية 70% forensic depth، و20% UX-06/07/08 لعرض الأدلة، و10% testing infrastructure.
+
+| الحالة | المعرّف | الطبقة | معيار الإنجاز |
+|---|---|---|---|
+| [x] | FR-00 | Goal definition | `docs/FORENSIC-GOAL.md` يحدد الهوية والحدود وDefinition of Done اعتمادًا على Resource Graph وVerification الحاليين |
+| [~] | FR-01 | PE forensic baseline | `ForensicBaseline.from_path` يجمع hash/size/PE snapshot/Resource Graph/deep invariants/integrity؛ baseline artifact persistence قبل mutation لاحقة |
+| [~] | FR-02 | Canonical graph evidence | `ForensicEvidence` يستخدم graph diff الحالي ويحسب intended/unintended وbefore/result hashes؛ deep canonical key policy ستتوسع مع differential pass |
+| [ ] | FR-03 | Deep preservation evidence | evidence مستقل يثبت preservation للـsections/imports/exports/TLS/Load Config/Debug/Overlay/directories |
+| [~] | FR-04 | Forensic difference | `forensicDifference` يخرج targeted/resourceTree/pePreservation/integrity/signature/windows؛ human-readable rendering وCLI exposure لاحقان |
+| [~] | FR-05 | Mutation attribution | `ForensicEvidence` يربط operationId/operation/target بـobserved diff؛ operation id persistence في كل audit paths لاحقة |
+| [ ] | FR-06 | Independent corroboration | Writer ينتج output فقط؛ LIEF وWindows وinvariants وgraph وintegrity تصنع الحكم المستقل |
+| [~] | FR-07 | Evidence report | machine-readable `resource_studio.forensic_evidence.v1` أُنشئ؛ human-readable/CLI/Project audit surface لاحقة |
+| [ ] | FR-08 | Forensic UX | Summary → Details → Technical evidence، مع تطبيق UX-06/07/08 فقط لخدمة الدليل |
+| [ ] | FR-09 | Forensic regression | corpus/fuzz/differential/crash fixtures تثبت أن التقرير لا ينهار عند malformed أو no-op أو Windows policy differences |
+
+### قواعد Forensic-goal
+
+لا timeline عام، ولا malware scanner، ولا IOC/YARA/PEiD، ولا entropy maps، ولا hex forensic viewer، ولا redesign navigation. لا تعتبر Writer نفسه دليلًا. لا تعاد كتابة Verification Engine داخل WPF؛ الواجهة تعرض evidence report وتسمح بالـprogressive disclosure فقط.
+
+### السؤال المركزي
+
+> ماذا تغير في هذا الملف، وهل نستطيع إثبات أن التغيير كان مقصودًا وأن كل شيء آخر بقي محفوظًا؟
+
+
+## سجل تنفيذ Forensic-goal — الدفعة الأولى
+
+| التاريخ | التنفيذ | الحالة | الدليل |
+|---|---|---|---|
+| 2026-08-20 | تعريف Forensic-goal والحدود | مكتمل | `docs/FORENSIC-GOAL.md`؛ لا timeline/malware/IOC/YARA/entropy/hex module |
+| 2026-08-20 | ForensicBaseline | مكتمل جزئيًا ومختبر | `core/forensics.py` يجمع SHA-256 وsize وPEInvariantSnapshot وResourceGraph وDeepPEInvariantReport وPEIntegrityReport |
+| 2026-08-20 | ForensicEvidence | مكتمل جزئيًا ومختبر | `resource_studio.forensic_evidence.v1` يربط operationId/target/baseline/result وforensicDifference وVerificationReport |
+| 2026-08-20 | no-op attribution contract | مكتمل ومختبر | `tests/core/test_forensics.py` يثبت target unchanged و0 unintended changes وpassed evidence |
+| 2026-08-20 | core API | مكتمل ومختبر | `ForensicBaseline` و`ForensicEvidence` و`verify_transformation` مصدّرة من `core` دون import cycle |
+
+الدفعة التالية ستعمق FR-03 وFR-06 وFR-07: preservation evidence مستقل، corroboration أوضح بين Writer وLIEF/Windows، وربط evidence report بـProject/Audit وCLI دون إعادة منطق التحقق في الواجهة.

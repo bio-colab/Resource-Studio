@@ -40,6 +40,7 @@ from .res_format import ResFile, ResRecord
 from .string_table import StringTableBlock, string_table_block_id
 from .version_info import VersionInfo
 from .verification import ResourceGraph, VerificationReport, semantic_fingerprint, verify_candidate
+from .forensics import ForensicBaseline, ForensicEvidence, verify_transformation
 from .windows_security import WindowsAuthenticodeReport, inspect_authenticode_windows
 
 __all__ = [
@@ -141,6 +142,9 @@ __all__ = [
     "VerificationReport",
     "semantic_fingerprint",
     "verify_candidate",
+    "ForensicBaseline",
+    "ForensicEvidence",
+    "verify_transformation",
     "WindowsAuthenticodeReport",
     "inspect_authenticode_windows",
     "diff_resources",
