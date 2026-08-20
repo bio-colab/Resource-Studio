@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "schemaVersion": "resource_studio.tools.v1",
+  "protocol": {
+    "mcp": "2026-07-28",
+    "transports": ["stdio", "streamable-http-later"]
+  },
+  "capabilities": {
+    "tools": {"listChanged": true},
+    "resources": {"subscribe": true, "listChanged": true},
+    "prompts": {"listChanged": true}
+  },
+  "tools": {
+    "readOnly": [
+      "resource_studio.inspect_file",
+      "resource_studio.index_resources",
+      "resource_studio.get_resource",
+      "resource_studio.preview_resource",
+      "resource_studio.diff_files",
+      "resource_studio.verify_signature",
+      "resource_studio.read_audit"
+    ],
+    "planning": [
+      "resource_studio.create_workspace",
+      "resource_studio.plan_resource_change",
+      "resource_studio.get_plan",
+      "resource_studio.plan_extract",
+      "resource_studio.plan_localization",
+      "resource_studio.plan_package_change"
+    ],
+    "mutating": [
+      "resource_studio.apply_plan",
+      "resource_studio.export_workspace",
+      "resource_studio.commit_resource",
+      "resource_studio.cancel_plan",
+      "resource_studio.rebuild_package"
+    ]
+  },
+  "policy": {
+    "originalPathsReadOnly": true,
+    "mutationsRequirePlan": true,
+    "mutationsRequireHumanConfirmation": true,
+    "mutationsRequireWorkspace": true,
+    "postWriteReopenAndVerify": true,
+    "arbitraryCommandTool": false,
+    "arbitraryFileWriteTool": false,
+    "defaultMaxInputBytes": 1073741824
+  },
+  "result": {
+    "schema": "resource_studio.result.v1",
+    "requiredFields": [
+      "operationId",
+      "status",
+      "source",
+      "output",
+      "changes",
+      "warnings",
+      "verification",
+      "auditUri"
+    ]
+  }
+}

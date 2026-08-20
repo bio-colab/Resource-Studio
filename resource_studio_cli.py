@@ -1,0 +1,362 @@
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import sys
+import tempfile
+from pathlib import Path
+from typing import Any
+
+from core.compatibility import inspect_compatibility
+from core.diff import diff_image_payloads, diff_resources
+from core.health import PEHealth
+from core.hex_view import HexViewer
+from core.pe_inspector import PEInspector
+from core.pe_metadata import PEMetadataInspector
+from core.project import Project, ResourceEntry
+from core.reports import FORMATS, render_report
+from core.search import search_resources
+from core.signature import inspect_signature
+from core.version_info import VersionInfo
+
+
+def _entries(path: Path) -> list[ResourceEntry]:
+    with tempfile.TemporaryDirectory(prefix="resource-studio-cli-") as temporary:
+        project = Project.open_pe(path, Path(temporary) / "project")
+        return list(project.entries.values())
+
+
+def _entry_record(entry: ResourceEntry) -> dict[str, Any]:
+    return {
+        "type": entry.resource_type,
+        "name": entry.name,
+        "language": entry.language,
+        "size": len(entry.data),
+        "sha256": entry.sha256,
+    }
+
+
+def _print(payload: Any, as_json: bool) -> None:
+    if as_json:
+        print(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True))
+        return
+    if isinstance(payload, list):
+        for item in payload:
+            print("\t".join(str(item.get(key, "")) for key in ("type", "name", "language", "size", "sha256")))
+    elif isinstance(payload, dict):
+        for key, value in payload.items():
+            print(f"{key}: {value}")
+    else:
+        print(payload)
+
+
+def _diff_payload(left_path: Path, right_path: Path) -> dict[str, Any]:
+    left_entries = _entries(left_path)
+    right_entries = _entries(right_path)
+    tree = diff_resources(left_entries, right_entries).to_dict()
+    changes: list[dict[str, Any]] = []
+    for node in tree.get("children", []):
+        if node["status"] == "unchanged":
+            continue
+        record = {"status": node["status"]}
+        if "before" in node:
+            record.update(node["before"])
+        if "after" in node and node["status"] == "added":
+            record.update(node["after"])
+        if node["status"] == "modified":
+            record = {"status": "modified", "before": node.get("before"), "after": node.get("after")}
+        changes.append(record)
+    return {
+        "left": str(left_path.expanduser().resolve()),
+        "right": str(right_path.expanduser().resolve()),
+        "fileChanged": _sha256(left_path) != _sha256(right_path),
+        "changes": changes,
+        "tree": tree,
+    }
+
+
+def command_list(args: argparse.Namespace) -> int:
+    _print([_entry_record(entry) for entry in _entries(args.input)], args.json)
+    return 0
+
+
+def command_extract(args: argparse.Namespace) -> int:
+    matches = [
+        entry
+        for entry in _entries(args.input)
+        if entry.resource_type == args.type
+        and entry.name == args.name
+        and (args.language is None or entry.language == args.language)
+    ]
+    if not matches:
+        raise ValueError("resource was not found")
+    if len(matches) > 1:
+        raise ValueError("resource has multiple languages; pass --language")
+    output = Path(args.output).expanduser().resolve()
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_bytes(matches[0].data)
+    _print({"output": str(output), "resource": _entry_record(matches[0])}, args.json)
+    return 0
+
+
+def command_plan(args: argparse.Namespace) -> int:
+    from core.pe_writer import LiefPEWriter
+
+    name: int | str = int(args.name) if args.name.isdigit() else args.name
+    writer = LiefPEWriter()
+    data = args.data.read_bytes()
+    if args.action == "add":
+        if not isinstance(name, int) or args.language is None:
+            raise ValueError("plan add requires numeric name and language")
+        payload = writer.plan_add_resource(args.input, args.type, name, args.language, data)
+    else:
+        payload = writer.plan_replace_resource(args.input, args.type, name, args.language, data)
+    _print(payload, args.json)
+    return 0
+
+
+def command_search(args: argparse.Namespace) -> int:
+    entries = _entries(args.input)
+    if args.type or args.language is not None:
+        entries = [entry for entry in entries if (not args.type or entry.resource_type == args.type) and (args.language is None or entry.language == args.language)]
+    hits = search_resources(entries, args.query, regex=args.regex, case_sensitive=args.case_sensitive, hex_query=args.hex)
+    _print([hit.to_dict() for hit in hits], args.json)
+    return 0
+
+
+def command_diff(args: argparse.Namespace) -> int:
+    _print(_diff_payload(args.left, args.right), args.json)
+    return 0
+
+
+def command_export(args: argparse.Namespace) -> int:
+    project = Project.load(args.project)
+    output = project.export_git(args.output)
+    _print({"output": str(output), "resourceCount": len(project.entries)}, args.json)
+    return 0
+
+
+def command_import(args: argparse.Namespace) -> int:
+    project = Project.import_git(args.input, args.project)
+    _print({"project": str(project.project_dir), "resourceCount": len(project.entries)}, args.json)
+    return 0
+
+
+def command_build(args: argparse.Namespace) -> int:
+    project = Project.load(args.project)
+    output = project.build(args.output)
+    _print({"output": str(output), "sha256": _sha256(output)}, args.json)
+    return 0
+
+
+def command_inspect(args: argparse.Namespace) -> int:
+    payload = PEInspector.inspect(args.input).to_dict()
+    payload["metadata"] = PEMetadataInspector.inspect(args.input).to_dict()
+    payload["signature"] = inspect_signature(args.input).to_dict()
+    payload["compatibility"] = inspect_compatibility(args.input).to_dict()
+    _print(payload, args.json)
+    return 0
+
+
+def command_version_info(args: argparse.Namespace) -> int:
+    text = args.input.read_text(encoding="utf-8")
+    source_format = args.input_format
+    if source_format == "auto":
+        source_format = "json" if args.input.suffix.lower() == ".json" else "rc"
+    version = VersionInfo.from_json(text) if source_format == "json" else VersionInfo.from_rc(text)
+    output_format = args.output_format
+    rendered = version.to_json() if output_format == "json" else version.to_rc()
+    if args.output:
+        output = args.output.expanduser().resolve()
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(rendered, encoding="utf-8")
+        payload = {"output": str(output), "format": output_format, "valid": version.validate()["valid"]}
+    else:
+        payload = {"format": output_format, "content": rendered}
+    _print(payload, args.json)
+    return 0
+
+
+def command_hex(args: argparse.Namespace) -> int:
+    with tempfile.TemporaryDirectory(prefix="resource-studio-cli-hex-") as temporary:
+        project = Project.open_pe(args.input, Path(temporary) / "project")
+        item = project.index_resources().find(args.type, args.name, args.language)
+        if item is None:
+            raise ValueError("resource was not found")
+        viewer = HexViewer(args.input.read_bytes())
+        chunk = viewer.resource_slice(project.index_resources(), args.type, args.name, args.language, args.length)
+    _print({"type": args.type, "name": args.name, "language": args.language, "offset": chunk.offset, "size": len(chunk.data), "hex": chunk.hex(), "ascii": chunk.ascii()}, args.json)
+    return 0
+
+
+def command_image_diff(args: argparse.Namespace) -> int:
+    before = args.left.read_bytes()
+    after = args.right.read_bytes()
+    _print(diff_image_payloads(before, after, kind=args.kind).to_dict(), args.json)
+    return 0
+
+
+def command_validate(args: argparse.Namespace) -> int:
+    report = PEHealth.inspect(args.input).to_dict()
+    _print(report, args.json)
+    return 0 if report["is_pe"] and (not args.strict or not report["warnings"]) else 1
+
+
+def command_report(args: argparse.Namespace) -> int:
+    if args.kind == "health":
+        payload = PEHealth.inspect(args.input).to_dict()
+    elif args.kind == "inspect":
+        payload = PEInspector.inspect(args.input).to_dict()
+        payload["metadata"] = PEMetadataInspector.inspect(args.input).to_dict()
+        payload["signature"] = inspect_signature(args.input).to_dict()
+        payload["compatibility"] = inspect_compatibility(args.input).to_dict()
+    elif args.kind == "image-diff":
+        payload = diff_image_payloads(args.input.read_bytes(), args.right.read_bytes(), kind=args.image_kind).to_dict()
+    else:
+        payload = _diff_payload(args.input, args.right)
+    rendered = render_report(payload, args.format)
+    if args.output:
+        output = Path(args.output).expanduser().resolve()
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(rendered, encoding="utf-8")
+        print(str(output))
+    else:
+        sys.stdout.write(rendered)
+    return 0
+
+
+def _key(entry: ResourceEntry) -> tuple[str, str, int | None]:
+    return entry.key
+
+
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with Path(path).open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def parser() -> argparse.ArgumentParser:
+    root = argparse.ArgumentParser(prog="resource-studio", description="Resource Studio core CLI")
+    subparsers = root.add_subparsers(dest="command", required=True)
+
+    list_parser = subparsers.add_parser("list", help="list PE resources")
+    list_parser.add_argument("input", type=Path)
+    list_parser.add_argument("--json", action="store_true")
+    list_parser.set_defaults(handler=command_list)
+
+    extract_parser = subparsers.add_parser("extract", help="extract one resource")
+    extract_parser.add_argument("input", type=Path)
+    extract_parser.add_argument("--type", required=True)
+    extract_parser.add_argument("--name", required=True)
+    extract_parser.add_argument("--language", type=int)
+    extract_parser.add_argument("--output", required=True, type=Path)
+    extract_parser.add_argument("--json", action="store_true")
+    extract_parser.set_defaults(handler=command_extract)
+
+    plan_parser = subparsers.add_parser("plan", help="preview a resource write without creating the requested output")
+    plan_parser.add_argument("action", choices=("add", "replace"))
+    plan_parser.add_argument("input", type=Path)
+    plan_parser.add_argument("--type", required=True)
+    plan_parser.add_argument("--name", required=True)
+    plan_parser.add_argument("--language", type=int)
+    plan_parser.add_argument("--data", required=True, type=Path)
+    plan_parser.add_argument("--json", action="store_true")
+    plan_parser.set_defaults(handler=command_plan)
+
+    search_parser = subparsers.add_parser("search", help="search text, UTF-16, metadata, or bytes in PE resources")
+    search_parser.add_argument("input", type=Path)
+    search_parser.add_argument("query")
+    search_parser.add_argument("--type")
+    search_parser.add_argument("--language", type=int)
+    search_parser.add_argument("--regex", action="store_true")
+    search_parser.add_argument("--case-sensitive", action="store_true")
+    search_parser.add_argument("--hex", action="store_true")
+    search_parser.add_argument("--json", action="store_true")
+    search_parser.set_defaults(handler=command_search)
+
+    diff_parser = subparsers.add_parser("diff", help="compare resources in two PE files")
+    diff_parser.add_argument("left", type=Path)
+    diff_parser.add_argument("right", type=Path)
+    diff_parser.add_argument("--json", action="store_true")
+    diff_parser.set_defaults(handler=command_diff)
+
+    export_parser = subparsers.add_parser("export", help="export a portable project directory")
+    export_parser.add_argument("project", type=Path)
+    export_parser.add_argument("--output", required=True, type=Path)
+    export_parser.add_argument("--json", action="store_true")
+    export_parser.set_defaults(handler=command_export)
+
+    import_parser = subparsers.add_parser("import", help="import a portable project directory")
+    import_parser.add_argument("input", type=Path)
+    import_parser.add_argument("--project", required=True, type=Path)
+    import_parser.add_argument("--json", action="store_true")
+    import_parser.set_defaults(handler=command_import)
+
+    build_parser = subparsers.add_parser("build", help="save an isolated project workspace as a new PE")
+    build_parser.add_argument("project", type=Path)
+    build_parser.add_argument("--output", required=True, type=Path)
+    build_parser.add_argument("--json", action="store_true")
+    build_parser.set_defaults(handler=command_build)
+
+    inspect_parser = subparsers.add_parser("inspect", help="inspect PE structure without writing")
+    inspect_parser.add_argument("input", type=Path)
+    inspect_parser.add_argument("--json", action="store_true")
+    inspect_parser.set_defaults(handler=command_inspect)
+
+    version_parser = subparsers.add_parser("version-info", help="convert VersionInfo between RC and JSON")
+    version_parser.add_argument("input", type=Path)
+    version_parser.add_argument("--input-format", choices=("auto", "rc", "json"), default="auto")
+    version_parser.add_argument("--output-format", choices=("rc", "json"), required=True)
+    version_parser.add_argument("--output", type=Path)
+    version_parser.add_argument("--json", action="store_true")
+    version_parser.set_defaults(handler=command_version_info)
+
+    hex_parser = subparsers.add_parser("hex", help="show raw file bytes at a resource offset")
+    hex_parser.add_argument("input", type=Path)
+    hex_parser.add_argument("--type", required=True)
+    hex_parser.add_argument("--name", required=True)
+    hex_parser.add_argument("--language", type=int, required=True)
+    hex_parser.add_argument("--length", type=int, default=256)
+    hex_parser.add_argument("--json", action="store_true")
+    hex_parser.set_defaults(handler=command_hex)
+
+    image_diff_parser = subparsers.add_parser("image-diff", help="compare two image payload files")
+    image_diff_parser.add_argument("left", type=Path)
+    image_diff_parser.add_argument("right", type=Path)
+    image_diff_parser.add_argument("--kind", choices=("bitmap", "icon", "cursor"), default="bitmap")
+    image_diff_parser.add_argument("--json", action="store_true")
+    image_diff_parser.set_defaults(handler=command_image_diff)
+
+    validate_parser = subparsers.add_parser("validate", help="inspect PE health")
+    validate_parser.add_argument("input", type=Path)
+    validate_parser.add_argument("--strict", action="store_true", help="fail when warnings exist")
+    validate_parser.add_argument("--json", action="store_true")
+    validate_parser.set_defaults(handler=command_validate)
+
+    report_parser = subparsers.add_parser("report", help="write a health or diff report")
+    report_parser.add_argument("kind", choices=("health", "inspect", "diff", "image-diff"))
+    report_parser.add_argument("input", type=Path)
+    report_parser.add_argument("right", type=Path, nargs="?")
+    report_parser.add_argument("--image-kind", choices=("bitmap", "icon", "cursor"), default="bitmap")
+    report_parser.add_argument("--format", choices=sorted(FORMATS), default="json")
+    report_parser.add_argument("--output", type=Path)
+    report_parser.set_defaults(handler=command_report)
+    return root
+
+
+def main(argv: list[str] | None = None) -> int:
+    arguments = parser().parse_args(argv)
+    if arguments.command == "report" and arguments.kind in {"diff", "image-diff"} and arguments.right is None:
+        parser().error(f"report {arguments.kind} requires LEFT and RIGHT inputs")
+    try:
+        return int(arguments.handler(arguments))
+    except (OSError, ValueError, KeyError, RuntimeError) as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
