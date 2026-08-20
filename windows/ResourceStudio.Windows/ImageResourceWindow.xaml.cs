@@ -13,13 +13,16 @@ public partial class ImageResourceWindow : Window
 {
     private readonly string _cliPath;
     private string? _payloadPath;
+    private string? _individualPreviewPath;
     private readonly List<GroupEntry> _entries = new();
 
-    public ImageResourceWindow(string cliPath, string? selectedPe)
+    public ImageResourceWindow(string cliPath, string? selectedPe, string? defaultKind = null)
     {
         InitializeComponent();
         _cliPath = cliPath;
         PePathBox.Text = selectedPe ?? "";
+        if (string.Equals(defaultKind, "icon", StringComparison.OrdinalIgnoreCase)) KindBox.SelectedIndex = 1;
+        else if (string.Equals(defaultKind, "cursor", StringComparison.OrdinalIgnoreCase)) KindBox.SelectedIndex = 2;
     }
 
     private string Kind => ((System.Windows.Controls.ComboBoxItem)KindBox.SelectedItem).Content?.ToString() ?? "bitmap";
@@ -74,6 +77,24 @@ public partial class ImageResourceWindow : Window
         EntryWidthBox.Text = entry.Width.ToString();
         EntryHeightBox.Text = entry.Height.ToString();
         EntryIdBox.Text = entry.ResourceId.ToString();
+        LoadSelectedPayloadPreview(entry);
+    }
+
+    private void LoadSelectedPayloadPreview(GroupEntry entry)
+    {
+        if (Kind == "bitmap" || !File.Exists(PePathBox.Text)) return;
+        try
+        {
+            var temporary = Path.Combine(Path.GetTempPath(), $"resource-studio-icon-preview-{Guid.NewGuid():N}.bmp");
+            var result = RunCli("image-payload", "export", PePathBox.Text, "--kind", Kind, "--resource-id", entry.ResourceId.ToString(), "--language", LanguageBox.Text, "--output", temporary, "--format", "bmp", "--json");
+            if (result.ExitCode != 0) { SetStatus($"Payload preview unavailable: {result.Output}"); return; }
+            if (_individualPreviewPath is not null) TryDelete(_individualPreviewPath);
+            _individualPreviewPath = temporary;
+            ImagePreview.Source = LoadBitmap(temporary);
+            System.Windows.Automation.AutomationProperties.SetName(ImagePreview, $"BMP preview {entry.Label}");
+            SetStatus($"Previewing {entry.Label} as BMP.");
+        }
+        catch (Exception exc) { SetStatus($"Payload preview unavailable: {exc.Message}"); }
     }
 
     private void UpdateEntry_Click(object sender, RoutedEventArgs e)
@@ -123,6 +144,26 @@ public partial class ImageResourceWindow : Window
         ModelBox.Text = JsonSerializer.Serialize(model, JsonOptions);
     }
 
+    private void ExportPayload_Click(object sender, RoutedEventArgs e)
+    {
+        if (Kind == "bitmap" || GroupEntriesList.SelectedItem is not GroupEntry entry) { SetStatus("Select an Icon/Cursor entry first."); return; }
+        var dialog = new SaveFileDialog { Filter = "Bitmap files (*.bmp)|*.bmp|All files (*.*)|*.*", FileName = $"{Kind}-{entry.ResourceId}.bmp" };
+        if (dialog.ShowDialog() != true) return;
+        var result = RunCli("image-payload", "export", PePathBox.Text, "--kind", Kind, "--resource-id", entry.ResourceId.ToString(), "--language", LanguageBox.Text, "--output", dialog.FileName, "--format", "bmp", "--json");
+        SetStatus(result.ExitCode == 0 ? $"Payload exported to {dialog.FileName}" : result.Output);
+    }
+
+    private void ApplyPayload_Click(object sender, RoutedEventArgs e)
+    {
+        if (Kind == "bitmap" || GroupEntriesList.SelectedItem is not GroupEntry entry) { SetStatus("Select an Icon/Cursor entry first."); return; }
+        var payloadDialog = new OpenFileDialog { Filter = "Image files (*.bmp;*.png)|*.bmp;*.png|Bitmap files (*.bmp)|*.bmp|PNG files (*.png)|*.png|All files (*.*)|*.*" };
+        if (payloadDialog.ShowDialog() != true) return;
+        var outputDialog = new SaveFileDialog { Filter = "PE files (*.exe;*.dll;*.sys)|*.exe;*.dll;*.sys|All files (*.*)|*.*", FileName = Path.GetFileNameWithoutExtension(PePathBox.Text) + ".payload" + Path.GetExtension(PePathBox.Text) };
+        if (outputDialog.ShowDialog() != true) return;
+        var result = RunCli("image-payload", "apply", PePathBox.Text, "--kind", Kind, "--resource-id", entry.ResourceId.ToString(), "--language", LanguageBox.Text, "--payload", payloadDialog.FileName, "--format", "bmp", "--output", outputDialog.FileName, "--json");
+        SetStatus(result.ExitCode == 0 ? $"Payload applied to {outputDialog.FileName}" : result.Output);
+    }
+
     private void Apply_Click(object sender, RoutedEventArgs e)
     {
         if (!File.Exists(PePathBox.Text)) { SetStatus("Choose a PE file first."); return; }
@@ -145,6 +186,15 @@ public partial class ImageResourceWindow : Window
         catch (Exception exc) { SetStatus(exc.Message); }
         finally { if (payload != _payloadPath) File.Delete(payload); }
     }
+
+    private static BitmapImage LoadBitmap(string path)
+    {
+        var image = new BitmapImage();
+        image.BeginInit(); image.CacheOption = BitmapCacheOption.OnLoad; image.UriSource = new Uri(path); image.EndInit(); image.Freeze();
+        return image;
+    }
+
+    private static void TryDelete(string path) { try { File.Delete(path); } catch { } }
 
     private CliResult RunCli(params string[] arguments)
     {

@@ -10,12 +10,12 @@
 |---|---|
 | النواة | Project workspace، snapshots، Save As، Audit Log، Undo/Redo، rollback ذري، lockfile |
 | PE | فهرسة الموارد، health checks، sections/imports/exports/TLS/debug، checksum، metadata وcompatibility profiles |
-| الموارد | RES binary، RC text، Manifest، VersionInfo RC وPE binary، StringTable، Bitmap، Icon/Cursor مع JSON group model، Menu، Dialog DIALOG/DIALOGEX binary وJSON |
+| الموارد | RES binary، RC text، Manifest، VersionInfo RC وPE binary، StringTable، Bitmap، Icon/Cursor مع JSON group model وpayload فردي قابل للتحويل إلى BMP/PNG، Menu، Dialog DIALOG/DIALOGEX binary وJSON |
 | الكتابة الآمنة | Add/Replace/Delete/ChangeLanguage، typed validation، resource invariants، dry-run plan، منع تعديل PE موقع قبل strip/re-sign صريح |
 | المقارنة والبحث | Diff Tree، image diff، HexViewer، بحث metadata/UTF-8/UTF-16/regex/hex |
 | الأمان | Authenticode report وWinVerifyTrust native، Strip إلى ملف جديد، إنشاء Test PFX، Re-sign عبر `signtool.exe` عند توفر Windows SDK، PluginHost خارج العملية وWindows Job Object |
 | الواجهات | CLI JSON، Python GUI أولية، WPF shell مستقل في `windows/ResourceStudio.Windows`، تبويبات Resources/Properties/Preview/Search/Diff/Batch Workspace/Localization، Dialog Editor WYSIWYG، StringTable Editor، Resource Wizards، Image Wizard، وAuthenticode Tools |
-| الجودة | 55 اختبار Python مسجلًا على Windows تشمل Dialog وAuthenticode وLocalization وBatch Workspace وStringTable وVersion/Manifest/Menu وImage وPreviewEngine وMenu mutation وgolden guards، إضافة إلى core وCLI وQA وmalformed corpus وgolden round-trip وbounded fuzzing وSHA guards |
+| الجودة | 56 اختبار Python مسجلًا على Windows، إضافة إلى Windows UI automation smoke test، تشمل Dialog وAuthenticode وLocalization وBatch Workspace وStringTable وVersion/Manifest/Menu وImage وIcon/Cursor payload وPreviewEngine وMenu mutation وgolden guards وBMP preview الفعلي، إضافة إلى core وCLI وQA وmalformed corpus وgolden round-trip وbounded fuzzing وSHA guards |
 
 ## المتطلبات
 
@@ -33,7 +33,7 @@
 افتح PowerShell داخل مجلد المشروع وشغّل:
 
 ```powershell
-py -3.12 -m pip install --user lief==1.0.0
+py -3.12 -m pip install --user -r requirements-backend.txt
 ```
 
 بعد تثبيت .NET SDK، ابنِ واجهة WPF:
@@ -81,6 +81,9 @@ python3 resource_studio_cli.py version-resource export input.dll --language 1033
 python3 resource_studio_cli.py manifest-resource export input.dll --language 1033 --output manifest.json --json
 python3 resource_studio_cli.py menu-resource export input.dll --name 1 --language 1033 --output menu.json --json
 python3 resource_studio_cli.py image-resource export input.dll --kind bitmap --name 1 --language 1033 --output image.bmp --json
+python3 resource_studio_cli.py image-payload export input.dll --kind icon --resource-id 1 --language 1033 --output icon-1.bin --format raw --json
+python3 resource_studio_cli.py image-payload export input.dll --kind icon --resource-id 1 --language 1033 --output icon-1.bmp --format bmp --json
+python3 resource_studio_cli.py image-payload apply input.dll --kind icon --resource-id 1 --language 1033 --payload icon-1-edited.bmp --format bmp --output edited.dll --json
 python3 resource_studio_cli.py preview input.dll --type MANIFEST --name 1 --language 1033 --length 4096 --json
 ```
 
@@ -90,15 +93,15 @@ python3 resource_studio_cli.py preview input.dll --type MANIFEST --name 1 --lang
 
 يفتح زر **Authenticode Tools** نافذة مدمجة لفحص التوقيع، ونزع certificate table إلى ملف PE جديد، وإنشاء شهادة Code Signing اختبارية محلية بصيغة PFX، وإعادة التوقيع إلى ملف جديد. كلمة مرور PFX لا تُمرر في سطر الأوامر؛ يستعمل المسار متغير بيئة مؤقتًا. إعادة التوقيع تحتاج `signtool.exe` من Windows SDK، ولذلك تعرض الأداة خطأً صريحًا إذا لم يكن SDK مثبتًا.
 
-يفتح زر **StringTable Editor** جدولًا مرئيًا من 16 خانة مع String IDs، تحميل من PE، استيراد/تصدير JSON، وتطبيق Save As. ويفتح زر **Resource Wizards** تبويبات VersionInfo وManifest وMenu بصيغ JSON/XML قابلة للتحرير مع validation من النواة. يدعم MenuTree الآن سحب العقد إلى parent آخر، مع منع النقل أسفل descendant وإعادة بناء JSON قبل Save As. أما **Image Wizard** فيدعم BITMAP عبر BMP مع معاينة، وGROUP_ICON/GROUP_CURSOR عبر قائمة عناصر فردية وحقول width/height/resource ID وإجراءات Update/Add/Remove؛ كل عمليات الكتابة تمر عبر CLI وLIEF إلى ملف جديد.
+يفتح زر **StringTable Editor** جدولًا مرئيًا من 16 خانة مع String IDs، تحميل من PE، استيراد/تصدير JSON، وتطبيق Save As. ويفتح زر **Resource Wizards** تبويبات VersionInfo وManifest وMenu بصيغ JSON/XML قابلة للتحرير مع validation من النواة. يدعم MenuTree الآن سحب العقد إلى parent آخر، مع منع النقل أسفل descendant وإعادة بناء JSON قبل Save As. أما **Image Wizard** فيدعم BITMAP عبر BMP مع معاينة، وGROUP_ICON/GROUP_CURSOR عبر قائمة عناصر فردية وحقول width/height/resource ID وإجراءات Update/Add/Remove، إضافة إلى استخراج payload الفردي كـBMP، معاينته فور اختيار العنصر، واستبداله من BMP/PNG إلى PE جديد. كل عمليات الكتابة تمر عبر CLI وLIEF إلى ملف جديد.
 
-يوفر WPF كذلك تبويبات **Resources** للفهرس والخصائص، و**Preview** الذي يستدعي PreviewEngine الموحد ويعرض Bitmap بصريًا، وMenu كقائمة مرئية، وDialog على Canvas، وtyped models للأنواع الأخرى مع raw fallback، و**Search** للبحث عبر النواة، و**Diff** لعرض شجرة المقارنة، و**Batch Workspace** لتشغيل manifest متعدد الملفات بوضع Plan أو Apply، و**Localization** لمقارنة اللغات وpseudo-localization. الاختصارات الأساسية هي `Ctrl+O` للفتح، و`Ctrl+F` للبحث، و`Ctrl+I` للفحص، و`F5` لإعادة تحميل الموارد. يوجد زر Dark mode مع اكتشاف Windows High Contrast.
+يوفر WPF كذلك تبويبات **Resources** للفهرس والخصائص، و**Preview** الذي يستدعي PreviewEngine الموحد ويعرض Bitmap بصريًا، وMenu كقائمة مرئية، وDialog على Canvas، وVersionInfo كحقول وإصدارات وstrings، وManifest كـXML قابل للقراءة، وStringTable كسجل ID/text، وIcon/Cursor group كبطاقات أبعاد ومعرّفات، مع raw fallback عند تعذر التحليل. كما يوفر **Search** للبحث عبر النواة، و**Diff** لعرض شجرة المقارنة، و**Batch Workspace** لتشغيل manifest متعدد الملفات بوضع Plan أو Apply، و**Localization** لمقارنة اللغات وpseudo-localization. الاختصارات الأساسية هي `Ctrl+O` للفتح، و`Ctrl+F` للبحث، و`Ctrl+I` للفحص، و`F5` لإعادة تحميل الموارد. يوجد زر Dark mode مع اكتشاف Windows High Contrast. Image Wizard يعرض payload الفردي كـBMP فعليًا؛ أما cursor hotspot المتقدم وAccessibility automation الكامل فباقيان ضمن TODO.
 
 يستخدم Batch Workspace صيغة `resource_studio.batch.v1`. يحتوي manifest على `jobs`، ولكل job `input` و`output` و`operations`. العمليات الحالية هي `add` و`replace` و`delete` و`change-language`. ينفذ `batch plan` staging مؤقتًا ويعرض hashes ونتيجة التحقق دون إنشاء المخرجات المطلوبة، بينما ينفذ `batch apply` كل العمليات في مساحة مؤقتة ثم يلتزم بها ذريًا إلى ملفات Save As، مع backup وسجل JSON وrollback عند فشل الالتزام. لا يسمح المسار بأن يكون output مساويًا لأي input.
 
 ## الاختبارات
 
-بوابة الاختبارات لا تحتاج ResourceHacker.exe:
+بوابة الاختبارات لا تحتاج ResourceHacker.exe، ولا تتضمنه الحزمة:
 
 ```bash
 python3 -m py_compile core/*.py resource_studio_cli.py tests/core/*.py tests/test_cli.py tests/qa/*.py
@@ -106,6 +109,14 @@ for test in tests/core/test_*.py tests/test_cli.py tests/qa/test_*.py; do PYTHON
 ```
 
 على Windows يمكن استخدام:
+
+```powershell
+$env:PYTHONPATH = (Get-Location).Path
+py -3.12 tests\windows\create_ui_icon_fixture.py tests\fixtures\ui-icon.dll
+dotnet build windows\ResourceStudio.Windows\ResourceStudio.Windows.csproj --configuration Release
+powershell -NoProfile -ExecutionPolicy Bypass -File tests\windows\Invoke-ResourceStudioUIAutomation.ps1 -ApplicationPath windows\ResourceStudio.Windows\bin\Release\net8.0-windows\ResourceStudio.Windows.exe -PePath tests\fixtures\ui-icon.dll
+```
+
 
 ```powershell
 $env:PYTHONPATH = (Get-Location).Path

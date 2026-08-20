@@ -14,7 +14,7 @@ from core.compatibility import inspect_compatibility
 from core.diff import diff_image_payloads, diff_resources
 from core.dialog_resources import DialogResource
 from core.health import PEHealth
-from core.image_resources import BitmapResource, IconCursorGroup
+from core.image_resources import BitmapResource, IconCursorGroup, icon_cursor_bmp_to_payload, icon_cursor_payload_to_bmp
 from core.hex_view import HexViewer
 from core.pe_inspector import PEInspector
 from core.pe_metadata import PEMetadataInspector
@@ -190,6 +190,27 @@ def command_preview(args: argparse.Namespace) -> int:
     output = args.output if args.output is not None else None
     result = PreviewEngine.preview(args.type, entry.data, resource_name=entry.name, language=entry.language, raw_length=args.length, output_path=output)
     _print(result.to_dict(), args.json)
+    return 0
+
+
+def command_image_payload(args: argparse.Namespace) -> int:
+    kind = args.kind.upper()
+    resource_type = "ICON" if kind == "ICON" else "CURSOR"
+    format_name = args.format.lower()
+    if args.action == "export":
+        entry = _resource_match(args.input, resource_type, str(args.resource_id), args.language)
+        data = icon_cursor_payload_to_bmp(entry.data, kind) if format_name == "bmp" else entry.data
+        args.output.write_bytes(data)
+        _print({"output": str(args.output.resolve()), "kind": kind, "resourceId": args.resource_id, "size": len(data), "format": format_name}, args.json)
+        return 0
+    data = args.payload.read_bytes()
+    if not data or len(data) > 16 * 1024 * 1024:
+        raise ValueError("image payload must be non-empty and no larger than 16 MiB")
+    if format_name == "bmp" or (format_name == "auto" and data[:2] == b"BM") or (format_name == "auto" and data.startswith(b"\x89PNG\r\n\x1a\n")):
+        data = icon_cursor_bmp_to_payload(data, kind)
+    from core.pe_writer import LiefPEWriter
+    result = LiefPEWriter().replace_resource(args.input, args.output, resource_type, args.resource_id, args.language, data)
+    _print({"output": str(result.output_path), "beforeSha256": result.before_sha256, "afterSha256": result.after_sha256, "verified": result.verified, "kind": kind, "resourceId": args.resource_id, "format": format_name, "size": len(data)}, args.json)
     return 0
 
 
@@ -529,6 +550,18 @@ def parser() -> argparse.ArgumentParser:
     preview_parser.add_argument("--json", action="store_true")
     preview_parser.set_defaults(handler=command_preview)
 
+    image_payload_parser = subparsers.add_parser("image-payload", help="export or replace an individual ICON/CURSOR payload")
+    image_payload_parser.add_argument("action", choices=("export", "apply"))
+    image_payload_parser.add_argument("input", type=Path)
+    image_payload_parser.add_argument("--kind", choices=("icon", "cursor"), required=True)
+    image_payload_parser.add_argument("--resource-id", type=int, required=True)
+    image_payload_parser.add_argument("--language", type=int, required=True)
+    image_payload_parser.add_argument("--output", type=Path, required=True)
+    image_payload_parser.add_argument("--payload", type=Path)
+    image_payload_parser.add_argument("--format", choices=("raw", "bmp", "auto"), default="raw")
+    image_payload_parser.add_argument("--json", action="store_true")
+    image_payload_parser.set_defaults(handler=command_image_payload)
+
     image_parser = subparsers.add_parser("image-resource", help="export or apply BITMAP or GROUP_ICON/GROUP_CURSOR")
     image_parser.add_argument("action", choices=("export", "apply"))
     image_parser.add_argument("input", type=Path)
@@ -641,6 +674,8 @@ def main(argv: list[str] | None = None) -> int:
         parser().error(f"report {arguments.kind} requires LEFT and RIGHT inputs")
     if arguments.command in {"string-table", "version-resource", "manifest-resource", "menu-resource", "image-resource"} and arguments.action == "apply" and arguments.model is None:
         parser().error("string-table apply requires --model")
+    if arguments.command == "image-payload" and arguments.action == "apply" and arguments.payload is None:
+        parser().error("image-payload apply requires --payload")
     if arguments.command == "localization" and arguments.action == "pseudo" and arguments.output is None:
         parser().error("localization pseudo requires --output")
     if arguments.command == "signature":

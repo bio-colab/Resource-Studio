@@ -23,7 +23,21 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         _cliPath = FindCliPath();
+        Loaded += MainWindow_Loaded;
         if (SystemParameters.HighContrast) ApplyHighContrastTheme();
+    }
+
+    private void MainWindow_Loaded(object sender, RoutedEventArgs e)
+    {
+        var arguments = Environment.GetCommandLineArgs();
+        var openIndex = Array.FindIndex(arguments, argument => string.Equals(argument, "--open", StringComparison.OrdinalIgnoreCase));
+        if (openIndex < 0 || openIndex + 1 >= arguments.Length) return;
+        var path = Path.GetFullPath(arguments[openIndex + 1]);
+        if (!File.Exists(path)) { StatusText.Text = $"PE not found: {path}"; return; }
+        _selectedPe = path;
+        PathBox.Text = path;
+        LoadResources();
+        Inspect_Click(this, new RoutedEventArgs());
     }
 
     private void Theme_Click(object sender, RoutedEventArgs e)
@@ -145,7 +159,10 @@ public partial class MainWindow : Window
             MessageBox.Show("resource_studio_cli.py was not found.", "Resource Studio", MessageBoxButton.OK, MessageBoxImage.Error);
             return;
         }
-        new ImageResourceWindow(_cliPath, _selectedPe) { Owner = this }.Show();
+        var arguments = Environment.GetCommandLineArgs();
+        var kindIndex = Array.FindIndex(arguments, argument => string.Equals(argument, "--image-kind", StringComparison.OrdinalIgnoreCase));
+        var defaultKind = kindIndex >= 0 && kindIndex + 1 < arguments.Length ? arguments[kindIndex + 1] : null;
+        new ImageResourceWindow(_cliPath, _selectedPe, defaultKind) { Owner = this }.Show();
     }
 
     private void AuthenticodeTools_Click(object sender, RoutedEventArgs e)
@@ -389,13 +406,44 @@ public partial class MainWindow : Window
             }
             PreviewVisualPanel.Children.Add(canvas); return;
         }
-        if ((kind == "xml" || kind == "version-info" || kind == "string-table" || kind == "image-group") && model.ValueKind == JsonValueKind.Object)
+        if (kind == "xml" && model.ValueKind == JsonValueKind.Object)
         {
-            var summary = new TextBlock { Text = JsonSerializer.Serialize(model, new JsonSerializerOptions { WriteIndented = true }), FontFamily = new FontFamily("Consolas"), TextWrapping = TextWrapping.Wrap };
-            PreviewVisualPanel.Children.Add(summary); return;
+            var xml = model.TryGetProperty("xml", out var xmlValue) ? xmlValue.GetString() : "";
+            PreviewVisualPanel.Children.Add(new TextBox { Text = xml, IsReadOnly = true, FontFamily = new FontFamily("Consolas"), TextWrapping = TextWrapping.Wrap, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, BorderThickness = new Thickness(1) }); return;
+        }
+        if (kind == "version-info" && model.ValueKind == JsonValueKind.Object)
+        {
+            var panel = new StackPanel(); AddPreviewField(panel, "File version", model, "fileVersion"); AddPreviewField(panel, "Product version", model, "productVersion"); AddPreviewField(panel, "String count", model, "stringCount");
+            if (model.TryGetProperty("strings", out var strings) && strings.ValueKind == JsonValueKind.Object) foreach (var property in strings.EnumerateObject()) AddPreviewText(panel, $"{property.Name}: {property.Value}");
+            PreviewVisualPanel.Children.Add(panel); return;
+        }
+        if (kind == "string-table" && model.ValueKind == JsonValueKind.Object)
+        {
+            var panel = new StackPanel(); var first = model.TryGetProperty("firstStringId", out var firstValue) ? firstValue.GetInt32() : 0;
+            if (model.TryGetProperty("strings", out var values) && values.ValueKind == JsonValueKind.Array)
+            {
+                var id = first; foreach (var value in values.EnumerateArray()) { if (!string.IsNullOrEmpty(value.GetString())) AddPreviewText(panel, $"{id}: {value.GetString()}"); id++; }
+            }
+            PreviewVisualPanel.Children.Add(panel); return;
+        }
+        if (kind == "image-group" && model.ValueKind == JsonValueKind.Object)
+        {
+            var panel = new WrapPanel(); if (model.TryGetProperty("entries", out var entries) && entries.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var entry in entries.EnumerateArray()) { var width = entry.TryGetProperty("width", out var w) ? w.ToString() : "?"; var height = entry.TryGetProperty("height", out var h) ? h.ToString() : "?"; var id = entry.TryGetProperty("resourceId", out var rid) ? rid.ToString() : "?"; panel.Children.Add(new Border { BorderBrush = Brushes.SlateGray, BorderThickness = new Thickness(1), Margin = new Thickness(3), Padding = new Thickness(6), Child = new TextBlock { Text = $"{width}x{height}\nID {id}", TextAlignment = TextAlignment.Center } }); }
+            }
+            PreviewVisualPanel.Children.Add(panel); return;
         }
         PreviewVisualPanel.Children.Add(new TextBlock { Text = "No specialized visual renderer is available; use the raw/typed JSON preview.", TextWrapping = TextWrapping.Wrap });
     }
+
+    private static void AddPreviewField(StackPanel panel, string label, JsonElement model, string property)
+    {
+        var value = model.TryGetProperty(property, out var element) ? element.ToString() : "";
+        AddPreviewText(panel, $"{label}: {value}");
+    }
+
+    private static void AddPreviewText(StackPanel panel, string text) => panel.Children.Add(new TextBlock { Text = text, Margin = new Thickness(0, 0, 0, 4), TextWrapping = TextWrapping.Wrap });
 
     private static StackPanel RenderMenuPreview(JsonElement items)
     {

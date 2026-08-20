@@ -10,7 +10,7 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
         <WrapPanel>
-            <Button Content="Open PE" Click="OpenPe_Click" Margin="0,0,6,6" />
+            <Button AutomationProperties.AutomationId="OpenPeButton" Content="Open PE" Click="OpenPe_Click" Margin="0,0,6,6" />
             <Button Content="List resources" Click="List_Click" Margin="0,0,6,6" />
             <Button Content="Inspect" Click="Inspect_Click" Margin="0,0,6,6" />
             <Button Content="Validate" Click="Validate_Click" Margin="0,0,6,6" />
@@ -18,11 +18,11 @@
             <Button Content="Dialog Editor" Click="DialogEditor_Click" Margin="0,0,6,6" />
             <Button Content="StringTable Editor" Click="StringTableEditor_Click" Margin="0,0,6,6" />
             <Button Content="Resource Wizards" Click="ResourceWizards_Click" Margin="0,0,6,6" />
-            <Button Content="Image Wizard" Click="ImageWizard_Click" Margin="0,0,6,6" />
+            <Button AutomationProperties.AutomationId="ImageWizardButton" Content="Image Wizard" Click="ImageWizard_Click" Margin="0,0,6,6" />
             <Button Content="Authenticode Tools" Click="AuthenticodeTools_Click" Margin="0,0,6,6" />
-            <Button Content="Toggle dark mode" Click="Theme_Click" Margin="0,0,6,6" />
+            <Button AutomationProperties.AutomationId="ThemeButton" Content="Toggle dark mode" Click="Theme_Click" Margin="0,0,6,6" />
         </WrapPanel>
-        <TextBox x:Name="PathBox" Grid.Row="1" Margin="4,0,4,8" Padding="6" IsReadOnly="True" />
+        <TextBox AutomationProperties.AutomationId="PathBox" x:Name="PathBox" Grid.Row="1" Margin="4,0,4,8" Padding="6" IsReadOnly="True" />
         <TabControl Grid.Row="2" Margin="4,0,4,4">
             <TabItem Header="Resources">
                 <Grid Margin="6">
@@ -37,7 +37,7 @@
                     <DockPanel Grid.ColumnSpan="2" Margin="0,0,0,6">
                         <TextBlock Text="Filter" VerticalAlignment="Center" Margin="0,0,6,0" />
                         <TextBox x:Name="ResourceFilterBox" Width="260" TextChanged="ResourceFilterBox_TextChanged" />
-                        <TextBlock x:Name="ResourceCountText" Text="0 resources" VerticalAlignment="Center" Margin="12,0,0,0" Foreground="DarkSlateGray" />
+                        <TextBlock AutomationProperties.AutomationId="ResourceCountText" x:Name="ResourceCountText" Text="0 resources" VerticalAlignment="Center" Margin="12,0,0,0" Foreground="DarkSlateGray" />
                     </DockPanel>
                     <DataGrid x:Name="ResourceGrid" Grid.Row="1" Grid.Column="0" AutoGenerateColumns="True" IsReadOnly="True" SelectionChanged="ResourceGrid_SelectionChanged" />
                     <Grid Grid.Row="1" Grid.Column="1" Margin="8,0,0,0">
@@ -58,10 +58,10 @@
                 <Grid Margin="6">
                     <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
                     <WrapPanel Margin="0,0,0,6">
-                        <TextBox x:Name="SearchQueryBox" Width="300" Margin="0,0,6,0" />
+                        <TextBox AutomationProperties.AutomationId="SearchQueryBox" x:Name="SearchQueryBox" Width="300" Margin="0,0,6,0" />
                         <CheckBox x:Name="SearchRegexBox" Content="Regex" VerticalAlignment="Center" Margin="0,0,8,0" />
                         <CheckBox x:Name="SearchHexBox" Content="Hex" VerticalAlignment="Center" Margin="0,0,8,0" />
-                        <Button Content="Search" Click="Search_Click" />
+                        <Button AutomationProperties.AutomationId="SearchButton" Content="Search" Click="Search_Click" />
                     </WrapPanel>
                     <DataGrid x:Name="SearchGrid" Grid.Row="1" AutoGenerateColumns="True" IsReadOnly="True" />
                 </Grid>
@@ -120,6 +120,6 @@
                 </Grid>
             </TabItem>
         </TabControl>
-        <TextBlock x:Name="StatusText" Grid.Row="3" Margin="4" Text="Ready" />
+        <TextBlock AutomationProperties.AutomationId="MainStatusText" x:Name="StatusText" Grid.Row="3" Margin="4" Text="Ready" />
     </Grid>
 </Window>

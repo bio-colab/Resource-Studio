@@ -13,7 +13,7 @@ from .commands import (
     ReplaceResourceCommand,
 )
 from .health import HealthReport, PEHealth
-from .image_resources import BitmapResource, IconCursorEntry, IconCursorGroup, ImageResourceError
+from .image_resources import BitmapResource, IconCursorEntry, IconCursorGroup, ImageResourceError, icon_cursor_bmp_to_payload, icon_cursor_payload_to_bmp
 from .hex_view import HexSlice, HexViewer
 from .invariants import PEInvariantSnapshot, PESurgicalChangeReport, compare_surgical_change, snapshot
 from .localization import LocalizationCatalog, LocalizedString
@@ -60,6 +60,8 @@ __all__ = [
     "IconCursorEntry",
     "IconCursorGroup",
     "ImageResourceError",
+    "icon_cursor_payload_to_bmp",
+    "icon_cursor_bmp_to_payload",
     "HexSlice",
     "HexViewer",
     "PEInvariantSnapshot",
