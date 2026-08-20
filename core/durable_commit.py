@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ctypes
+import hashlib
 import os
 from dataclasses import dataclass
 from pathlib import Path
@@ -14,6 +15,7 @@ class CommitResult:
     method: str
     flushed: bool
     same_volume: bool
+    verified_sha256: str
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -22,6 +24,7 @@ class CommitResult:
             "method": self.method,
             "flushed": self.flushed,
             "sameVolume": self.same_volume,
+            "verifiedSha256": self.verified_sha256,
         }
 
 
@@ -37,6 +40,7 @@ def commit_temporary(source: Path, target: Path) -> CommitResult:
     if source == target:
         raise DurableCommitError("temporary source and target must differ")
     target.parent.mkdir(parents=True, exist_ok=True)
+    expected_sha256 = _sha256(source)
     flushed = _flush_file(source)
     same_volume = _same_volume(source, target)
     if os.name == "nt" and same_volume:
@@ -44,7 +48,18 @@ def commit_temporary(source: Path, target: Path) -> CommitResult:
     else:
         os.replace(source, target)
         method = "os.replace"
-    return CommitResult(str(source), str(target), method, flushed, same_volume)
+    verified_sha256 = _sha256(target)
+    if verified_sha256 != expected_sha256:
+        raise DurableCommitError("post-commit readback hash mismatch")
+    return CommitResult(str(source), str(target), method, flushed, same_volume, verified_sha256)
+
+
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with Path(path).open("rb") as stream:
+        for block in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
 
 
 def _flush_file(path: Path) -> bool:

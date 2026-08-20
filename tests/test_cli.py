@@ -49,6 +49,16 @@ def main() -> None:
         assert baseline_payload["artifactPath"] == str(baseline_artifact.resolve())
         assert json.loads(baseline_artifact.read_text(encoding="utf-8"))["sha256"] == original_hash
 
+        evidence_input = temporary_path / "evidence.json"
+        evidence_input.write_text(json.dumps({"schema": "resource_studio.forensic_evidence.v1", "operationId": "cli-test"}), encoding="utf-8")
+        ledger_path = temporary_path / "evidence.jsonl"
+        appended = run_cli("evidence-ledger", "append", "--ledger", str(ledger_path), "--input", str(evidence_input), "--json")
+        assert appended.returncode == 0, appended.stderr
+        assert json.loads(appended.stdout)["verification"]["valid"] is True
+        verified_ledger = run_cli("evidence-ledger", "verify", "--ledger", str(ledger_path), "--json")
+        assert verified_ledger.returncode == 0, verified_ledger.stderr
+        assert json.loads(verified_ledger.stdout)["entries"] == 1
+
         hex_result = run_cli("hex", str(FIXTURE), "--type", indexed["type"], "--name", indexed["name"], "--language", str(indexed["language"]), "--length", "8", "--json")
         assert hex_result.returncode == 0, hex_result.stderr
         assert json.loads(hex_result.stdout)["size"] <= 8

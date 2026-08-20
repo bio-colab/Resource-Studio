@@ -69,9 +69,19 @@ class VerificationReport:
     after_graph: dict[str, Any]
     errors: tuple[str, ...] = ()
 
+    @property
+    def platform_limited(self) -> bool:
+        return self.windows.get("status") in {"SKIPPED", "UNAVAILABLE"} or self.signature.get("status") in {"SKIPPED", "UNAVAILABLE"}
+
+    @property
+    def verified(self) -> bool:
+        return self.passed and not self.platform_limited
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "passed": self.passed,
+            "verified": self.verified,
+            "platformLimited": self.platform_limited,
             "phases": [dict(item) for item in self.phases],
             "targetChanged": self.target_changed,
             "resourceRoundTrip": self.resource_round_trip,

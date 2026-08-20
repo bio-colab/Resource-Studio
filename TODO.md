@@ -437,12 +437,12 @@
 | [x] | FR-01 | PE forensic baseline | `ForensicBaseline.from_path/save/load` يجمع hash/size/PE snapshot/Resource Graph/deep invariants/integrity ويحفظ artifact ذريًا قبل mutation؛ provenance طويل المدى في Project ما يزال لاحقًا |
 | [x] | FR-02 | Canonical graph evidence | `ForensicEvidence` يستخدم graph diff الحالي ويحسب targeted/unintended وbefore/result hashes وresource-tree attribution ضمن schema ثابت |
 | [x] | FR-03 | Deep preservation evidence | `_preservation_evidence()` مستقل عن `VerificationReport` ويثبت sections/directories/imports/exports/TLS/Load Config/Debug/Overlay |
-| [~] | FR-04 | Forensic difference | `forensicDifference` يخرج targeted/resourceTree/pePreservation/integrity/signature/windows؛ human-readable rendering وCLI exposure الكاملان لاحقان |
+| [~] | FR-04 | Forensic difference | `forensicDifference` يخرج targeted/resourceTree/pePreservation/integrity/signature/windows/pureLoader ويميز passed عن verified؛ التقرير متعدد الصيغ لاحق |
 | [x] | FR-05 | Mutation attribution | `ForensicEvidence` يربط operationId/operation/target بالفرق المرصود، وWriteResult/Project Audit/Batch payload تحمل الدليل |
-| [~] | FR-06 | Independent corroboration | baseline/result يُعاد بناؤهما خارج Writer باستخدام LIEF وinvariants وgraph وintegrity؛ Windows corroboration الأوسع وcorroboration surface المسمى ما زالا لاحقين |
-| [~] | FR-07 | Evidence report | machine-readable `resource_studio.forensic_evidence.v1` أصبح في WriteResult وProject/Audit وBatch وCLI apply؛ WPF يعرض Technical evidence، بينما التقرير متعدد الصيغ وCLI forensic report المخصصان لاحقان |
+| [~] | FR-06 | Independent corroboration | baseline/result يُعاد بناؤهما خارج Writer باستخدام LIEF وinvariants وgraph وintegrity، وpure loader يختبر language fallback مستقلًا؛ Windows loader corroboration المسمى ما زال مرجع Windows-only |
+| [~] | FR-07 | Evidence report | machine-readable evidence في WriteResult وProject/Audit وBatch وCLI، وEvidenceLedger اختياري يكشف العبث عبر hash-chain/Ed25519؛ التقرير متعدد الصيغ وprovenance طويل المدى لاحقان |
 | [~] | FR-08 | Forensic UX | VerificationSummary يعرض Technical evidence من التقرير دون إعادة الحساب؛ viewer تفاعلي منفصل وkeyboard/accessibility matrix الأوسع لاحقان |
-| [~] | FR-09 | Forensic regression | baseline/no-op/writer/corpus/crash gates تغطي العقود الأساسية؛ fixtures مخصصة لـmalformed forensic reports وWindows policy differences أوسع لاحقة |
+| [~] | FR-09 | Forensic regression | baseline/no-op/writer/corpus/crash وpure-loader وledger/readback gates تغطي العقود الأساسية؛ Atheris corpus طويل التشغيل وfixtures malformed/policy-difference الأوسع لاحقة |
 
 ### قواعد Forensic-goal
 
@@ -492,3 +492,17 @@
 | 2026-08-21 | Original SHA guard | مكتمل ومختبر | `ResourceHacker.exe` بقي SHA-256: `14A44FE31B04FBCC65E94E80016138A2E9FC9BB6DFCEA09B98DE57F8A22A1240` |
 
 الدفعة التالية يجب أن تعالج التقرير forensic متعدد الصيغ أو viewer تفاعلي مخصص، مع corroboration Windows مسمى واختبارات malformed/policy-difference، دون إدخال نظام forensic مستقل أو إعادة Verification Engine داخل WPF.
+
+
+## سجل مراجعة توصية الخبير — 2026-08-21
+
+| البند | القرار | الدليل |
+|---|---|---|
+| فصل `passed` عن `verified` | مكتمل ومختبر | `VerificationReport` يعلن `platformLimited` عند SKIPPED/UNAVAILABLE، وتثبت Verification regression الفرق خارج Windows |
+| post-commit readback | مكتمل ومختبر | `CommitResult.verified_sha256` و`durable-commit-tests` يثبتان hash الهدف بعد الاستبدال |
+| pure loader corroboration | مكتمل جزئيًا ومختبر | `core/pure_loader_oracle.py` يختبر exact/primary/neutral/first على canonical leaves؛ لا يدعي أنه Win32 replacement |
+| evidence ledger | مكتمل جزئيًا ومختبر | `EvidenceLedger` append-only JSONL وhash-chain وEd25519 اختياري، مع CLI append/verify/keygen؛ لا ادعاء قانوني أو chain of custody تلقائي |
+| Atheris coverage-guided fuzzing | مؤجل عمدًا | يتطلب corpus دائمًا وcrash minimization ووقت تشغيل وسياسة دعم Windows/Manus؛ bounded deterministic harness باقٍ كما هو |
+| `similarityHash` | مؤجل عمدًا | لا يُضاف قبل contract يحدد normalization والتشابه المقبول ويقيس false positives؛ integrity الحالي يبقى SHA-256 حتميًا |
+
+المرجع التحليلي الكامل: `docs/FORENSIC-EXPERT-REVIEW-2026-08-21.md`.

@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 import shutil
 import tempfile
@@ -42,6 +43,10 @@ def main() -> None:
         assert diff["targeted"]["changed"] is False
         assert diff["resourceTree"]["unintendedChanges"] == 0
         assert diff["passed"] is True
+        assert diff["pureLoader"]["status"] == "FOUND"
+        assert diff["pureLoader"]["selectedLanguage"] == leaf["language"]
+        assert evidence["verification"]["verified"] is (os.name == "nt")
+        assert evidence["verification"]["platformLimited"] is (os.name != "nt")
     print("forensic-baseline-tests: passed")
 
 

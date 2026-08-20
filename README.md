@@ -126,13 +126,22 @@ evidence = verify_transformation(
 ).to_dict()
 ```
 
-ينتج الدليل `resource_studio.forensic_evidence.v1` ويتضمن baseline وresult وtargeted diff وresource-tree unintended changes وPE preservation وintegrity وsignature وWindows status وVerificationReport. يرتبط evidence report الآن بـWriteResult وProject/Audit وBatch operation payload، ويُحفظ baseline مستقلًا قبل mutation في artifact ذري يمكن إنشاؤه أيضًا عبر `forensic-baseline`. تعرض نوافذ WPF طبقة `Technical evidence` من التقرير دون إعادة الحساب داخل الواجهة.
+ينتج الدليل `resource_studio.forensic_evidence.v1` ويتضمن baseline وresult وtargeted diff وresource-tree unintended changes وPE preservation وintegrity وsignature وWindows status وpure-loader corroboration وVerificationReport. يرتبط evidence report الآن بـWriteResult وProject/Audit وBatch operation payload، ويُحفظ baseline مستقلًا قبل mutation في artifact ذري يمكن إنشاؤه أيضًا عبر `forensic-baseline`. يميز التقرير بين `passed` لنجاح pipeline و`verified` للتحقق المستقل الكامل، ويعلن `platformLimited` عندما تُتخطى Windows أو Authenticode. تعرض نوافذ WPF طبقة `Technical evidence` من التقرير دون إعادة الحساب داخل الواجهة.
 
 لإنشاء baseline مستقل قبل أي تعديل:
 
 ```bash
 python3 resource_studio_cli.py forensic-baseline input.dll --output input.forensic-baseline.json --json
 ```
+
+ولتثبيت evidence في سجل محلي قابل لكشف العبث:
+
+```bash
+python3 resource_studio_cli.py evidence-ledger append --ledger evidence.jsonl --input evidence.json --json
+python3 resource_studio_cli.py evidence-ledger verify --ledger evidence.jsonl --json
+```
+
+ينفذ `durable_commit` أيضًا post-commit readback ويعيد `verifiedSha256` للbytes المقروءة من الهدف بعد الاستبدال.
 
 ## الاختبارات
 
@@ -168,7 +177,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tests\windows\Invoke-Resourc
 
 لا يهدف Forensic-goal إلى بناء malware scanner أو IOC engine أو YARA أو PEiD أو entropy maps أو timeline عام أو hex forensic viewer جديد. كما أن MCP مؤجل في هذه الدورة. تُنفذ تغييرات UX فقط عندما تجعل الدليل أو حالة العملية أو accessibility أو reliability أوضح.
 
-تبقى بعض الطبقات قيد التطوير: baseline artifact provenance المرتبط بدورة Project طويلة المدى، تقرير forensic متعدد الصيغ، forensic viewer تفاعلي كامل، اختبار Stop أثناء عملية طويلة فعلية، وF6/TabIndex/screen-reader وfailure/resize matrix الأوسع.
+تبقى بعض الطبقات قيد التطوير: baseline artifact provenance المرتبط بدورة Project طويلة المدى، تقرير forensic متعدد الصيغ، forensic viewer تفاعلي كامل، Windows corroboration المسمى خارج pure resolver، coverage-guided fuzzing طويل التشغيل مع corpus دائم، similarity hashing بعقد قبول واضح، واختبار Stop أثناء عملية طويلة فعلية وF6/TabIndex/screen-reader وfailure/resize matrix الأوسع.
 
 ## المساهمة والتوثيق
 

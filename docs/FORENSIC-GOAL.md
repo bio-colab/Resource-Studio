@@ -35,9 +35,9 @@ Candidate / Output
 | FR-03 | Deep PE preservation | مقارنة مستقلة للهندسة والعناوين والجداول الحساسة: imports وexports وTLS وLoad Config وDebug وOverlay وsections وdirectories |
 | FR-04 | Forensic differential | تقرير Targeted/Resource tree/PE/Integrity بدلاً من `changed=true` فقط |
 | FR-05 | Mutation attribution | ربط الفرق بـoperation وresource key وexpected payload وoperation id؛ مثال: `Operation #14 Replace Icon` |
-| FR-06 | Independent Windows corroboration | مطابقة LIEF مع Win32 loader قبل/بعد وتسجيل status وpolicy، دون اعتبار Writer مصدر الحقيقة |
-| FR-07 | Evidence report | تقرير machine-readable وhuman-readable يحفظ baseline/result/diff/preservation/integrity/signature/oracle/audit metadata |
-| FR-08 | Forensic UX | Summary → Details → Technical evidence، مع تطبيق UX-06/07/08 فقط لعرض الدليل والوصول إليه واختباره |
+| FR-06 | Independent corroboration | pure loader يختبر language fallback على canonical graph في كل منصة، ومطابقة LIEF مع Win32 loader قبل/بعد وتسجيل status وpolicy على Windows، دون اعتبار Writer مصدر الحقيقة |
+| FR-07 | Evidence report | تقرير machine-readable وhuman-readable يحفظ baseline/result/diff/preservation/integrity/signature/oracle/audit metadata، ويفصل passed عن verified ويعلن platform-limited؛ EvidenceLedger اختياري لكشف العبث |
+| FR-08 | Forensic UX | Summary → Details → Technical evidence، مع عرض verified/platform-limited وpure-loader status، وتطبيق UX-06/07/08 فقط لعرض الدليل والوصول إليه واختباره |
 | FR-09 | Regression hardening | corpus وstructure-aware fuzzing وcrash consistency وdifferential fixtures قابلة لإعادة التشغيل |
 
 ## شكل الدليل المطلوب
@@ -82,7 +82,7 @@ Conclusion:
 
 ## Baseline → Mutation → Result
 
-قبل أي mutation يُحفظ baseline immutable في الذاكرة وartifact JSON ذري عند مسار العملية، ويتضمن hash للمدخل ومكونات PE وResource Graph. يوفر CLI الأمر `forensic-baseline` لإنشاء artifact صريح قبل التعديل. بعد serialization وreopen يُبنى result baseline مستقل، ثم ينفذ differential verifier المقارنة. لا يُستبدل baseline بملف output ولا يُسمح للـreport أن يعتمد على object writer الداخلي.
+قبل أي mutation يُحفظ baseline immutable في الذاكرة وartifact JSON ذري عند مسار العملية، ويتضمن hash للمدخل ومكونات PE وResource Graph. يوفر CLI الأمر `forensic-baseline` لإنشاء artifact صريح قبل التعديل. بعد serialization وreopen يُبنى result baseline مستقل، ثم ينفذ differential verifier المقارنة. بعد commit يُعاد فتح الهدف ويُحسب `verifiedSha256` للbytes المستقرة. لا يُستبدل baseline بملف output ولا يُسمح للـreport أن يعتمد على object writer الداخلي.
 
 | المرحلة | السؤال | النتيجة |
 |---|---|---|
@@ -99,4 +99,4 @@ Conclusion:
 
 ## Definition of Done
 
-يُعد Forensic-goal محققًا عندما يستطيع Save أن ينتج baseline وresult مستقلين، ويعرض فرقًا موجّهًا إلى target، وينسب الفرق إلى operation وexpected payload، ويثبت preservation للـPE غير المستهدف، ويقارن LIEF مع Windows حيث يتوفر oracle، ويوثق checksum/signature/commit state، ويحفظ report قابلًا لإعادة التشغيل دون الاعتماد على ادعاء Writer وحده.
+يُعد Forensic-goal محققًا عندما يستطيع Save أن ينتج baseline وresult مستقلين، ويعرض فرقًا موجّهًا إلى target، وينسب الفرق إلى operation وexpected payload، ويثبت preservation للـPE غير المستهدف، ويقارن LIEF مع Windows حيث يتوفر oracle، ويعلن platform limitations دون تحويل SKIPPED إلى verified، ويتحقق من bytes بعد commit، ويوثق checksum/signature/commit state، ويحفظ report قابلًا لإعادة التشغيل دون الاعتماد على ادعاء Writer وحده.

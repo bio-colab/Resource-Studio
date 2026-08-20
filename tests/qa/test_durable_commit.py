@@ -19,6 +19,7 @@ def main() -> None:
         assert result.flushed
         assert result.same_volume
         assert result.method in {"os.replace", "ReplaceFileW", "MoveFileExW"}
+        assert result.verified_sha256 == "42b8cc383b0a1ea4fc9b5ff967d743af7274a52ddfe07cac62487e30f00fa505"
     print("durable-commit-tests: passed")
 
 

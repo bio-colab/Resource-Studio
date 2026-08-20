@@ -111,7 +111,15 @@ class ForensicEvidence:
     verification: VerificationReport
 
     def to_dict(self) -> dict[str, Any]:
+        from .pure_loader_oracle import select_from_graph
+
         diff = dict(self.verification.semantic_diff)
+        pure_loader = select_from_graph(
+            self.result.resource_graph,
+            self.target.get("type"),
+            self.target.get("name"),
+            self.target.get("language"),
+        )
         changed = [list(item) for item in diff.get("changed", [])]
         added = [list(item) for item in diff.get("added", [])]
         removed = [list(item) for item in diff.get("removed", [])]
@@ -146,6 +154,9 @@ class ForensicEvidence:
                 "signature": dict(self.verification.signature),
                 "windows": dict(self.verification.windows),
                 "passed": self.verification.passed,
+                "verified": self.verification.verified,
+                "platformLimited": self.verification.platform_limited,
+                "pureLoader": pure_loader.to_dict(),
             },
             "verification": self.verification.to_dict(),
         }

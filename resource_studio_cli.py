@@ -12,6 +12,7 @@ from typing import Any
 from core.batch import BatchWorkspace
 from core.compatibility import inspect_compatibility
 from core.diff import diff_image_payloads, diff_resources
+from core.evidence_ledger import EvidenceLedger, generate_ed25519_keypair
 from core.forensics import ForensicBaseline
 from core.deep_invariants import inspect_deep
 from core.dialog_resources import DialogResource
@@ -168,6 +169,24 @@ def command_build(args: argparse.Namespace) -> int:
     output = project.build(args.output)
     _print({"output": str(output), "sha256": _sha256(output)}, args.json)
     return 0
+
+
+def command_evidence_ledger(args: argparse.Namespace) -> int:
+    if args.action == "keygen":
+        generate_ed25519_keypair(args.private_key, args.public_key)
+        _print({"privateKey": str(args.private_key.resolve()), "publicKey": str(args.public_key.resolve())}, args.json)
+        return 0
+    ledger = EvidenceLedger(args.ledger, private_key=args.private_key, public_key=args.public_key)
+    if args.action == "append":
+        payload = json.loads(args.input.read_text(encoding="utf-8"))
+        if not isinstance(payload, dict):
+            raise ValueError("evidence input must be a JSON object")
+        record = ledger.append(payload)
+        _print({"record": record, "verification": ledger.verify().to_dict()}, args.json)
+        return 0
+    verification = ledger.verify().to_dict()
+    _print(verification, args.json)
+    return 0 if verification["valid"] else 1
 
 
 def command_forensic_baseline(args: argparse.Namespace) -> int:
@@ -552,6 +571,15 @@ def parser() -> argparse.ArgumentParser:
     build_parser.add_argument("--json", action="store_true")
     build_parser.set_defaults(handler=command_build)
 
+    ledger_parser = subparsers.add_parser("evidence-ledger", help="append or verify tamper-evident evidence records")
+    ledger_parser.add_argument("action", choices=("append", "verify", "keygen"))
+    ledger_parser.add_argument("--ledger", required=True, type=Path)
+    ledger_parser.add_argument("--input", type=Path)
+    ledger_parser.add_argument("--private-key", type=Path)
+    ledger_parser.add_argument("--public-key", type=Path)
+    ledger_parser.add_argument("--json", action="store_true")
+    ledger_parser.set_defaults(handler=command_evidence_ledger)
+
     baseline_parser = subparsers.add_parser("forensic-baseline", help="persist an independent PE baseline artifact")
     baseline_parser.add_argument("input", type=Path)
     baseline_parser.add_argument("--output", required=True, type=Path)
@@ -693,6 +721,11 @@ def parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     arguments = parser().parse_args(argv)
+    if arguments.command == "evidence-ledger":
+        if arguments.action == "append" and arguments.input is None:
+            parser().error("evidence-ledger append requires --input")
+        if arguments.action == "keygen" and (arguments.private_key is None or arguments.public_key is None):
+            parser().error("evidence-ledger keygen requires --private-key and --public-key")
     if arguments.command == "report" and arguments.kind in {"diff", "image-diff"} and arguments.right is None:
         parser().error(f"report {arguments.kind} requires LEFT and RIGHT inputs")
     if arguments.command in {"string-table", "version-resource", "manifest-resource", "menu-resource", "image-resource"} and arguments.action == "apply" and arguments.model is None:

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import os
 import tempfile
 from pathlib import Path
 
@@ -30,6 +31,8 @@ def main() -> None:
         assert result.verification is not None
         report = result.verification
         assert report["passed"] is True
+        assert report["verified"] is (os.name == "nt")
+        assert report["platformLimited"] is (os.name != "nt")
         assert [phase["name"] for phase in report["phases"]] == [
             "PLAN", "MUTATE", "SERIALIZE", "REOPEN", "STRUCTURAL_VALIDATION",
             "RESOURCE_GRAPH_VALIDATION", "SEMANTIC_DIFF", "PRESERVATION_CHECK",

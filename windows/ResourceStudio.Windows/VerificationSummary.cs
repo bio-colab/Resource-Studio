@@ -17,7 +17,11 @@ internal static class VerificationSummary
 
             var lines = new List<string>();
             var passed = verification.TryGetProperty("passed", out var passedValue) && passedValue.ValueKind == JsonValueKind.True;
+            var verified = verification.TryGetProperty("verified", out var verifiedValue) && verifiedValue.ValueKind == JsonValueKind.True;
+            var platformLimited = verification.TryGetProperty("platformLimited", out var limitedValue) && limitedValue.ValueKind == JsonValueKind.True;
             lines.Add($"{Mark(PhasePassed(verification, "STRUCTURAL_VALIDATION"))} Output is valid PE");
+            lines.Add($"{Mark(verified)} Independent verification: {(verified ? "verified" : "platform-limited")}");
+            if (platformLimited) lines.Add("INFO Windows/Authenticode corroboration was not available in this environment");
 
             var targetChanged = verification.TryGetProperty("targetChanged", out var targetValue) && targetValue.ValueKind == JsonValueKind.True;
             var roundTrip = verification.TryGetProperty("resourceRoundTrip", out var roundTripValue) && roundTripValue.ValueKind == JsonValueKind.True;
@@ -58,8 +62,11 @@ internal static class VerificationSummary
         if (!root.TryGetProperty("forensicEvidence", out var evidence) || evidence.ValueKind != JsonValueKind.Object) return;
         var difference = evidence.TryGetProperty("forensicDifference", out var differenceValue) && differenceValue.ValueKind == JsonValueKind.Object ? differenceValue : default;
         var forensicPassed = difference.ValueKind == JsonValueKind.Object && difference.TryGetProperty("passed", out var passed) && passed.ValueKind == JsonValueKind.True;
+        var forensicVerified = difference.ValueKind == JsonValueKind.Object && difference.TryGetProperty("verified", out var verified) && verified.ValueKind == JsonValueKind.True;
+        var forensicLimited = difference.ValueKind == JsonValueKind.Object && difference.TryGetProperty("platformLimited", out var limited) && limited.ValueKind == JsonValueKind.True;
         lines.Add("Technical evidence");
         lines.Add($"{Mark(forensicPassed)} Forensic evidence: {(forensicPassed ? "passed" : "failed")}");
+        lines.Add($"{Mark(forensicVerified)} Forensic corroboration: {(forensicVerified ? "verified" : (forensicLimited ? "platform-limited" : "not verified"))}");
         if (difference.ValueKind != JsonValueKind.Object) return;
         if (difference.TryGetProperty("targeted", out var targeted) && targeted.ValueKind == JsonValueKind.Object)
         {

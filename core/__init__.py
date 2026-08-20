@@ -2,6 +2,7 @@ from .audit import AuditLog
 from .batch import BatchError, BatchJob, BatchWorkspace
 from .diff import DiffNode, diff_image_payloads, diff_resources, diff_texts, merge_selected_resources
 from .durable_commit import CommitResult, DurableCommitError, commit_temporary
+from .evidence_ledger import EvidenceLedger, EvidenceLedgerError, LedgerVerification, generate_ed25519_keypair
 from .dialog_resources import DialogControl, DialogResource, DialogResourceError
 from .compatibility import PECompatibilityReport, inspect_compatibility
 from .commands import (
@@ -41,6 +42,7 @@ from .string_table import StringTableBlock, string_table_block_id
 from .version_info import VersionInfo
 from .verification import ResourceGraph, VerificationReport, semantic_fingerprint, verify_candidate
 from .forensics import ForensicBaseline, ForensicEvidence, verify_transformation
+from .pure_loader_oracle import PureLoaderSelection, select_from_graph, select_language, select_resource
 from .windows_security import WindowsAuthenticodeReport, inspect_authenticode_windows
 
 __all__ = [
@@ -60,6 +62,10 @@ __all__ = [
     "CommitResult",
     "DurableCommitError",
     "commit_temporary",
+    "EvidenceLedger",
+    "EvidenceLedgerError",
+    "LedgerVerification",
+    "generate_ed25519_keypair",
     "DialogControl",
     "DialogResource",
     "DialogResourceError",
@@ -145,6 +151,10 @@ __all__ = [
     "ForensicBaseline",
     "ForensicEvidence",
     "verify_transformation",
+    "PureLoaderSelection",
+    "select_from_graph",
+    "select_language",
+    "select_resource",
     "WindowsAuthenticodeReport",
     "inspect_authenticode_windows",
     "diff_resources",

@@ -15,6 +15,10 @@
 - ربط `forensic_evidence` بـ`WriteResult` بعد commit مستقل، وتمريره إلى Project Audit وBatch operation payload.
 - حفظ `ForensicBaseline` كـartifact JSON ذري قبل mutation، مع `ForensicBaseline.save/load` وأمر CLI `forensic-baseline`.
 - إضافة `forensicBaselinePath` إلى WriteResult وProject Audit وBatch payload.
+- فصل `passed` عن `verified` وإضافة `platformLimited` عندما تكون Windows Resource Oracle أو WinVerifyTrust متخطاة.
+- إضافة `CommitResult.verified_sha256` مع post-commit readback بعد الاستبدال.
+- إضافة `core/pure_loader_oracle.py` لاختبار اختيار اللغة على canonical ResourceGraph دون الادعاء بأنه بديل Win32.
+- إضافة `EvidenceLedger` اختياريًا كسجل JSONL append-only مع hash-chain وتوقيع Ed25519 عند توفر `cryptography`، دون ادعاء chain of custody قانونية.
 - forensic difference أولي يميز target وresource tree unintended changes وPE preservation وintegrity وsignature وWindows status.
 - اختبار `tests/core/test_forensics.py` الذي يثبت baseline contract وno-op attribution وغياب unintended changes.
 - `FORENSIC-GOAL.md` الذي يحدد الهوية والحدود ومعايير FR-00 إلى FR-09.
@@ -30,9 +34,10 @@
 
 ### ما يزال قيد التنفيذ
 
-- provenance طويل المدى يربط baseline artifact بدورة Project كاملة.
+- provenance طويل المدى يربط ledger وbaseline بدورة Project كاملة.
 - تقرير forensic متعدد الصيغ وviewer تفاعلي كامل للأدلة.
 - operation ID persistence عبر كل مسارات mutation غير Writer/Project/Batch الحالية.
+- coverage-guided fuzzing دائم عبر Atheris مع corpus وcrash minimization، وsimilarity hashing بعد تعريف contract وfalse-positive tests.
 - اختبار Stop أثناء عملية طويلة فعلية، ومصفوفة keyboard/accessibility/failure/resize الأوسع.
 
 ## [2026-08-20] — Verification and UI/UX foundation
