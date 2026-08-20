@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import hashlib
+import json
+import os
+import tempfile
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -43,7 +46,7 @@ class ForensicBaseline:
         )
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        payload = {
             "schema": self.schema,
             "sourcePath": self.source_path,
             "capturedAtUtc": self.captured_at_utc,
@@ -54,6 +57,46 @@ class ForensicBaseline:
             "deepInvariants": dict(self.deep_invariants),
             "integrity": dict(self.integrity),
         }
+        return json.loads(json.dumps(payload, ensure_ascii=False))
+
+    @classmethod
+    def from_dict(cls, payload: dict[str, Any]) -> "ForensicBaseline":
+        if payload.get("schema") != "resource_studio.forensic_baseline.v1":
+            raise ValueError("unsupported forensic baseline schema")
+        return cls(
+            schema=str(payload["schema"]),
+            source_path=str(payload["sourcePath"]),
+            captured_at_utc=str(payload["capturedAtUtc"]),
+            sha256=str(payload["sha256"]),
+            size=int(payload["size"]),
+            pe=dict(payload["pe"]),
+            resource_graph=dict(payload["resourceGraph"]),
+            deep_invariants=dict(payload["deepInvariants"]),
+            integrity=dict(payload["integrity"]),
+        )
+
+    def save(self, path: Path) -> Path:
+        target = Path(path).expanduser().resolve()
+        target.parent.mkdir(parents=True, exist_ok=True)
+        fd, temporary_name = tempfile.mkstemp(dir=target.parent, prefix=f".{target.name}.", suffix=".tmp")
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as stream:
+                json.dump(self.to_dict(), stream, ensure_ascii=False, indent=2, sort_keys=True)
+                stream.write("\n")
+                stream.flush()
+                os.fsync(stream.fileno())
+            os.replace(temporary_name, target)
+        except Exception:
+            Path(temporary_name).unlink(missing_ok=True)
+            raise
+        return target
+
+    @classmethod
+    def load(cls, path: Path) -> "ForensicBaseline":
+        payload = json.loads(Path(path).expanduser().read_text(encoding="utf-8"))
+        if not isinstance(payload, dict):
+            raise ValueError("forensic baseline artifact must be a JSON object")
+        return cls.from_dict(payload)
 
 
 @dataclass(frozen=True)
@@ -126,10 +169,11 @@ def verify_transformation(
     operation_id: str,
     expected_data: bytes | None = None,
     committed: bool = False,
+    baseline: ForensicBaseline | None = None,
 ) -> ForensicEvidence:
     """Build evidence after independent reopen; Writer is not the evidence source."""
 
-    before = ForensicBaseline.from_path(before_path)
+    before = baseline or ForensicBaseline.from_path(before_path)
     result = ForensicBaseline.from_path(candidate_path)
     verification = verify_candidate(
         before_path,

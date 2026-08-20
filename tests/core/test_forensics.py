@@ -19,6 +19,11 @@ def main() -> None:
     assert "storedChecksum" in payload["integrity"]
     assert "signatureVerification" in payload["integrity"]
     assert payload["sha256"] == ForensicBaseline.from_path(fixture).sha256
+    with tempfile.TemporaryDirectory(prefix="resource-studio-baseline-") as directory:
+        artifact = Path(directory) / "baseline.json"
+        assert baseline.save(artifact) == artifact.resolve()
+        loaded = ForensicBaseline.load(artifact)
+        assert loaded.to_dict() == payload
     leaf = payload["resourceGraph"]["leaves"][0]
     with tempfile.TemporaryDirectory(prefix="resource-studio-forensic-") as directory:
         candidate = Path(directory) / fixture.name

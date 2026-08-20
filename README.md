@@ -126,7 +126,13 @@ evidence = verify_transformation(
 ).to_dict()
 ```
 
-ينتج الدليل `resource_studio.forensic_evidence.v1` ويتضمن baseline وresult وtargeted diff وresource-tree unintended changes وPE preservation وintegrity وsignature وWindows status وVerificationReport. يرتبط evidence report الآن بـWriteResult وProject/Audit وBatch operation payload؛ أما human-readable rendering الموحد وCLI surface الكامل فهما ضمن الخطوات التالية المسجلة في TODO.
+ينتج الدليل `resource_studio.forensic_evidence.v1` ويتضمن baseline وresult وtargeted diff وresource-tree unintended changes وPE preservation وintegrity وsignature وWindows status وVerificationReport. يرتبط evidence report الآن بـWriteResult وProject/Audit وBatch operation payload، ويُحفظ baseline مستقلًا قبل mutation في artifact ذري يمكن إنشاؤه أيضًا عبر `forensic-baseline`. تعرض نوافذ WPF طبقة `Technical evidence` من التقرير دون إعادة الحساب داخل الواجهة.
+
+لإنشاء baseline مستقل قبل أي تعديل:
+
+```bash
+python3 resource_studio_cli.py forensic-baseline input.dll --output input.forensic-baseline.json --json
+```
 
 ## الاختبارات
 
@@ -162,7 +168,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tests\windows\Invoke-Resourc
 
 لا يهدف Forensic-goal إلى بناء malware scanner أو IOC engine أو YARA أو PEiD أو entropy maps أو timeline عام أو hex forensic viewer جديد. كما أن MCP مؤجل في هذه الدورة. تُنفذ تغييرات UX فقط عندما تجعل الدليل أو حالة العملية أو accessibility أو reliability أوضح.
 
-تبقى بعض الطبقات قيد التطوير: persistence مستقل للـbaseline، human-readable forensic report وCLI surface الكامل، اختبار Stop أثناء عملية طويلة فعلية، وF6/TabIndex/screen-reader وfailure/resize matrix الأوسع.
+تبقى بعض الطبقات قيد التطوير: baseline artifact provenance المرتبط بدورة Project طويلة المدى، تقرير forensic متعدد الصيغ، forensic viewer تفاعلي كامل، اختبار Stop أثناء عملية طويلة فعلية، وF6/TabIndex/screen-reader وfailure/resize matrix الأوسع.
 
 ## المساهمة والتوثيق
 

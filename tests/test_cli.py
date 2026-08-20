@@ -41,6 +41,14 @@ def main() -> None:
         assert resources and resources[0]["type"] == "MANIFEST"
 
         indexed = resources[0]
+        baseline_artifact = temporary_path / "sample.forensic-baseline.json"
+        baseline_result = run_cli("forensic-baseline", str(FIXTURE), "--output", str(baseline_artifact), "--json")
+        assert baseline_result.returncode == 0, baseline_result.stderr
+        baseline_payload = json.loads(baseline_result.stdout)
+        assert baseline_payload["schema"] == "resource_studio.forensic_baseline.v1"
+        assert baseline_payload["artifactPath"] == str(baseline_artifact.resolve())
+        assert json.loads(baseline_artifact.read_text(encoding="utf-8"))["sha256"] == original_hash
+
         hex_result = run_cli("hex", str(FIXTURE), "--type", indexed["type"], "--name", indexed["name"], "--language", str(indexed["language"]), "--length", "8", "--json")
         assert hex_result.returncode == 0, hex_result.stderr
         assert json.loads(hex_result.stdout)["size"] <= 8

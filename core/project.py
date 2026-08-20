@@ -309,6 +309,7 @@ class Project:
             verified=result.verified,
             verification=result.verification,
             forensicEvidence=result.forensic_evidence,
+            forensicBaselinePath=result.forensic_baseline_path,
         )
         return Path(result.output_path)
 
@@ -373,6 +374,7 @@ class Project:
             verified=result.verified,
             verification=result.verification,
             forensicEvidence=result.forensic_evidence,
+            forensicBaselinePath=result.forensic_baseline_path,
         )
         return Path(result.output_path)
 
@@ -400,6 +402,7 @@ class Project:
             verified=result.verified,
             verification=result.verification,
             forensicEvidence=result.forensic_evidence,
+            forensicBaselinePath=result.forensic_baseline_path,
         )
         return Path(result.output_path)
 

@@ -12,6 +12,7 @@ from typing import Any
 from core.batch import BatchWorkspace
 from core.compatibility import inspect_compatibility
 from core.diff import diff_image_payloads, diff_resources
+from core.forensics import ForensicBaseline
 from core.deep_invariants import inspect_deep
 from core.dialog_resources import DialogResource
 from core.health import PEHealth
@@ -169,6 +170,15 @@ def command_build(args: argparse.Namespace) -> int:
     return 0
 
 
+def command_forensic_baseline(args: argparse.Namespace) -> int:
+    baseline = ForensicBaseline.from_path(args.input)
+    artifact = baseline.save(args.output)
+    payload = baseline.to_dict()
+    payload["artifactPath"] = str(artifact)
+    _print(payload, args.json)
+    return 0
+
+
 def command_inspect(args: argparse.Namespace) -> int:
     payload = PEInspector.inspect(args.input).to_dict()
     payload["metadata"] = PEMetadataInspector.inspect(args.input).to_dict()
@@ -216,7 +226,7 @@ def command_image_payload(args: argparse.Namespace) -> int:
         data = icon_cursor_bmp_to_payload(data, kind)
     from core.pe_writer import LiefPEWriter
     result = LiefPEWriter().replace_resource(args.input, args.output, resource_type, args.resource_id, args.language, data)
-    _print({"output": str(result.output_path), "beforeSha256": result.before_sha256, "afterSha256": result.after_sha256, "verified": result.verified, "verification": result.verification, "kind": kind, "resourceId": args.resource_id, "format": format_name, "size": len(data)}, args.json)
+    _print({"output": str(result.output_path), "beforeSha256": result.before_sha256, "afterSha256": result.after_sha256, "verified": result.verified, "verification": result.verification, "forensicEvidence": result.forensic_evidence, "forensicBaselinePath": result.forensic_baseline_path, "kind": kind, "resourceId": args.resource_id, "format": format_name, "size": len(data)}, args.json)
     return 0
 
 
@@ -244,7 +254,7 @@ def command_image_resource(args: argparse.Namespace) -> int:
             raise ValueError("image group kind does not match --kind")
         data = group.to_bytes()
     result = LiefPEWriter().replace_typed_resource(args.input, args.output, resource_type, name, args.language, data)
-    _print({"output": str(result.output_path), "beforeSha256": result.before_sha256, "afterSha256": result.after_sha256, "verified": result.verified, "verification": result.verification}, args.json)
+    _print({"output": str(result.output_path), "beforeSha256": result.before_sha256, "afterSha256": result.after_sha256, "verified": result.verified, "verification": result.verification, "forensicEvidence": result.forensic_evidence, "forensicBaselinePath": result.forensic_baseline_path}, args.json)
     return 0
 
 
@@ -259,7 +269,7 @@ def command_version_resource(args: argparse.Namespace) -> int:
     from core.pe_writer import LiefPEWriter
     name: int | str = int(args.name, 0) if args.name.isdigit() else args.name
     result = LiefPEWriter().replace_typed_resource(args.input, args.output, "VERSION", name, args.language, model.to_bytes())
-    _print({"output": str(result.output_path), "beforeSha256": result.before_sha256, "afterSha256": result.after_sha256, "verified": result.verified, "verification": result.verification}, args.json)
+    _print({"output": str(result.output_path), "beforeSha256": result.before_sha256, "afterSha256": result.after_sha256, "verified": result.verified, "verification": result.verification, "forensicEvidence": result.forensic_evidence, "forensicBaselinePath": result.forensic_baseline_path}, args.json)
     return 0
 
 
@@ -279,7 +289,7 @@ def command_manifest_resource(args: argparse.Namespace) -> int:
         raise ValueError("cannot apply invalid manifest: " + "; ".join(report["errors"]))
     from core.pe_writer import LiefPEWriter
     result = LiefPEWriter().replace_manifest(args.input, args.output, document.to_xml())
-    _print({"output": str(result.output_path), "beforeSha256": result.before_sha256, "afterSha256": result.after_sha256, "verified": result.verified, "verification": result.verification}, args.json)
+    _print({"output": str(result.output_path), "beforeSha256": result.before_sha256, "afterSha256": result.after_sha256, "verified": result.verified, "verification": result.verification, "forensicEvidence": result.forensic_evidence, "forensicBaselinePath": result.forensic_baseline_path}, args.json)
     return 0
 
 
@@ -294,7 +304,7 @@ def command_menu_resource(args: argparse.Namespace) -> int:
     from core.pe_writer import LiefPEWriter
     name: int | str = int(args.name, 0) if args.name.isdigit() else args.name
     result = LiefPEWriter().replace_typed_resource(args.input, args.output, "MENU", name, args.language, menu.to_bytes())
-    _print({"output": str(result.output_path), "beforeSha256": result.before_sha256, "afterSha256": result.after_sha256, "verified": result.verified, "verification": result.verification}, args.json)
+    _print({"output": str(result.output_path), "beforeSha256": result.before_sha256, "afterSha256": result.after_sha256, "verified": result.verified, "verification": result.verification, "forensicEvidence": result.forensic_evidence, "forensicBaselinePath": result.forensic_baseline_path}, args.json)
     return 0
 
 
@@ -322,7 +332,7 @@ def command_string_table(args: argparse.Namespace) -> int:
 
     resource_name: int | str = int(str(args.name), 0) if str(args.name).isdigit() else args.name
     result = LiefPEWriter().replace_typed_resource(args.input, args.output, "STRING", resource_name, args.language, block.to_bytes())
-    _print({"output": str(result.output_path), "beforeSha256": result.before_sha256, "afterSha256": result.after_sha256, "verified": result.verified, "verification": result.verification}, args.json)
+    _print({"output": str(result.output_path), "beforeSha256": result.before_sha256, "afterSha256": result.after_sha256, "verified": result.verified, "verification": result.verification, "forensicEvidence": result.forensic_evidence, "forensicBaselinePath": result.forensic_baseline_path}, args.json)
     return 0
 
 
@@ -388,7 +398,7 @@ def command_dialog(args: argparse.Namespace) -> int:
     from core.pe_writer import LiefPEWriter
 
     result = LiefPEWriter().replace_typed_resource(args.input, args.output, "DIALOG", args.name, args.language, dialog.to_bytes())
-    _print({"output": str(result.output_path), "beforeSha256": result.before_sha256, "afterSha256": result.after_sha256, "verified": result.verified, "verification": result.verification}, args.json)
+    _print({"output": str(result.output_path), "beforeSha256": result.before_sha256, "afterSha256": result.after_sha256, "verified": result.verified, "verification": result.verification, "forensicEvidence": result.forensic_evidence, "forensicBaselinePath": result.forensic_baseline_path}, args.json)
     return 0
 
 
@@ -541,6 +551,12 @@ def parser() -> argparse.ArgumentParser:
     build_parser.add_argument("--output", required=True, type=Path)
     build_parser.add_argument("--json", action="store_true")
     build_parser.set_defaults(handler=command_build)
+
+    baseline_parser = subparsers.add_parser("forensic-baseline", help="persist an independent PE baseline artifact")
+    baseline_parser.add_argument("input", type=Path)
+    baseline_parser.add_argument("--output", required=True, type=Path)
+    baseline_parser.add_argument("--json", action="store_true")
+    baseline_parser.set_defaults(handler=command_forensic_baseline)
 
     inspect_parser = subparsers.add_parser("inspect", help="inspect PE structure without writing")
     inspect_parser.add_argument("input", type=Path)

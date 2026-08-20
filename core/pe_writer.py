@@ -45,6 +45,7 @@ class WriteResult:
     surgical_change: dict[str, Any] | None = None
     verification: dict[str, Any] | None = None
     forensic_evidence: dict[str, Any] | None = None
+    forensic_baseline_path: str | None = None
 
 
 class PEWriterError(RuntimeError):
@@ -415,12 +416,20 @@ class LiefPEWriter:
                 rollback_path.unlink(missing_ok=True)
             raise PEWriterError("signed PE modification is blocked; use an explicit strip/re-sign workflow")
         before = _sha256(input_path)
+        operation_id = f"writer-{uuid.uuid4().hex}"
+        forensic_baseline_path: Path | None = None
+        forensic_baseline = None
         temporary: Path | None = None
         post_verification = None
         forensic_evidence = None
         try:
             with tempfile.NamedTemporaryFile(dir=output_path.parent, suffix=output_path.suffix, delete=False) as handle:
                 temporary = Path(handle.name)
+            from .forensics import ForensicBaseline
+
+            forensic_baseline = ForensicBaseline.from_path(input_path)
+            forensic_baseline_path = output_path.with_suffix(output_path.suffix + f".{operation_id}.forensic-baseline.json")
+            forensic_baseline.save(forensic_baseline_path)
             binary.write(str(temporary))
             self.validate_output(temporary)
             from .verification import verify_candidate
@@ -460,7 +469,6 @@ class LiefPEWriter:
                 raise PEWriterError("write changed protected PE structures: " + ", ".join(surgical.violations))
             from .forensics import verify_transformation
 
-            operation_id = f"writer-{uuid.uuid4().hex}"
             evidence = verify_transformation(
                 input_path,
                 output_path,
@@ -471,6 +479,7 @@ class LiefPEWriter:
                 operation_id=operation_id,
                 expected_data=expected_data,
                 committed=True,
+                baseline=forensic_baseline,
             )
             forensic_evidence = evidence.to_dict()
             if not evidence.verification.passed:
@@ -501,6 +510,7 @@ class LiefPEWriter:
             surgical_change=surgical.to_dict(),
             verification=post_verification.to_dict() if post_verification else None,
             forensic_evidence=forensic_evidence,
+            forensic_baseline_path=str(forensic_baseline_path) if forensic_baseline_path else None,
         )
 
     @staticmethod

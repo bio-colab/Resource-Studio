@@ -136,6 +136,7 @@ class BatchWorkspace:
                 "verified": result.verified,
                 "verification": result.verification,
                 "forensicEvidence": result.forensic_evidence,
+                "forensicBaselinePath": result.forensic_baseline_path,
             })
             current = next_path
         payload = {

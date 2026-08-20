@@ -32,6 +32,10 @@ def main() -> None:
         assert result.forensic_evidence is not None
         assert result.forensic_evidence["schema"] == "resource_studio.forensic_evidence.v1"
         assert result.forensic_evidence["forensicDifference"]["passed"] is True
+        assert result.forensic_baseline_path is not None
+        baseline_artifact = Path(result.forensic_baseline_path)
+        assert baseline_artifact.is_file()
+        assert source_hash in baseline_artifact.read_text(encoding="utf-8")
         output_report = writer.validate_output(output)
         assert output_report.is_pe is True
         assert output_report.resource_index

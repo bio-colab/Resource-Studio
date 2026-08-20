@@ -13,6 +13,8 @@
 - `core/forensics.py` مع `ForensicBaseline` الذي يلتقط hash والحجم وPE invariant snapshot وResource Graph وdeep invariants وintegrity diagnostics.
 - `ForensicEvidence` و`verify_transformation` لإنتاج `resource_studio.forensic_evidence.v1` وربط operation ID وoperation وtarget بالفرق المرصود.
 - ربط `forensic_evidence` بـ`WriteResult` بعد commit مستقل، وتمريره إلى Project Audit وBatch operation payload.
+- حفظ `ForensicBaseline` كـartifact JSON ذري قبل mutation، مع `ForensicBaseline.save/load` وأمر CLI `forensic-baseline`.
+- إضافة `forensicBaselinePath` إلى WriteResult وProject Audit وBatch payload.
 - forensic difference أولي يميز target وresource tree unintended changes وPE preservation وintegrity وsignature وWindows status.
 - اختبار `tests/core/test_forensics.py` الذي يثبت baseline contract وno-op attribution وغياب unintended changes.
 - `FORENSIC-GOAL.md` الذي يحدد الهوية والحدود ومعايير FR-00 إلى FR-09.
@@ -22,14 +24,14 @@
 
 - توحيد README ليعرض هوية المشروع والحالة الحالية ومسار Save/Verification/Forensic والتثبيت والتشغيل والاختبار والحدود وروابط التوثيق.
 - توسيع TODO بسجل Forensic-goal وحالات baseline/evidence الحالية والفجوات المتبقية.
-- إضافة Writer regression assertion يثبت schema وpassed forensic difference، مع إبقاء UI/UX improvements السابقة: Verification summary وasync CLI وStop وaccessibility surfaces وUI automation.
+- إضافة regression لـbaseline save/load وWriter sidecar وCLI `forensic-baseline`، مع إبقاء UI/UX improvements السابقة: Verification summary وasync CLI وStop وaccessibility surfaces وUI automation.
+- توسيع VerificationSummary في WPF ليعرض `Technical evidence` من التقرير دون إعادة تنفيذ Verification Engine.
 - إغلاق بوابة Manus الكاملة، وبوابة Windows Python/Win32/WPF/UI automation؛ SHA-256 للنسخة الأصلية بقي `14A44FE31B04FBCC65E94E80016138A2E9FC9BB6DFCEA09B98DE57F8A22A1240`.
 
 ### ما يزال قيد التنفيذ
 
-- persistence مستقل للـbaseline وartifact provenance الكامل.
-- human-readable forensic report في Summary → Details → Technical evidence.
-- CLI surface موحد يعرض forensic evidence الكامل.
+- provenance طويل المدى يربط baseline artifact بدورة Project كاملة.
+- تقرير forensic متعدد الصيغ وviewer تفاعلي كامل للأدلة.
 - operation ID persistence عبر كل مسارات mutation غير Writer/Project/Batch الحالية.
 - اختبار Stop أثناء عملية طويلة فعلية، ومصفوفة keyboard/accessibility/failure/resize الأوسع.
 

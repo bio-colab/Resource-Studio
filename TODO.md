@@ -434,14 +434,14 @@
 | الحالة | المعرّف | الطبقة | معيار الإنجاز |
 |---|---|---|---|
 | [x] | FR-00 | Goal definition | `docs/FORENSIC-GOAL.md` يحدد الهوية والحدود وDefinition of Done اعتمادًا على Resource Graph وVerification الحاليين |
-| [~] | FR-01 | PE forensic baseline | `ForensicBaseline.from_path` يجمع hash/size/PE snapshot/Resource Graph/deep invariants/integrity؛ persistence مستقل للـbaseline artifact قبل mutation ما يزال لاحقًا |
+| [x] | FR-01 | PE forensic baseline | `ForensicBaseline.from_path/save/load` يجمع hash/size/PE snapshot/Resource Graph/deep invariants/integrity ويحفظ artifact ذريًا قبل mutation؛ provenance طويل المدى في Project ما يزال لاحقًا |
 | [x] | FR-02 | Canonical graph evidence | `ForensicEvidence` يستخدم graph diff الحالي ويحسب targeted/unintended وbefore/result hashes وresource-tree attribution ضمن schema ثابت |
 | [x] | FR-03 | Deep preservation evidence | `_preservation_evidence()` مستقل عن `VerificationReport` ويثبت sections/directories/imports/exports/TLS/Load Config/Debug/Overlay |
 | [~] | FR-04 | Forensic difference | `forensicDifference` يخرج targeted/resourceTree/pePreservation/integrity/signature/windows؛ human-readable rendering وCLI exposure الكاملان لاحقان |
 | [x] | FR-05 | Mutation attribution | `ForensicEvidence` يربط operationId/operation/target بالفرق المرصود، وWriteResult/Project Audit/Batch payload تحمل الدليل |
 | [~] | FR-06 | Independent corroboration | baseline/result يُعاد بناؤهما خارج Writer باستخدام LIEF وinvariants وgraph وintegrity؛ Windows corroboration الأوسع وcorroboration surface المسمى ما زالا لاحقين |
-| [~] | FR-07 | Evidence report | machine-readable `resource_studio.forensic_evidence.v1` أصبح في WriteResult وProject/Audit وBatch؛ human-readable وCLI surface الكاملان لاحقان |
-| [ ] | FR-08 | Forensic UX | Summary → Details → Technical evidence، مع تطبيق UX-06/07/08 فقط لخدمة الدليل |
+| [~] | FR-07 | Evidence report | machine-readable `resource_studio.forensic_evidence.v1` أصبح في WriteResult وProject/Audit وBatch وCLI apply؛ WPF يعرض Technical evidence، بينما التقرير متعدد الصيغ وCLI forensic report المخصصان لاحقان |
+| [~] | FR-08 | Forensic UX | VerificationSummary يعرض Technical evidence من التقرير دون إعادة الحساب؛ viewer تفاعلي منفصل وkeyboard/accessibility matrix الأوسع لاحقان |
 | [~] | FR-09 | Forensic regression | baseline/no-op/writer/corpus/crash gates تغطي العقود الأساسية؛ fixtures مخصصة لـmalformed forensic reports وWindows policy differences أوسع لاحقة |
 
 ### قواعد Forensic-goal
@@ -463,7 +463,7 @@
 | 2026-08-20 | no-op attribution contract | مكتمل ومختبر | `tests/core/test_forensics.py` يثبت target unchanged و0 unintended changes وpassed evidence |
 | 2026-08-20 | core API | مكتمل ومختبر | `ForensicBaseline` و`ForensicEvidence` و`verify_transformation` مصدّرة من `core` دون import cycle |
 
-أُنجزت في هذه الدفعة FR-03 وFR-05 وجزء جوهري من FR-06 وFR-07: preservation مستقل، attribution عبر WriteResult وProject/Audit وBatch، واختبار Writer regression. تبقى CLI/human-readable forensic surface وbaseline persistence وWindows corroboration المسمى ضمن الدفعات التالية.
+أُنجزت في هذه الدفعة FR-01 وFR-03 وFR-05 وجزء جوهري من FR-06 وFR-07 وFR-08: baseline artifact persistence، preservation مستقل، attribution عبر WriteResult وProject/Audit وBatch، CLI `forensic-baseline` وTechnical evidence في WPF. تبقى report formats/viewer التفاعلي وWindows corroboration المسمى ضمن الدفعات التالية.
 
 
 ## سجل تنفيذ Forensic-goal — الدفعة الثانية
@@ -478,3 +478,17 @@
 | 2026-08-21 | Original SHA guard | مكتمل ومختبر | `ResourceHacker.exe` بقي SHA-256: `14A44FE31B04FBCC65E94E80016138A2E9FC9BB6DFCEA09B98DE57F8A22A1240` |
 
 الدفعة التالية تركز على baseline artifact persistence، وإظهار forensic evidence في CLI وواجهة Summary → Details → Technical evidence، مع توسيع Windows corroboration وforensic regression fixtures دون إنشاء Forensics Module مستقل أو إعادة Verification Engine داخل WPF.
+
+
+## سجل تنفيذ Forensic-goal — الدفعة الثالثة
+
+| التاريخ | التنفيذ | الحالة | الدليل |
+|---|---|---|---|
+| 2026-08-21 | Baseline artifact persistence | مكتمل ومختبر | `ForensicBaseline.save/load` يكتبان JSON ذريًا؛ Writer يحفظ baseline قبل mutation ويرجع `forensicBaselinePath` |
+| 2026-08-21 | CLI forensic surface | مكتمل ومختبر | أمر `forensic-baseline INPUT --output ARTIFACT --json`، ومخرجات apply تحمل `forensicEvidence` و`forensicBaselinePath`؛ `tests/test_cli.py` نجح |
+| 2026-08-21 | WPF Technical evidence | مكتمل جزئيًا ومختبر | `VerificationSummary` يعرض attribution وSHA وunintended changes وPE preservation من JSON دون إعادة الحساب؛ viewer التفاعلي الكامل لاحق |
+| 2026-08-21 | Manus full gate | مكتمل ومختبر | compileall وجميع اختبارات core/CLI/QA نجحت، مع تخطي Windows-only خارج Windows |
+| 2026-08-21 | Windows Forensic/WPF gate | مكتمل ومختبر | Forensic baseline وWriter وCLI نجحت؛ WPF Release: 0 warnings و0 errors؛ UI automation: passed |
+| 2026-08-21 | Original SHA guard | مكتمل ومختبر | `ResourceHacker.exe` بقي SHA-256: `14A44FE31B04FBCC65E94E80016138A2E9FC9BB6DFCEA09B98DE57F8A22A1240` |
+
+الدفعة التالية يجب أن تعالج التقرير forensic متعدد الصيغ أو viewer تفاعلي مخصص، مع corroboration Windows مسمى واختبارات malformed/policy-difference، دون إدخال نظام forensic مستقل أو إعادة Verification Engine داخل WPF.

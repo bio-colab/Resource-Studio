@@ -30,7 +30,7 @@ Candidate / Output
 
 | المعرّف | الطبقة | معيار الإثبات |
 |---|---|---|
-| FR-01 | Forensic baseline | لقطة قبل mutation تشمل SHA-256 وmachine وentry point وsections وdirectories وimports وexports وTLS وdebug وsecurity وoverlay وResource Graph |
+| FR-01 | Forensic baseline | لقطة قبل mutation تشمل SHA-256 وmachine وentry point وsections وdirectories وimports وexports وTLS وdebug وsecurity وoverlay وResource Graph، وتحفظ كـJSON artifact ذري عبر Writer أو CLI |
 | FR-02 | Canonical Resource Graph | graph مستقر يميز type/name/language وraw/semantic/layout fingerprints ويكشف added/removed/changed/unintended leaves |
 | FR-03 | Deep PE preservation | مقارنة مستقلة للهندسة والعناوين والجداول الحساسة: imports وexports وTLS وLoad Config وDebug وOverlay وsections وdirectories |
 | FR-04 | Forensic differential | تقرير Targeted/Resource tree/PE/Integrity بدلاً من `changed=true` فقط |
@@ -78,11 +78,11 @@ Conclusion:
   PASS — targeted transformation corroborated
 ```
 
-تُشتق هذه القيم من VerificationReport وDeepPEInvariantReport وResourceGraph وPEIntegrityReport وWindows oracle. لا يجوز للواجهة أن تعيد حسابها أو تصنع حكمًا موازيًا؛ دورها presentation وprogressive disclosure فقط.
+تُشتق هذه القيم من VerificationReport وDeepPEInvariantReport وResourceGraph وPEIntegrityReport وWindows oracle. لا يجوز للواجهة أن تعيد حسابها أو تصنع حكمًا موازيًا؛ دورها presentation وprogressive disclosure فقط. يعرض WPF حاليًا طبقة `Technical evidence` من JSON الناتج، بينما يبقى viewer التفاعلي متعدد التفاصيل لاحقًا.
 
 ## Baseline → Mutation → Result
 
-قبل أي mutation يُحفظ baseline immutable في الذاكرة أو artifact تدقيق مؤقت، ويتضمن hash للمدخل ومكونات PE وResource Graph. بعد serialization وreopen يُبنى result baseline مستقل، ثم ينفذ differential verifier المقارنة. لا يُستبدل baseline بملف output ولا يُسمح للـreport أن يعتمد على object writer الداخلي.
+قبل أي mutation يُحفظ baseline immutable في الذاكرة وartifact JSON ذري عند مسار العملية، ويتضمن hash للمدخل ومكونات PE وResource Graph. يوفر CLI الأمر `forensic-baseline` لإنشاء artifact صريح قبل التعديل. بعد serialization وreopen يُبنى result baseline مستقل، ثم ينفذ differential verifier المقارنة. لا يُستبدل baseline بملف output ولا يُسمح للـreport أن يعتمد على object writer الداخلي.
 
 | المرحلة | السؤال | النتيجة |
 |---|---|---|
