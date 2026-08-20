@@ -4,6 +4,7 @@ import hashlib
 import os
 import shutil
 import tempfile
+import uuid
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -43,6 +44,7 @@ class WriteResult:
     verified: bool
     surgical_change: dict[str, Any] | None = None
     verification: dict[str, Any] | None = None
+    forensic_evidence: dict[str, Any] | None = None
 
 
 class PEWriterError(RuntimeError):
@@ -415,6 +417,7 @@ class LiefPEWriter:
         before = _sha256(input_path)
         temporary: Path | None = None
         post_verification = None
+        forensic_evidence = None
         try:
             with tempfile.NamedTemporaryFile(dir=output_path.parent, suffix=output_path.suffix, delete=False) as handle:
                 temporary = Path(handle.name)
@@ -455,6 +458,23 @@ class LiefPEWriter:
             surgical = compare_surgical_change(input_path, output_path)
             if not surgical.valid:
                 raise PEWriterError("write changed protected PE structures: " + ", ".join(surgical.violations))
+            from .forensics import verify_transformation
+
+            operation_id = f"writer-{uuid.uuid4().hex}"
+            evidence = verify_transformation(
+                input_path,
+                output_path,
+                resource_type=resource_type,
+                resource_name=resource_name,
+                language=language,
+                operation=operation,
+                operation_id=operation_id,
+                expected_data=expected_data,
+                committed=True,
+            )
+            forensic_evidence = evidence.to_dict()
+            if not evidence.verification.passed:
+                raise PEWriterError("forensic evidence failed: " + "; ".join(evidence.verification.errors or _failed_phases(evidence.verification)))
         except Exception as exc:
             if temporary is not None:
                 temporary.unlink(missing_ok=True)
@@ -480,6 +500,7 @@ class LiefPEWriter:
             verified=True,
             surgical_change=surgical.to_dict(),
             verification=post_verification.to_dict() if post_verification else None,
+            forensic_evidence=forensic_evidence,
         )
 
     @staticmethod

@@ -1,6 +1,6 @@
 # Resource Studio — TODO قابل للتتبع
 
-**آخر تحديث:** 2026-08-20  
+**آخر تحديث:** 2026-08-21
 **النطاق الحالي:** تطوير الإضافات وطبقة المنصة فقط.  
 **MCP:** مؤجل مؤقتًا؛ لا تُضاف وظائف MCP جديدة أثناء هذه الدورة.  
 **الأصل:** `C:\Program Files (x86)\Resource Hacker\ResourceHacker.exe` محفوظ وغير قابل للكتابة.  
@@ -434,15 +434,15 @@
 | الحالة | المعرّف | الطبقة | معيار الإنجاز |
 |---|---|---|---|
 | [x] | FR-00 | Goal definition | `docs/FORENSIC-GOAL.md` يحدد الهوية والحدود وDefinition of Done اعتمادًا على Resource Graph وVerification الحاليين |
-| [~] | FR-01 | PE forensic baseline | `ForensicBaseline.from_path` يجمع hash/size/PE snapshot/Resource Graph/deep invariants/integrity؛ baseline artifact persistence قبل mutation لاحقة |
-| [~] | FR-02 | Canonical graph evidence | `ForensicEvidence` يستخدم graph diff الحالي ويحسب intended/unintended وbefore/result hashes؛ deep canonical key policy ستتوسع مع differential pass |
-| [ ] | FR-03 | Deep preservation evidence | evidence مستقل يثبت preservation للـsections/imports/exports/TLS/Load Config/Debug/Overlay/directories |
-| [~] | FR-04 | Forensic difference | `forensicDifference` يخرج targeted/resourceTree/pePreservation/integrity/signature/windows؛ human-readable rendering وCLI exposure لاحقان |
-| [~] | FR-05 | Mutation attribution | `ForensicEvidence` يربط operationId/operation/target بـobserved diff؛ operation id persistence في كل audit paths لاحقة |
-| [ ] | FR-06 | Independent corroboration | Writer ينتج output فقط؛ LIEF وWindows وinvariants وgraph وintegrity تصنع الحكم المستقل |
-| [~] | FR-07 | Evidence report | machine-readable `resource_studio.forensic_evidence.v1` أُنشئ؛ human-readable/CLI/Project audit surface لاحقة |
+| [~] | FR-01 | PE forensic baseline | `ForensicBaseline.from_path` يجمع hash/size/PE snapshot/Resource Graph/deep invariants/integrity؛ persistence مستقل للـbaseline artifact قبل mutation ما يزال لاحقًا |
+| [x] | FR-02 | Canonical graph evidence | `ForensicEvidence` يستخدم graph diff الحالي ويحسب targeted/unintended وbefore/result hashes وresource-tree attribution ضمن schema ثابت |
+| [x] | FR-03 | Deep preservation evidence | `_preservation_evidence()` مستقل عن `VerificationReport` ويثبت sections/directories/imports/exports/TLS/Load Config/Debug/Overlay |
+| [~] | FR-04 | Forensic difference | `forensicDifference` يخرج targeted/resourceTree/pePreservation/integrity/signature/windows؛ human-readable rendering وCLI exposure الكاملان لاحقان |
+| [x] | FR-05 | Mutation attribution | `ForensicEvidence` يربط operationId/operation/target بالفرق المرصود، وWriteResult/Project Audit/Batch payload تحمل الدليل |
+| [~] | FR-06 | Independent corroboration | baseline/result يُعاد بناؤهما خارج Writer باستخدام LIEF وinvariants وgraph وintegrity؛ Windows corroboration الأوسع وcorroboration surface المسمى ما زالا لاحقين |
+| [~] | FR-07 | Evidence report | machine-readable `resource_studio.forensic_evidence.v1` أصبح في WriteResult وProject/Audit وBatch؛ human-readable وCLI surface الكاملان لاحقان |
 | [ ] | FR-08 | Forensic UX | Summary → Details → Technical evidence، مع تطبيق UX-06/07/08 فقط لخدمة الدليل |
-| [ ] | FR-09 | Forensic regression | corpus/fuzz/differential/crash fixtures تثبت أن التقرير لا ينهار عند malformed أو no-op أو Windows policy differences |
+| [~] | FR-09 | Forensic regression | baseline/no-op/writer/corpus/crash gates تغطي العقود الأساسية؛ fixtures مخصصة لـmalformed forensic reports وWindows policy differences أوسع لاحقة |
 
 ### قواعد Forensic-goal
 
@@ -463,4 +463,18 @@
 | 2026-08-20 | no-op attribution contract | مكتمل ومختبر | `tests/core/test_forensics.py` يثبت target unchanged و0 unintended changes وpassed evidence |
 | 2026-08-20 | core API | مكتمل ومختبر | `ForensicBaseline` و`ForensicEvidence` و`verify_transformation` مصدّرة من `core` دون import cycle |
 
-الدفعة التالية ستعمق FR-03 وFR-06 وFR-07: preservation evidence مستقل، corroboration أوضح بين Writer وLIEF/Windows، وربط evidence report بـProject/Audit وCLI دون إعادة منطق التحقق في الواجهة.
+أُنجزت في هذه الدفعة FR-03 وFR-05 وجزء جوهري من FR-06 وFR-07: preservation مستقل، attribution عبر WriteResult وProject/Audit وBatch، واختبار Writer regression. تبقى CLI/human-readable forensic surface وbaseline persistence وWindows corroboration المسمى ضمن الدفعات التالية.
+
+
+## سجل تنفيذ Forensic-goal — الدفعة الثانية
+
+| التاريخ | التنفيذ | الحالة | الدليل |
+|---|---|---|---|
+| 2026-08-21 | ربط forensic evidence بـWriteResult | مكتمل ومختبر | `WriteResult.forensic_evidence` يُبنى بعد commit مستقلًا عن `VerificationReport`؛ `tests/core/test_pe_writer.py` يثبت schema و`passed` |
+| 2026-08-21 | ربط evidence بـProject Audit وBatch | مكتمل ومختبر | `Project.apply_typed_resource/apply_res_record/apply_manifest` و`Batch` تحمل `forensicEvidence` في payload |
+| 2026-08-21 | Manus full gate | مكتمل ومختبر | compileall وجميع `tests/core/test_*.py` و`tests/test_cli.py` و`tests/qa/test_*.py` نجحت؛ Windows-only skipped بأمان خارج Windows |
+| 2026-08-21 | Windows Python/Win32 gate | مكتمل ومختبر | compileall وجميع core/CLI/QA نجحت، بما فيها `forensic-baseline-tests` و`pe-writer-tests` وcorpus/integrity/oracle/crash gates |
+| 2026-08-21 | Windows WPF/UI gate | مكتمل ومختبر | `dotnet build -c Release --no-restore`: 0 warnings و0 errors؛ `ui-automation-tests: passed` |
+| 2026-08-21 | Original SHA guard | مكتمل ومختبر | `ResourceHacker.exe` بقي SHA-256: `14A44FE31B04FBCC65E94E80016138A2E9FC9BB6DFCEA09B98DE57F8A22A1240` |
+
+الدفعة التالية تركز على baseline artifact persistence، وإظهار forensic evidence في CLI وواجهة Summary → Details → Technical evidence، مع توسيع Windows corroboration وforensic regression fixtures دون إنشاء Forensics Module مستقل أو إعادة Verification Engine داخل WPF.

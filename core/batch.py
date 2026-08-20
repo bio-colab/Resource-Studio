@@ -135,6 +135,7 @@ class BatchWorkspace:
                 "afterSha256": result.after_sha256,
                 "verified": result.verified,
                 "verification": result.verification,
+                "forensicEvidence": result.forensic_evidence,
             })
             current = next_path
         payload = {

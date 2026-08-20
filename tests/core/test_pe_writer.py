@@ -29,6 +29,9 @@ def main() -> None:
         assert output.is_file()
         assert result.before_sha256 == source_hash
         assert result.after_sha256 != source_hash
+        assert result.forensic_evidence is not None
+        assert result.forensic_evidence["schema"] == "resource_studio.forensic_evidence.v1"
+        assert result.forensic_evidence["forensicDifference"]["passed"] is True
         output_report = writer.validate_output(output)
         assert output_report.is_pe is True
         assert output_report.resource_index

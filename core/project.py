@@ -308,6 +308,7 @@ class Project:
             afterSha256=_sha256_bytes(self.workspace_path.read_bytes()),
             verified=result.verified,
             verification=result.verification,
+            forensicEvidence=result.forensic_evidence,
         )
         return Path(result.output_path)
 
@@ -371,6 +372,7 @@ class Project:
             afterSha256=_sha256_bytes(self.workspace_path.read_bytes()),
             verified=result.verified,
             verification=result.verification,
+            forensicEvidence=result.forensic_evidence,
         )
         return Path(result.output_path)
 
@@ -397,6 +399,7 @@ class Project:
             afterSha256=_sha256_bytes(self.workspace_path.read_bytes()),
             verified=result.verified,
             verification=result.verification,
+            forensicEvidence=result.forensic_evidence,
         )
         return Path(result.output_path)
 

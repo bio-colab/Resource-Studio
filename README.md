@@ -126,7 +126,7 @@ evidence = verify_transformation(
 ).to_dict()
 ```
 
-ينتج الدليل `resource_studio.forensic_evidence.v1` ويتضمن baseline وresult وtargeted diff وresource-tree unintended changes وPE preservation وintegrity وsignature وWindows status وVerificationReport. ما يزال ربط evidence report بكل Project/Audit وواجهة CLI وhuman-readable rendering ضمن الخطوات التالية المسجلة في TODO.
+ينتج الدليل `resource_studio.forensic_evidence.v1` ويتضمن baseline وresult وtargeted diff وresource-tree unintended changes وPE preservation وintegrity وsignature وWindows status وVerificationReport. يرتبط evidence report الآن بـWriteResult وProject/Audit وBatch operation payload؛ أما human-readable rendering الموحد وCLI surface الكامل فهما ضمن الخطوات التالية المسجلة في TODO.
 
 ## الاختبارات
 
@@ -162,7 +162,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tests\windows\Invoke-Resourc
 
 لا يهدف Forensic-goal إلى بناء malware scanner أو IOC engine أو YARA أو PEiD أو entropy maps أو timeline عام أو hex forensic viewer جديد. كما أن MCP مؤجل في هذه الدورة. تُنفذ تغييرات UX فقط عندما تجعل الدليل أو حالة العملية أو accessibility أو reliability أوضح.
 
-تبقى بعض الطبقات قيد التطوير: persistence مستقل للـbaseline، attribution عبر جميع مسارات Project/Audit، human-readable forensic report، اختبار Stop أثناء عملية طويلة فعلية، وF6/TabIndex/screen-reader وfailure/resize matrix الأوسع.
+تبقى بعض الطبقات قيد التطوير: persistence مستقل للـbaseline، human-readable forensic report وCLI surface الكامل، اختبار Stop أثناء عملية طويلة فعلية، وF6/TabIndex/screen-reader وfailure/resize matrix الأوسع.
 
 ## المساهمة والتوثيق
 
