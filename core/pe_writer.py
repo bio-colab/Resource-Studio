@@ -42,6 +42,7 @@ class WriteResult:
     language: int | None
     verified: bool
     surgical_change: dict[str, Any] | None = None
+    verification: dict[str, Any] | None = None
 
 
 class PEWriterError(RuntimeError):
@@ -71,6 +72,7 @@ class LiefPEWriter:
             resource_name=1,
             language=None,
             backup_existing_output=backup_existing_output,
+            operation="replace",
         )
         reopened = self._parse(Path(result.output_path))
         if reopened.resources_manager.manifest != manifest_xml:
@@ -109,6 +111,10 @@ class LiefPEWriter:
             from .menu_resources import MenuResource
 
             return MenuResource.parse(data).to_bytes()
+        if resource_type == "DIALOG":
+            from .dialog_resources import DialogResource
+
+            return DialogResource.parse(data).to_bytes()
         if resource_type in {"STRING", "STRINGTABLE"}:
             from .string_table import StringTableBlock
 
@@ -132,7 +138,7 @@ class LiefPEWriter:
         if not isinstance(record, ResRecord):
             raise TypeError("record must be a ResRecord")
         data = record.data
-        if isinstance(record.resource_type, str) and record.resource_type.upper() in {"BITMAP", "GROUP_ICON", "GROUP_CURSOR", "MENU", "STRING", "STRINGTABLE"}:
+        if isinstance(record.resource_type, str) and record.resource_type.upper() in {"BITMAP", "GROUP_ICON", "GROUP_CURSOR", "MENU", "DIALOG", "STRING", "STRINGTABLE"}:
             data = self.validate_resource_payload(record.resource_type, data)
         return self.replace_resource(
             input_path,
@@ -157,7 +163,7 @@ class LiefPEWriter:
         if not isinstance(record, ResRecord):
             raise TypeError("record must be a ResRecord")
         data = record.data
-        if isinstance(record.resource_type, str) and record.resource_type.upper() in {"BITMAP", "GROUP_ICON", "GROUP_CURSOR", "MENU", "STRING", "STRINGTABLE"}:
+        if isinstance(record.resource_type, str) and record.resource_type.upper() in {"BITMAP", "GROUP_ICON", "GROUP_CURSOR", "MENU", "DIALOG", "STRING", "STRINGTABLE"}:
             data = self.validate_resource_payload(record.resource_type, data)
         if not isinstance(record.name, int):
             raise PEWriterError("LIEF Add requires numeric resource name")
@@ -217,7 +223,7 @@ class LiefPEWriter:
         if leaf is None:
             raise PEWriterError("resource was not found")
         leaf.content = bytes(data)
-        result = self._write(binary, input_path, output_path, resource_type, resource_name, language, backup_existing_output)
+        result = self._write(binary, input_path, output_path, resource_type, resource_name, language, backup_existing_output, expected_data=bytes(data), operation="replace")
         reopened = self._parse(Path(result.output_path))
         verified_leaf = self._find_resource(reopened, resource_type, resource_name, language)
         if verified_leaf is None or bytes(verified_leaf.content) != bytes(data):
@@ -253,7 +259,7 @@ class LiefPEWriter:
         if self._find_resource(binary, resource_type, resource_name, language) is not None:
             raise PEWriterError("resource already exists")
         self._add_leaf(binary, resource_type, resource_name, language, data)
-        result = self._write(binary, input_path, output_path, resource_type, resource_name, language, backup_existing_output)
+        result = self._write(binary, input_path, output_path, resource_type, resource_name, language, backup_existing_output, expected_data=bytes(data), operation="add")
         reopened = self._parse(Path(result.output_path))
         leaf = self._find_resource(reopened, resource_type, resource_name, language)
         if leaf is None or bytes(leaf.content) != bytes(data):
@@ -280,7 +286,7 @@ class LiefPEWriter:
             type_node.delete_child(name_node)
         if not type_node.childs:
             binary.resources.delete_child(type_node)
-        result = self._write(binary, input_path, output_path, resource_type, resource_name, language, backup_existing_output)
+        result = self._write(binary, input_path, output_path, resource_type, resource_name, language, backup_existing_output, operation="delete")
         reopened = self._parse(Path(result.output_path))
         if self._find_resource(reopened, resource_type, resource_name, language) is not None:
             raise PEWriterError("deleted resource is still present after round-trip")
@@ -309,7 +315,7 @@ class LiefPEWriter:
         assert nodes is not None
         type_node, name_node, leaf = nodes
         name_node.delete_child(leaf)
-        result = self._write(binary, input_path, output_path, resource_type, resource_name, target_language, backup_existing_output)
+        result = self._write(binary, input_path, output_path, resource_type, resource_name, target_language, backup_existing_output, expected_data=source_data, operation="change-language")
         reopened = self._parse(Path(result.output_path))
         target = self._find_resource(reopened, resource_type, resource_name, target_language)
         old = self._find_resource(reopened, resource_type, resource_name, source_language)
@@ -382,6 +388,8 @@ class LiefPEWriter:
         resource_name: str | int,
         language: int | None,
         backup_existing_output: bool,
+        expected_data: bytes | None = None,
+        operation: str = "replace",
     ) -> WriteResult:
         input_path = Path(input_path).expanduser().resolve()
         output_path = Path(output_path).expanduser().resolve()
@@ -389,22 +397,59 @@ class LiefPEWriter:
             raise PEWriterError("in-place writes are disabled; use Save As")
         output_path.parent.mkdir(parents=True, exist_ok=True)
         backup_path: Path | None = None
-        if output_path.exists() and backup_existing_output:
-            backup_path = output_path.with_suffix(output_path.suffix + ".bak")
-            shutil.copy2(output_path, backup_path)
+        rollback_path: Path | None = None
+        if output_path.exists():
+            if backup_existing_output:
+                backup_path = output_path.with_suffix(output_path.suffix + ".bak")
+                shutil.copy2(output_path, backup_path)
+            rollback_fd, rollback_name = tempfile.mkstemp(dir=output_path.parent, prefix="resource-studio-rollback-")
+            os.close(rollback_fd)
+            rollback_path = Path(rollback_name)
+            shutil.copy2(output_path, rollback_path)
         from .signature import inspect_signature
 
         if inspect_signature(input_path).present:
+            if rollback_path is not None:
+                rollback_path.unlink(missing_ok=True)
             raise PEWriterError("signed PE modification is blocked; use an explicit strip/re-sign workflow")
         before = _sha256(input_path)
         temporary: Path | None = None
+        post_verification = None
         try:
             with tempfile.NamedTemporaryFile(dir=output_path.parent, suffix=output_path.suffix, delete=False) as handle:
                 temporary = Path(handle.name)
             binary.write(str(temporary))
-            os.replace(temporary, output_path)
+            self.validate_output(temporary)
+            from .verification import verify_candidate
+
+            pre_verification = verify_candidate(
+                input_path,
+                temporary,
+                resource_type=resource_type,
+                resource_name=resource_name,
+                language=language,
+                operation=operation,
+                expected_data=expected_data,
+                committed=False,
+            )
+            if not pre_verification.passed:
+                raise PEWriterError("candidate verification failed: " + "; ".join(pre_verification.errors or _failed_phases(pre_verification)))
+            from .durable_commit import commit_temporary
+
+            commit_temporary(temporary, output_path)
             temporary = None
-            self.validate_output(output_path)
+            post_verification = verify_candidate(
+                input_path,
+                output_path,
+                resource_type=resource_type,
+                resource_name=resource_name,
+                language=language,
+                operation=operation,
+                expected_data=expected_data,
+                committed=True,
+            )
+            if not post_verification.passed:
+                raise PEWriterError("committed output verification failed: " + "; ".join(post_verification.errors or _failed_phases(post_verification)))
             from .invariants import compare_surgical_change
 
             surgical = compare_surgical_change(input_path, output_path)
@@ -413,11 +458,15 @@ class LiefPEWriter:
         except Exception as exc:
             if temporary is not None:
                 temporary.unlink(missing_ok=True)
-            if backup_path is not None and backup_path.is_file():
-                shutil.copy2(backup_path, output_path)
+            if rollback_path is not None and rollback_path.is_file():
+                shutil.copy2(rollback_path, output_path)
             else:
                 output_path.unlink(missing_ok=True)
+            if rollback_path is not None:
+                rollback_path.unlink(missing_ok=True)
             raise PEWriterError(f"PE write or output validation failed: {exc}") from exc
+        if rollback_path is not None:
+            rollback_path.unlink(missing_ok=True)
         after = _sha256(output_path)
         return WriteResult(
             input_path=str(input_path),
@@ -430,6 +479,7 @@ class LiefPEWriter:
             language=language,
             verified=True,
             surgical_change=surgical.to_dict(),
+            verification=post_verification.to_dict() if post_verification else None,
         )
 
     @staticmethod
@@ -478,6 +528,14 @@ def _node_matches(node: Any, value: str | int) -> bool:
     if isinstance(value, int):
         return _node_id(node) == value
     return str(getattr(node, "name", "")) == value
+
+
+def _failed_phases(report: Any) -> list[str]:
+    return [
+        f"{item['name']}: {item['detail']}"
+        for item in report.phases
+        if item.get('status') != 'PASSED' and item.get('name') != 'COMMIT'
+    ]
 
 
 def _sha256(path: Path) -> str:

@@ -1,0 +1,28 @@
+{
+  "format": "resource_studio.corpus.v1",
+  "entries": [
+    {
+      "path": "tests/fixtures/sample.dll",
+      "sha256": "d1a71f9ac1728082c1b276392725c3e010b98714888579b99152e401abedbf11",
+      "kind": "pe-fixture",
+      "architecture": "fixture-defined",
+      "expectedParse": "pe",
+      "signature": "unsigned-or-fixture-defined",
+      "languages": "fixture-defined",
+      "resourceCoverage": ["raw", "typed", "multiple-language-as-available"],
+      "allowedNormalization": ["resource-section-layout", "padding"]
+    },
+    {
+      "path": "tests/fixtures/not-pe.txt",
+      "sha256": "6c76a9daa03b42c3197f8623cc283d53bf02a1f6a621cf79b6eb06066c876d5b",
+      "kind": "negative-fixture",
+      "expectedParse": "reject"
+    },
+    {
+      "path": "tests/fixtures/localization_sample.json",
+      "sha256": "4791efdbf7962464f4cfc40cf6e3d77a7b72bd0c8509c78ba1639ea0b1ff8331",
+      "kind": "auxiliary-fixture",
+      "expectedParse": "not-pe"
+    }
+  ]
+}

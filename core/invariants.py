@@ -21,6 +21,8 @@ class PEInvariantSnapshot:
     tls: dict[str, Any] | None
     load_config: dict[str, Any] | None
     debug: tuple[dict[str, Any], ...]
+    resources: tuple[dict[str, Any], ...]
+    resource_issues: tuple[str, ...]
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -35,6 +37,8 @@ class PEInvariantSnapshot:
             "tls": dict(self.tls) if self.tls else None,
             "loadConfig": dict(self.load_config) if self.load_config else None,
             "debug": [dict(item) for item in self.debug],
+            "resources": [dict(item) for item in self.resources],
+            "resourceIssues": list(self.resource_issues),
         }
 
 
@@ -78,6 +82,7 @@ def snapshot(path: Path) -> PEInvariantSnapshot:
         if kind.endswith("RESOURCE_TABLE"):
             continue
         directories.append({"type": kind, "rva": int(directory.rva), "size": int(directory.size)})
+    resources, resource_issues = _resources(binary, path.stat().st_size)
     return PEInvariantSnapshot(
         machine=str(binary.header.machine),
         imagebase=int(binary.optional_header.imagebase),
@@ -90,6 +95,8 @@ def snapshot(path: Path) -> PEInvariantSnapshot:
         tls=_tls(binary),
         load_config=_load_config(binary),
         debug=tuple(_debug(binary)),
+        resources=tuple(resources),
+        resource_issues=tuple(resource_issues),
     )
 
 
@@ -104,6 +111,8 @@ def compare_surgical_change(before_path: Path, after_path: Path) -> PESurgicalCh
     after_non_resource = tuple(item for item in after.sections if not item["isResource"])
     if before_non_resource != after_non_resource:
         violations.append("sections")
+    if set(after.resource_issues) - set(before.resource_issues):
+        violations.append("resource_tree")
     return PESurgicalChangeReport(not violations, tuple(violations), before, after)
 
 
@@ -115,6 +124,47 @@ def _resource_section(binary: Any) -> str:
         return str(name) if name else ""
     except Exception:
         return ""
+
+
+def _resources(binary: Any, file_size: int) -> tuple[list[dict[str, Any]], list[str]]:
+    type_names = {
+        1: "CURSOR", 2: "BITMAP", 3: "ICON", 4: "MENU", 5: "DIALOG", 6: "STRING",
+        7: "FONTDIR", 8: "FONT", 9: "ACCELERATORS", 10: "RCDATA", 11: "MESSAGETABLE",
+        12: "GROUP_CURSOR", 14: "GROUP_ICON", 16: "VERSION", 24: "MANIFEST",
+    }
+    if not binary.has_resources:
+        return [], []
+    result: list[dict[str, Any]] = []
+    issues: list[str] = []
+    seen: set[tuple[str, str, int]] = set()
+    for type_node in binary.resources.childs:
+        resource_type = type_names.get(int(type_node.id), str(type_node.id))
+        for name_node in type_node.childs:
+            resource_name = str(name_node.name) if getattr(name_node, "has_name", False) else str(name_node.id)
+            for leaf in name_node.childs:
+                language = int(leaf.id) if isinstance(leaf.id, int) else -1
+                data = bytes(leaf.content)
+                offset = int(getattr(leaf, "offset", 0))
+                key = (resource_type, resource_name, language)
+                item = {
+                    "type": resource_type,
+                    "name": resource_name,
+                    "language": language,
+                    "offset": offset,
+                    "size": len(data),
+                    "sha256": hashlib.sha256(data).hexdigest(),
+                    "codePage": int(getattr(leaf, "code_page", 0)),
+                }
+                result.append(item)
+                if key in seen:
+                    issues.append(f"duplicate resource leaf: {resource_type}:{resource_name}:{language}")
+                seen.add(key)
+                if language < 0 or language > 0xFFFF:
+                    issues.append(f"resource language outside WORD: {resource_type}:{resource_name}:{language}")
+                if offset < 0 or offset + len(data) > file_size:
+                    issues.append(f"resource data outside file bounds: {resource_type}:{resource_name}:{language}")
+    result.sort(key=lambda item: (item["type"], item["name"], item["language"]))
+    return result, issues
 
 
 def _imports(binary: Any) -> list[dict[str, Any]]:

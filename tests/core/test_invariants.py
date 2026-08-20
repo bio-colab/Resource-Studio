@@ -21,6 +21,10 @@ def main() -> None:
         assert report.valid
         assert not report.violations
         assert report.before.to_dict()["sections"]
+        assert report.before.resources
+        assert report.after.resources
+        assert not report.before.resource_issues
+        assert not report.after.resource_issues
     assert hashlib.sha256(FIXTURE.read_bytes()).hexdigest() == original_hash
     print("invariant-tests: passed")
 

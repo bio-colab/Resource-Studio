@@ -34,6 +34,23 @@ def main() -> None:
         assert output_report.resource_index
         assert hashlib.sha256(source.read_bytes()).hexdigest() == source_hash
 
+        existing_output = Path(temporary) / "existing.dll"
+        existing_output.write_bytes(b"existing-output-must-survive")
+        existing_bytes = existing_output.read_bytes()
+        original_validate = writer.validate_output
+        writer.validate_output = lambda _path: (_ for _ in ()).throw(RuntimeError("forced validation failure"))
+        try:
+            try:
+                writer.replace_resource(source, existing_output, "MANIFEST", 1, 1033, MANIFEST.encode(), backup_existing_output=False)
+            except Exception as exc:
+                assert "forced validation failure" in str(exc)
+            else:
+                raise AssertionError("forced validation failure was not propagated")
+            assert existing_output.read_bytes() == existing_bytes
+            assert not list(Path(temporary).glob("resource-studio-rollback-*"))
+        finally:
+            writer.validate_output = original_validate
+
         payload_output = Path(temporary) / "modified-again.dll"
         payload = MANIFEST.encode("utf-8")
         result2 = writer.replace_resource(source, payload_output, "MANIFEST", 1, 1033, payload)

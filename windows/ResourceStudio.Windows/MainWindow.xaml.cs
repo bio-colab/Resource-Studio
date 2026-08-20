@@ -18,6 +18,7 @@ public partial class MainWindow : Window
     private string? _selectedPe;
     private string? _cliPath;
     private bool _darkMode;
+    private CliOperationState _cliState = CliOperationState.Idle;
 
     public MainWindow()
     {
@@ -488,7 +489,13 @@ public partial class MainWindow : Window
 
     private CliResult RunCliCapture(params string[] arguments)
     {
-        if (_cliPath is null) return new CliResult(2, "resource_studio_cli.py was not found.");
+        var stopwatch = Stopwatch.StartNew();
+        SetCliState(CliOperationState.Running);
+        if (_cliPath is null)
+        {
+            SetCliState(CliOperationState.Failed);
+            return new CliResult(2, "resource_studio_cli.py was not found.", CliOperationState.Failed, stopwatch.ElapsedMilliseconds);
+        }
         try
         {
             var info = new ProcessStartInfo
@@ -506,15 +513,27 @@ public partial class MainWindow : Window
             info.ArgumentList.Add(_cliPath);
             foreach (var argument in arguments) info.ArgumentList.Add(argument);
             using var process = Process.Start(info) ?? throw new InvalidOperationException("Could not start Python CLI");
-            var stdout = process.StandardOutput.ReadToEnd();
-            var stderr = process.StandardError.ReadToEnd();
+            var stdoutTask = process.StandardOutput.ReadToEndAsync();
+            var stderrTask = process.StandardError.ReadToEndAsync();
+            Task.WaitAll(stdoutTask, stderrTask);
             process.WaitForExit();
-            return new CliResult(process.ExitCode, string.IsNullOrWhiteSpace(stdout) ? stderr : stdout);
+            var stdout = stdoutTask.Result;
+            var stderr = stderrTask.Result;
+            var state = process.ExitCode == 0 ? CliOperationState.Completed : CliOperationState.Failed;
+            SetCliState(state);
+            return new CliResult(process.ExitCode, string.IsNullOrWhiteSpace(stdout) ? stderr : stdout, state, stopwatch.ElapsedMilliseconds);
         }
         catch (Exception exc)
         {
-            return new CliResult(2, exc.ToString());
+            SetCliState(CliOperationState.Failed);
+            return new CliResult(2, exc.ToString(), CliOperationState.Failed, stopwatch.ElapsedMilliseconds);
         }
+    }
+
+    private void SetCliState(CliOperationState state)
+    {
+        _cliState = state;
+        CliStateText.Text = state.ToString();
     }
 
     private static string? FindCliPath()
@@ -561,5 +580,13 @@ public partial class MainWindow : Window
     }
 
     private sealed record PropertyRow(string Name, string Value);
-    private sealed record CliResult(int ExitCode, string StdoutOrError);
+    private enum CliOperationState
+    {
+        Idle,
+        Running,
+        Completed,
+        Failed,
+    }
+
+    private sealed record CliResult(int ExitCode, string StdoutOrError, CliOperationState State, long DurationMilliseconds);
 }

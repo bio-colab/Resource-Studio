@@ -73,6 +73,7 @@ try {
 
     $pathBox = Wait-Until { Find-ById $main 'PathBox' } 'PathBox'
     Wait-Until { (Get-ElementText (Find-ById $main 'ResourceCountText')) -notmatch '^0 resources$' } 'resources loaded' | Out-Null
+    Wait-Until { (Get-ElementText (Find-ById $main 'CliStateText')) -eq 'Completed' } 'CLI completed state' | Out-Null
     Wait-Until { try { (Get-ElementValue $pathBox) -ieq $resolvedPe } catch { (Get-ElementText $pathBox) -match [regex]::Escape([System.IO.Path]::GetFileName($resolvedPe)) } } 'PE path loaded' | Out-Null
 
     $searchTab = Find-ByName $main ([System.Windows.Automation.ControlType]::TabItem) 'Search'

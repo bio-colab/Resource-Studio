@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from .plugins import PluginManifest, PluginRegistry
+from .windows_isolation import WindowsJob, WindowsJobLimits, WindowsIsolationError
 
 
 class PluginHostError(RuntimeError):
@@ -109,20 +110,44 @@ class PluginHost:
             "RESOURCE_STUDIO_PLUGIN_ID": manifest.plugin_id,
         }
         try:
-            completed = subprocess.run(
-                command,
-                cwd=plugin_dir,
-                input=serialized_request,
-                text=True,
-                capture_output=True,
-                timeout=timeout_seconds,
-                check=False,
-                shell=False,
-                env=environment,
-                preexec_fn=_make_limit_fn(limits),
-            )
+            if os.name == "nt":
+                with WindowsJob(WindowsJobLimits(max_processes=1, max_memory_bytes=limits.max_memory_bytes)) as job:
+                    process = subprocess.Popen(
+                        command,
+                        cwd=plugin_dir,
+                        stdin=subprocess.PIPE,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        text=True,
+                        shell=False,
+                        env=environment,
+                        creationflags=getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0),
+                    )
+                    job.assign(process)
+                    try:
+                        stdout, stderr = process.communicate(serialized_request, timeout=timeout_seconds)
+                    except subprocess.TimeoutExpired:
+                        job.terminate()
+                        stdout, stderr = process.communicate()
+                        raise
+                    completed = subprocess.CompletedProcess(command, process.returncode, stdout, stderr)
+            else:
+                completed = subprocess.run(
+                    command,
+                    cwd=plugin_dir,
+                    input=serialized_request,
+                    text=True,
+                    capture_output=True,
+                    timeout=timeout_seconds,
+                    check=False,
+                    shell=False,
+                    env=environment,
+                    preexec_fn=_make_limit_fn(limits),
+                )
         except subprocess.TimeoutExpired as exc:
             raise PluginHostError(f"plugin timed out after {timeout_seconds}s") from exc
+        except WindowsIsolationError as exc:
+            raise PluginHostError(f"plugin Windows isolation failed: {exc}") from exc
         if completed.returncode != 0:
             raise PluginHostError(f"plugin exited with {completed.returncode}: {completed.stderr.strip()}")
         if len(completed.stdout.encode("utf-8")) > limits.max_output_bytes:

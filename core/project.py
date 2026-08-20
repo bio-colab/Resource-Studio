@@ -307,6 +307,7 @@ class Project:
             beforeSha256=result.before_sha256,
             afterSha256=_sha256_bytes(self.workspace_path.read_bytes()),
             verified=result.verified,
+            verification=result.verification,
         )
         return Path(result.output_path)
 
@@ -324,6 +325,20 @@ class Project:
         if not isinstance(info, VersionInfo):
             raise TypeError("info must be a VersionInfo")
         return self.apply_typed_resource("VERSION", resource_name, language, info.to_bytes(codepage), add=add)
+
+    def apply_dialog(
+        self,
+        dialog: Any,
+        resource_name: int | str,
+        language: int,
+        *,
+        add: bool = False,
+    ) -> Path:
+        from .dialog_resources import DialogResource
+
+        if not isinstance(dialog, DialogResource):
+            raise TypeError("dialog must be a DialogResource")
+        return self.apply_typed_resource("DIALOG", resource_name, language, dialog.to_bytes(), add=add)
 
     def apply_res_record(self, record: Any, *, add: bool = False) -> Path:
         if self.workspace_path is None or not self.workspace_path.is_file():
@@ -355,6 +370,7 @@ class Project:
             beforeSha256=result.before_sha256,
             afterSha256=_sha256_bytes(self.workspace_path.read_bytes()),
             verified=result.verified,
+            verification=result.verification,
         )
         return Path(result.output_path)
 
@@ -380,6 +396,7 @@ class Project:
             beforeSha256=result.before_sha256,
             afterSha256=_sha256_bytes(self.workspace_path.read_bytes()),
             verified=result.verified,
+            verification=result.verification,
         )
         return Path(result.output_path)
 

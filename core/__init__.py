@@ -1,5 +1,8 @@
 from .audit import AuditLog
+from .batch import BatchError, BatchJob, BatchWorkspace
 from .diff import DiffNode, diff_image_payloads, diff_resources, diff_texts, merge_selected_resources
+from .durable_commit import CommitResult, DurableCommitError, commit_temporary
+from .dialog_resources import DialogControl, DialogResource, DialogResourceError
 from .compatibility import PECompatibilityReport, inspect_compatibility
 from .commands import (
     AddResourceCommand,
@@ -11,28 +14,38 @@ from .commands import (
     ReplaceResourceCommand,
 )
 from .health import HealthReport, PEHealth
-from .image_resources import BitmapResource, IconCursorEntry, IconCursorGroup, ImageResourceError
+from .fuzz_harness import FuzzOutcome, assert_no_unexpected_failures, run_parser_cases, run_structure_aware_cases, structure_aware_cases
+from .image_resources import BitmapResource, IconCursorEntry, IconCursorGroup, ImageResourceError, icon_cursor_bmp_to_payload, icon_cursor_payload_to_bmp
 from .hex_view import HexSlice, HexViewer
 from .invariants import PEInvariantSnapshot, PESurgicalChangeReport, compare_surgical_change, snapshot
+from .deep_invariants import DeepPEInvariantReport, inspect_deep
 from .localization import LocalizationCatalog, LocalizedString
 from .menu_resources import MenuItem, MenuResource, MenuResourceError
 from .manifest import ManifestDocument
 from .pe_inspector import PEInspector, PEInspectorReport
+from .pe_integrity import PEIntegrityReport, inspect_integrity
 from .pe_metadata import PEMetadataInspector, PEMetadataReport
 from .pe_writer import LiefPEWriter, PEWriterError, WriteResult
 from .plugin_host import PluginHost, PluginHostError, PluginLimits, PluginResult
 from .plugins import PluginContext, PluginManifest, PluginRegistry, ResourceTypeDefinition
+from .preview import PreviewEngine, PreviewResult
 from .project import Project, ResourceEntry
 from .provenance import build_provenance, write_provenance
 from .reports import render_report
+from .roundtrip_contracts import RoundTripContract, RoundTripContractRegistry, RoundTripResult, default_registry
 from .rc_format import RCDocument, RCMenus, RCStringTable
-from .signature import PESignatureReport, inspect_signature
+from .signature import PESignatureReport, SignatureOperationResult, SignatureToolError, create_test_certificate, find_signtool, inspect_signature, resign_authenticode, strip_authenticode
 from .search import SearchHit, search_resources
 from .res_format import ResFile, ResRecord
 from .string_table import StringTableBlock, string_table_block_id
 from .version_info import VersionInfo
+from .verification import ResourceGraph, VerificationReport, semantic_fingerprint, verify_candidate
+from .windows_security import WindowsAuthenticodeReport, inspect_authenticode_windows
 
 __all__ = [
+    "BatchError",
+    "BatchJob",
+    "BatchWorkspace",
     "PECompatibilityReport",
     "inspect_compatibility",
     "AddResourceCommand",
@@ -43,19 +56,34 @@ __all__ = [
     "CommandHistory",
     "DeleteResourceCommand",
     "DiffNode",
+    "CommitResult",
+    "DurableCommitError",
+    "commit_temporary",
+    "DialogControl",
+    "DialogResource",
+    "DialogResourceError",
     "diff_image_payloads",
     "merge_selected_resources",
     "HealthReport",
+    "FuzzOutcome",
+    "assert_no_unexpected_failures",
+    "run_parser_cases",
+    "run_structure_aware_cases",
+    "structure_aware_cases",
     "BitmapResource",
     "IconCursorEntry",
     "IconCursorGroup",
     "ImageResourceError",
+    "icon_cursor_payload_to_bmp",
+    "icon_cursor_bmp_to_payload",
     "HexSlice",
     "HexViewer",
     "PEInvariantSnapshot",
     "PESurgicalChangeReport",
     "compare_surgical_change",
     "snapshot",
+    "DeepPEInvariantReport",
+    "inspect_deep",
     "LocalizationCatalog",
     "LocalizedString",
     "MenuItem",
@@ -66,6 +94,8 @@ __all__ = [
     "PEHealth",
     "PEInspector",
     "PEInspectorReport",
+    "PEIntegrityReport",
+    "inspect_integrity",
     "PEMetadataInspector",
     "PEMetadataReport",
     "PEWriterError",
@@ -77,6 +107,8 @@ __all__ = [
     "PluginRegistry",
     "ResourceTypeDefinition",
     "PluginResult",
+    "PreviewEngine",
+    "PreviewResult",
     "Project",
     "ReplaceResourceCommand",
     "ResourceEntry",
@@ -87,14 +119,30 @@ __all__ = [
     "StringTableBlock",
     "string_table_block_id",
     "render_report",
+    "RoundTripContract",
+    "RoundTripContractRegistry",
+    "RoundTripResult",
+    "default_registry",
     "RCDocument",
     "RCMenus",
     "RCStringTable",
     "PESignatureReport",
+    "SignatureOperationResult",
+    "SignatureToolError",
+    "create_test_certificate",
+    "find_signtool",
     "inspect_signature",
+    "resign_authenticode",
+    "strip_authenticode",
     "SearchHit",
     "search_resources",
     "VersionInfo",
+    "ResourceGraph",
+    "VerificationReport",
+    "semantic_fingerprint",
+    "verify_candidate",
+    "WindowsAuthenticodeReport",
+    "inspect_authenticode_windows",
     "diff_resources",
     "diff_texts",
     "WriteResult",
