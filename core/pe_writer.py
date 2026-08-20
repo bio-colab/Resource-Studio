@@ -109,10 +109,6 @@ class LiefPEWriter:
             from .menu_resources import MenuResource
 
             return MenuResource.parse(data).to_bytes()
-        if resource_type == "DIALOG":
-            from .dialog_resources import DialogResource
-
-            return DialogResource.parse(data).to_bytes()
         if resource_type in {"STRING", "STRINGTABLE"}:
             from .string_table import StringTableBlock
 
@@ -136,7 +132,7 @@ class LiefPEWriter:
         if not isinstance(record, ResRecord):
             raise TypeError("record must be a ResRecord")
         data = record.data
-        if isinstance(record.resource_type, str) and record.resource_type.upper() in {"BITMAP", "GROUP_ICON", "GROUP_CURSOR", "MENU", "DIALOG", "STRING", "STRINGTABLE"}:
+        if isinstance(record.resource_type, str) and record.resource_type.upper() in {"BITMAP", "GROUP_ICON", "GROUP_CURSOR", "MENU", "STRING", "STRINGTABLE"}:
             data = self.validate_resource_payload(record.resource_type, data)
         return self.replace_resource(
             input_path,
@@ -161,7 +157,7 @@ class LiefPEWriter:
         if not isinstance(record, ResRecord):
             raise TypeError("record must be a ResRecord")
         data = record.data
-        if isinstance(record.resource_type, str) and record.resource_type.upper() in {"BITMAP", "GROUP_ICON", "GROUP_CURSOR", "MENU", "DIALOG", "STRING", "STRINGTABLE"}:
+        if isinstance(record.resource_type, str) and record.resource_type.upper() in {"BITMAP", "GROUP_ICON", "GROUP_CURSOR", "MENU", "STRING", "STRINGTABLE"}:
             data = self.validate_resource_payload(record.resource_type, data)
         if not isinstance(record.name, int):
             raise PEWriterError("LIEF Add requires numeric resource name")

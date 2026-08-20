@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
 import subprocess
 import sys
 import tempfile
@@ -23,7 +22,7 @@ def run_cli(*arguments: str) -> subprocess.CompletedProcess[str]:
         text=True,
         capture_output=True,
         check=False,
-        env={**os.environ, "PYTHONPATH": str(ROOT)},
+        env={"PYTHONPATH": str(ROOT)},
     )
 
 

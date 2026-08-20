@@ -62,7 +62,7 @@
 | [~] | WRITER-03 | دعم Add/Delete/ChangeLanguage | WRITER-01 | العمليات الأساسية وtyped Add/Replace و`ResRecord` bridge منجزة؛ دعم أنواع PE الأوسع لاحق |
 | [~] | WRITER-04 | تحقق alignment/resource directory/size/checksum | WRITER-02 | PEInspector يحسب checksum ويقارن header عند وجوده، وPEHealth يتحقق من resource bounds؛ alignment العميق لاحق |
 | [x] | WRITER-05 | Backup + Save As + atomic replace | CORE-04, WRITER-02 | output جديد، backup موجود عند التكرار، وatomic replace |
-| [~] | WRITER-06 | كشف توقيع Authenticode والتحذير قبل الحفظ | CORE-06 | `core/windows_security.py` يمر عبر Get-AuthenticodeSignature وWinVerifyTrust native بلا UI؛ writer يمنع تعديل signed PE، ومسار strip/re-sign لاحق |
+| [~] | WRITER-06 | كشف توقيع Authenticode والتحذير قبل الحفظ | CORE-06 | Health Model يكتشف وجود التوقيع ويحذر من تغير الهاش؛ WinVerifyTrust لاحق |
 
 ## المرحلة 5: واجهة الإضافات
 
@@ -87,7 +87,7 @@
 | [~] | EDIT-05 | Icon/Cursor viewer/editor | WRITER-03 | parser/serializer وtyped writer و`Project.apply_typed_resource` منجزة؛ واجهة viewer المرئية لاحقة |
 | [~] | EDIT-06 | Bitmap/image viewer | WRITER-03 | parser/serializer وtyped writer و`Project.apply_typed_resource` منجزة؛ واجهة viewer المرئية لاحقة |
 | [~] | EDIT-07 | Menu editor | CMD-03, WRITER-03 | parser/serializer وtyped writer و`Project.apply_typed_resource` منجزة؛ واجهة editor المرئية لاحقة |
-| [~] | EDIT-08 | Dialog editor مرئي | CMD-03, WRITER-03 | `DialogResource` يدعم DIALOG/DIALOGEX binary parser/serializer وJSON validation، و`Project.apply_dialog` وCLI `dialog export/apply` وWPF `DialogEditorWindow` WYSIWYG مع Load/Save/Save As؛ UI automation وخصائص Win32 المتقدمة لاحقة |
+| [ ] | EDIT-08 | Dialog editor مرئي | CMD-03, WRITER-03 | يؤجل حتى اكتمال parser/serializer والاختبارات |
 
 ## المرحلة 7: الترجمة والمقارنة والأتمتة
 
@@ -107,10 +107,10 @@
 
 | الحالة | المعرّف | المهمة | الاعتماد | معيار الإنجاز |
 |---|---|---|---|---|
-| [x] | UI-01 | اختيار shell Windows: WPF أولًا، WinUI 3 لاحقًا إن ثبتت الحاجة | CORE-07 | `windows/ResourceStudio.Windows` مبني بـ .NET 8 WPF ويشغل shell مستقلًا فوق CLI؛ UI التفصيلية لاحقة |
-| [~] | UI-02 | Tree/Tabs/Properties/Preview/Search/Diff | UI-01, DIFF-01 | WPF الآن يوفر Tabs للموارد وInspect/Diff/Localization، DataGrid للفهرس والخصائص والبحث، Preview خام عبر CLI `hex` وDiff Tree مبني من `diff`؛ UI automation وعمليات التحرير المرئية المتخصصة لاحقة |
-| [~] | UI-03 | Command palette/keyboard/dark mode/high contrast | UI-02 | مفاتيح `Ctrl+O/Ctrl+F/Ctrl+I/F5`، زر Dark mode، واكتشاف Windows High Contrast أضيفت؛ command palette وaccessibility automation وpersisted theme لاحقة |
-| [~] | UI-04 | Localization dashboard | LOC-01, UI-02 | تبويب WPF للمقارنة وpseudo-localization، وCLI `localization compare/pseudo` فوق `LocalizationCatalog`؛ ربط التعديل مباشرة بموارد STRINGTABLE وCSV/XLIFF workflow المتقدم لاحق |
+| [ ] | UI-01 | اختيار shell Windows: WPF أولًا، WinUI 3 لاحقًا إن ثبتت الحاجة | CORE-07 | قرار لا يخلط UI بالنواة |
+| [ ] | UI-02 | Tree/Tabs/Properties/Preview/Search/Diff | UI-01, DIFF-01 | واجهة تعمل دون منطق مكرر |
+| [ ] | UI-03 | Command palette/keyboard/dark mode/high contrast | UI-02 | قابلية استخدام أساسية |
+| [ ] | UI-04 | Localization dashboard | LOC-01, UI-02 | سير عمل المترجم واضح |
 | [~] | PE-01 | PE inspector sections/imports/exports/relocs/TLS/debug | CORE-05 | `PEInspector` وCLI `inspect` وchecksum fields منجزة؛ توسعة exports/TLS حسب توفر LIEF لاحقة |
 | [~] | PE-02 | MUI support | PE-01, LOC-01 | كشف `.mui` وlanguage hint وsatellite hint قراءة فقط منجز؛ فتح/ربط/مقارنة فعلية لاحقة |
 | [~] | PE-03 | .NET resources/satellite assemblies قراءة محدودة | PE-01 | كشف CLR directory وتحذير metadata غير المفكوكة منجز؛ جداول .NET التفصيلية لاحقة |
@@ -125,13 +125,13 @@
 | الحالة | المعرّف | المهمة | الأولوية | معيار الإنجاز |
 |---|---|---|---|---|
 | [x] | GAP-01 | ضمان التغيير الجراحي ومقارنة PE خارج الموارد | حرجة | `core/invariants.py` يقارن الأقسام غير المرتبطة بالموارد وdirectories/imports/exports/TLS/debug/overlay، وwriter يرفض التغير الجانبي |
-| [~] | GAP-02 | دورة حياة التوقيع Authenticode كاملة | حرجة | أضيف `signature.py` وCLI/WPF لمسار Inspect/Strip وCreate Test Certificate وRe-sign عبر `signtool.exe`، مع Save As وbackup ومنع الأصل وكلمة مرور عبر environment؛ strip ورفض الحالات غير الموقعة وإنشاء PFX اختبِرت على Windows، أما re-sign الفعلي فيحتاج Windows SDK/signtool غير المثبت حاليًا، والتحقق الكامل من الثقة/strip-re-sign الإنتاجي لاحق |
+| [~] | GAP-02 | دورة حياة التوقيع Authenticode كاملة | حرجة | `core/signature.py` وCLI inspect يعرضان authentihash وcertificate table وverification؛ writer يمنع تعديل PE موقعًا، أما strip/re-sign وWinVerifyTrust الأصلي فلاحقان على Windows |
 | [~] | GAP-03 | مصفوفة توافق PE حقيقية | عالية | `core/compatibility.py` وCLI inspect يخرجان profiles وnamed resources وoverlay وARM64X/CLR/delay imports؛ corpus PE32/PE32+/SYS/ARM64X موسع لاحق |
 | [x] | GAP-04 | خطة تنفيذ قبل الكتابة ومعاينة قابلة للمقارنة | عالية | `LiefPEWriter.plan_add_resource/plan_replace_resource` وCLI `plan` ينفذان dry-run داخليًا ويعرضان hashes وresource sizes وinvariants دون output خارجي |
 | [~] | GAP-05 | قفل المشروع والتعافي من الانقطاع | عالية | `Project.acquire_lock/release_lock/locked` تمنع التشغيل المتزامن؛ transaction journal والاستعادة التلقائية الكاملة لاحقان |
-| [~] | GAP-06 | حدود أمان الإضافات خارج العملية | حرجة | `PluginLimits` وWindows Job Object process/memory cap تعمل؛ filesystem/network isolation الكامل لاحق |
+| [~] | GAP-06 | حدود أمان الإضافات خارج العملية | حرجة | `PluginLimits` يفرض request/output/CPU/memory مع timeout وquarantine؛ Job Object/Filesystem/network isolation الكامل لاحق على Windows |
 | [x] | GAP-07 | بحث موحد متقدم | عالية | `core/search.py` وCLI `search` يدعمان metadata وUTF-8 وUTF-16 وregex وhex وفلترة type/language مع offset |
-| [~] | GAP-08 | تغطية Dialog وAccelerator وFont وMessageTable | عالية | Dialog مكتمل جزئيًا: DIALOG/DIALOGEX parser/serializer، JSON model، malformed/round-trip tests، Project/CLI bridge وWPF WYSIWYG؛ Accelerator/Font/MessageTable وخصائص Win32 المتقدمة لاحقة |
+| [ ] | GAP-08 | تغطية Dialog وAccelerator وFont وMessageTable | عالية | parser/serializer لكل نوع أو إعلان capability صريح، مع round-trip وmalformed tests؛ Dialog يبدأ كـ model غير مرئي |
 | [ ] | GAP-09 | تعريب تبادلي كامل | متوسطة | XLIFF/PO/RESX مع حفظ التعليقات والسياق وplural rules وplaceholder validation، دون خلطه بمحرر الموارد الأساسي |
 | [~] | GAP-10 | حفظ provenance والإصدارات والتراخيص | عالية | `core/provenance.py` ينشئ manifest للبناء يحوي LIEF/version/input/output hashes/resources/licenses؛ SBOM وreproducible metadata الكاملان لاحقان |
 | [~] | GAP-11 | اختبار PE خارج الموارد وخصائص loader | عالية | invariants وcompatibility وPEInspector تغطي directories/imports/exports/TLS/debug/CLR/overlay؛ corpus loader profiles الأوسع لاحق |
@@ -145,15 +145,6 @@
 | [x] | QA-02 | Golden files وround-trip فتح/تعديل/حفظ/إعادة فتح | `tests/golden/sample_resources.json` واختبار `test_golden_roundtrip.py` |
 | [~] | QA-03 | Fuzzing للملفات التالفة وحدود الذاكرة | corpus deterministic وbounded bit-flip fuzzing لمدخلات PE/image/menu/VERSION؛ fuzzing property-based موسع لاحق |
 | [x] | QA-04 | Integration tests للـ CLI والplugins | اختبار cross-feature يربط Project/Build/CLI/Health/Diff مع حماية الأصل |
-| [~] | QA-08 | دورة Authenticode على Windows | اختبار inspect/رفض strip غير الموقّع/إنشاء PFX وSave As؛ اختبار re-sign الفعلي ينتظر توفر `signtool.exe` وfixture موقّع |
-| [x] | QA-09 | Batch Workspace على ملفات PE متعددة | اختبارات core وCLI تغطي plan/apply، replace/delete، التقرير، backup، رفض in-place، وحماية SHA للـfixture |
-| [x] | QA-10 | StringTable/Version/Manifest/Menu typed workflows | اختبار CLI export/apply وround-trip وvalidation ورفض Manifest غير الصالح وJSON menu model |
-| [x] | QA-11 | Image resource workflow | اختبار BITMAP BMP↔DIB export/apply وJSON model للمجموعات مع حماية fixture |
-| [x] | QA-12 | PreviewEngine typed/raw contract | اختبار Manifest/Version/Menu/StringTable/Bitmap وraw fallback وmalformed fallback وBMP output |
-| [x] | QA-13 | PreviewEngine golden contract | `tests/golden/preview_models.json` يثبت kind/title/summary/raw fields للـManifest/Menu/raw preview |
-| [x] | QA-14 | Menu tree mutation contract | اختبار move/reparent/reorder/update ورفض نقل العقدة أسفل descendant مع round-trip |
-| [x] | QA-15 | WPF visual rendering smoke | بناء WPF وتشغيل العملية، fixture ICON، تحميل العنصر الفردي، تحويله إلى BMP، وإثبات `BMP preview` عبر `tests/windows/Invoke-ResourceStudioUIAutomation.ps1`؛ اختبارات Accessibility وscreen reader الأوسع ما تزال لاحقة |
-| [x] | QA-16 | Individual Icon/Cursor payload round-trip | `image-payload export/apply` بصيغ raw وBMP، تحويل DIB↔BMP، PNG اختياري عبر Pillow، Save As و`verified=true`؛ اختبار نجح على Manus وWindows |
 | [ ] | QA-05 | UI automation وAccessibility keyboard/screen reader |
 | [~] | QA-06 | مقارنة SHA-256 للأصل قبل وبعد كل اختبار | SHA guards تشمل Project/writer/editors/inspector؛ تعميم helper على كل اختبار قديم لاحق |
 | [x] | QA-07 | لا تشغيل MCP أو نقل بعيد في هذه الدورة | MCP بقي مؤجلًا ولم تُضف وظائف جديدة أثناء الدورة |
@@ -221,42 +212,3 @@
 | 2026-08-20 | تنفيذ Authenticode report وسياسة منع تعديل signed PE | مكتمل جزئيًا ومختبر | `signature.py`, CLI inspect/report، وحظر writer قبل strip/re-sign |
 | 2026-08-20 | تنفيذ RC text parser/serializer | مكتمل ومختبر | `core/rc_format.py` وround-trip STRINGTABLE/MENU/VERSIONINFO |
 | 2026-08-20 | إضافة اختبارات صيغ التقارير ومدخلات PE التالفة | مكتمل جزئيًا | `test_reports.py`, `test_malformed_inputs.py` |
-| 2026-08-20 | إغلاق بوابة Manus وتجهيز حزمة Windows | مكتمل ومختبر | 33 core + 9 QA + CLI، `docs/TRANSFER-TO-WINDOWS.md`, `resource-studio-manus-bundle.tar.gz` |
-| 2026-08-20 | Windows Python/LIEF وAuthenticode gate | مكتمل ومختبر | Python 3.12، LIEF 1.0.0، Get-AuthenticodeSignature وWinVerifyTrust native، جميع core/CLI/QA نجحت، وSHA الأصل محفوظ |
-| 2026-08-20 | بناء وتشغيل WPF shell وJob Object | مكتمل ومختبر | .NET SDK 8.0.424، `windows/ResourceStudio.Windows`, WPF process، `core/windows_isolation.py`, `PluginHost` |
-| 2026-08-20 | تنفيذ DialogResource وDIALOG/DIALOGEX parser/serializer وProject bridge | مكتمل ومختبر | `core/dialog_resources.py`, `Project.apply_dialog`, `test_dialog_resources.py`, `test_dialog_project.py`, CLI `dialog` |
-| 2026-08-20 | إضافة WPF Dialog Editor والتحقق من بوابة Windows | مكتمل ومختبر | `DialogEditorWindow.xaml/.cs`, WPF build بلا تحذيرات أو أخطاء، و45 اختبار Python ناجحة على Windows |
-| 2026-08-20 | إضافة Authenticode Inspect/Strip/Re-sign وTest Certificate workflow | مكتمل جزئيًا ومختبر | `core/signature.py`, CLI `signature`, `SignatureToolsWindow.xaml/.cs`, اختبار `test_signature_operations.py`، إنشاء PFX و46 اختبار Python ناجحة؛ re-sign الفعلي ينتظر Windows SDK/signtool |
-| 2026-08-20 | تنفيذ متطلبات المرحلة الثامنة UI-02/UI-03/UI-04 | مكتمل جزئيًا ومختبر | WPF Resources/Properties/Preview/Search/Diff/Localization tabs، اختصارات Dark/High Contrast، CLI localization، اختبار `test_phase8_localization_cli.py`، وبناء WPF ناجح بلا تحذيرات |
-| 2026-08-20 | بدء Productization بـ Batch Workspace | مكتمل جزئيًا ومختبر | `core/batch.py`, CLI `batch plan/apply`, تبويب WPF Batch Workspace، اختبارات `test_batch.py` و`test_batch_cli.py`، وWPF build ناجح على Windows |
-| 2026-08-20 | تنفيذ Common Resource Wizards لـStringTable/Version/Manifest/Menu/Image | مكتمل جزئيًا ومختبر | `StringTableEditorWindow`, `ResourceWizardsWindow`, `ImageResourceWindow`, أوامر `string-table`, `version-resource`, `manifest-resource`, `menu-resource`, `image-resource`، 52 اختبارًا مسجلًا، وبناء WPF ناجح بـ0 تحذيرات و0 أخطاء |
-| 2026-08-20 | تنفيذ PreviewEngine الموحد وربطه بـWPF | مكتمل جزئيًا ومختبر | `core/preview.py`, CLI `preview`, WPF Preview tab typed summary/raw fallback، اختبار `test_preview_engine.py`، وأمر preview الفعلي على Windows نجح |
-| 2026-08-20 | توسيع Menu Wizard وإضافة Preview golden contract | مكتمل جزئيًا ومختبر | Menu TreeView حي من JSON، `preview_models.json`, `test_preview_golden.py`، وبناء WPF النهائي نجح بـ0 أخطاء و0 تحذيرات |
-| 2026-08-20 | تنفيذ Menu drag-and-drop وIcon/Cursor group editor وvisual Preview | مكتمل جزئيًا ومختبر | `MenuResource.move_item/update_item`, WPF drag/drop، قائمة Icon/Cursor وعناصر Update/Add/Remove، Bitmap/Menu/Dialog visual rendering، `test_menu_editing.py` نجح على Windows، وبناء WPF بـ0 أخطاء و0 تحذيرات |
-| 2026-08-20 | إضافة Individual Icon/Cursor payload export/apply | مكتمل ومختبر | CLI `image-payload export/apply`، Save As عبر LIEF، `tests/core/test_image_payload_cli.py` نجح على Manus وWindows، دون المساس بالأصل |
-| 2026-08-20 | إضافة WPF payload actions ومعاينات الموارد المتخصصة | مكتمل ومختبر | Image Wizard يصدّر ويطبّق raw `.bin` للعنصر المحدد؛ Preview يعرض VersionInfo وManifest وStringTable وIcon/Cursor group بشكل متخصص؛ WPF build بـ0 أخطاء و0 تحذيرات وتشغيل مستجيب |
-| 2026-08-20 | تنفيذ ICON/CURSOR DIB↔BMP وPNG الاختياري | مكتمل ومختبر | `icon_cursor_payload_to_bmp` و`icon_cursor_bmp_to_payload`، CLI `image-payload --format bmp/raw/auto`، اختبار round-trip وPNG اختياري، وPillow موثق في requirements/notices |
-| 2026-08-20 | تنفيذ WPF BMP preview وUI automation | مكتمل ومختبر | Image Wizard يحمّل selected ICON/CURSOR payload إلى BMP ويضع Automation Name ديناميكيًا؛ `--open` و`--image-kind` لتشغيل اختبار ثابت؛ fixture ICON و`Invoke-ResourceStudioUIAutomation.ps1` نجحا على Windows |
-
-## المرحلة 10: Productization backlog وفق احتياجات المطورين والهواة
-
-هذه البنود مستخلصة من تقييم الاستخدام العملي ومقارنة أدوات الموارد وPE، وليست بديلًا عن المرحلة 8 أو 9.
-
-| الحالة | المعرّف | المهمة | الأولوية | معيار الإنجاز |
-|---|---|---|---|---|
-| [~] | PROD-01 | Batch Workspace متعدد الملفات | حرجة | `core/batch.py` وCLI `batch plan/apply` يدعمان manifest متعدد الملفات، add/replace/delete/change-language، dry-run، staging، atomic Save As، backup، rollback عند فشل commit، report JSON، وWPF Batch Workspace؛ فهرسة المجلد والـqueue التفاعلي وresume الكامل لاحقة |
-| [~] | PROD-02 | Common Resource Wizards والمحررات المرئية | حرجة | StringTable Editor WPF بجدول 16 خانة وCLI export/apply؛ Resource Wizards WPF لـVersionInfo/Manifest/Menu مع JSON/XML وSave As؛ Menu يدعم drag-and-drop إلى parent وإعادة بناء JSON؛ Image Wizard يحرر عناصر Icon/Cursor الفردية ويزامن group JSON، مع export/apply BMP/PNG وpreview بصري؛ multi-image payload editing وAccessibility automation اللاحقة |
-| [~] | PROD-03 | Preview Engine موحد | عالية | `core/preview.py` وCLI `preview` يدعمان Manifest/Version/Menu/Dialog/StringTable/Bitmap/Icon/Cursor مع summary typed وraw fallback وBMP output اختياري؛ WPF Preview يرسم Bitmap وMenu وDialog، ويعرض VersionInfo كحقول وstrings، Manifest كـXML، StringTable كسجل ID/text، وIcon/Cursor group كبطاقات؛ Image Wizard يعرض payload الفردي بصيغة BMP، بينما golden screenshots ومعاينة cursor hotspot المتقدمة لاحقة |
-| [ ] | PROD-04 | Localization Workbench | حرجة | multi-file/multi-locale grid، comments/context، placeholder وhotkey checks، XLIFF/PO/RESX، side-by-side editing |
-| [ ] | PROD-05 | Post-write Diagnostics Center | حرجة | تقرير before/after للأقسام وdirectories وchecksum وsignature وoverlay وresource bounds مع تفسير قابل للفهم |
-| [ ] | PROD-06 | UI Automation وAccessibility | عالية | اختبارات WPF قابلة لإعادة التشغيل للفتح/البحث/التعديل/Save As، keyboard navigation، AutomationProperties، High Contrast وscreen-reader smoke test |
-| [ ] | PROD-07 | Resource Transfer/Merge | عالية | نقل نوع/ID/لغة بين PE مع conflict resolver وdry-run وinvariants وحماية signature/overlay |
-| [ ] | PROD-08 | Accelerator/MessageTable/Font/RCData | عالية | parser/serializer محافظ، raw fallback، typed bridge، CLI، fixtures malformed وgolden round-trip، ثم editor عند ثبات الصيغ |
-| [ ] | PROD-09 | MUI و.NET satellite workflow | عالية | فتح المجموعة المرتبطة، مقارنة neutral/satellite، culture validation، ومسار منفصل لموارد .NET |
-| [ ] | PROD-10 | Windows shell وworkspace convenience | متوسطة | drag/drop، recent/favorites، portable mode، file association اختيارية، context menu محلي، وتفضيلات theme محفوظة |
-| [ ] | PROD-11 | Batch reports وresume | عالية | journal لكل عنصر، resume من آخر نجاح، JSON Lines، exit codes، hashes وartifacts قابلة للتحقق |
-| [ ] | PROD-12 | Plugin SDK sample pack | متوسطة | أمثلة Viewer/Parser/Exporter، contract tests، capability discovery، وثائق API مولدة وإصدار SDK متوافق |
-| [ ] | PROD-13 | PE diagnostics المتقدمة | متوسطة | dependency scanner وimports/exports/TLS/CLR/packer hints وتقارير واضحة، دون كتابة headers قبل اكتمال corpus |
-| [ ] | PROD-14 | Adapters للأدوات المتقدمة | منخفضة | adapters اختيارية لـ disassembler/import editor/PE rebuilder أو unpacker خارج النواة وبصلاحيات وتحذيرات صريحة |
-
-**الدليل التحليلي:** `docs/RESOURCE-STUDIO-MARKET-ASSESSMENT-2026-08-20.md` و`docs/research_competitors_notes.md`.

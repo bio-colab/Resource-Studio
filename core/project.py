@@ -325,20 +325,6 @@ class Project:
             raise TypeError("info must be a VersionInfo")
         return self.apply_typed_resource("VERSION", resource_name, language, info.to_bytes(codepage), add=add)
 
-    def apply_dialog(
-        self,
-        dialog: Any,
-        resource_name: int | str,
-        language: int,
-        *,
-        add: bool = False,
-    ) -> Path:
-        from .dialog_resources import DialogResource
-
-        if not isinstance(dialog, DialogResource):
-            raise TypeError("dialog must be a DialogResource")
-        return self.apply_typed_resource("DIALOG", resource_name, language, dialog.to_bytes(), add=add)
-
     def apply_res_record(self, record: Any, *, add: bool = False) -> Path:
         if self.workspace_path is None or not self.workspace_path.is_file():
             raise ValueError("project has no isolated PE workspace")

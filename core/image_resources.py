@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import io
 import struct
 from dataclasses import dataclass
 
@@ -79,13 +78,6 @@ class IconCursorEntry:
     bytes_in_resource: int
     resource_id: int
 
-    def to_dict(self) -> dict[str, int]:
-        return {"width": self.width, "height": self.height, "colorCount": self.color_count, "planesOrHotspotX": self.planes_or_hotspot_x, "bitCountOrHotspotY": self.bit_count_or_hotspot_y, "bytesInResource": self.bytes_in_resource, "resourceId": self.resource_id}
-
-    @classmethod
-    def from_dict(cls, payload: dict[str, object]) -> "IconCursorEntry":
-        return cls(int(payload["width"]), int(payload["height"]), int(payload.get("colorCount", 0)), int(payload.get("planesOrHotspotX", 0)), int(payload.get("bitCountOrHotspotY", 0)), int(payload["bytesInResource"]), int(payload["resourceId"]))
-
     def to_bytes(self) -> bytes:
         if not 0 <= self.width <= 255 or not 0 <= self.height <= 255:
             raise ImageResourceError("icon/cursor dimensions must fit BYTE")
@@ -102,69 +94,6 @@ class IconCursorEntry:
             self.bytes_in_resource,
             self.resource_id,
         )
-
-
-def _png_to_bmp(data: bytes) -> bytes:
-    try:
-        from PIL import Image
-    except ImportError as exc:
-        raise ImageResourceError("PNG icon/cursor payload conversion requires Pillow") from exc
-    try:
-        with Image.open(io.BytesIO(data)) as image:
-            output = io.BytesIO()
-            image.convert("RGBA").save(output, format="BMP")
-            return output.getvalue()
-    except Exception as exc:
-        raise ImageResourceError(f"invalid PNG image payload: {exc}") from exc
-
-
-def _icon_dib_to_bmp(data: bytes) -> bytes:
-    if len(data) < 40:
-        raise ImageResourceError("icon/cursor payload requires a BITMAPINFOHEADER")
-    header_size, width, dib_height, planes, bit_count, compression, _, _, _, _, _ = struct.unpack_from("<IiiHHIIiiII", data, 0)
-    if dib_height == 0 or dib_height % 2 != 0 or width <= 0 or planes != 1:
-        raise ImageResourceError("invalid icon/cursor DIB dimensions")
-    pixel_offset = _default_bmp_pixel_offset(data, bit_count, compression) - 14
-    if pixel_offset < header_size or pixel_offset > len(data):
-        raise ImageResourceError("icon/cursor DIB pixel offset is outside payload")
-    actual_height = abs(dib_height) // 2
-    row_stride = ((width * bit_count + 31) // 32) * 4
-    xor_size = row_stride * actual_height
-    if pixel_offset + xor_size > len(data):
-        raise ImageResourceError("icon/cursor XOR bitmap is truncated")
-    dib = bytearray(data[:pixel_offset + xor_size])
-    struct.pack_into("<i", dib, 8, actual_height if dib_height > 0 else -actual_height)
-    file_size = 14 + len(dib)
-    return b"BM" + struct.pack("<IHHI", file_size, 0, 0, 14 + pixel_offset) + bytes(dib)
-
-
-def icon_cursor_payload_to_bmp(data: bytes, kind: str) -> bytes:
-    """Convert one ICON/CURSOR resource payload to a viewable BMP."""
-    if kind.upper() not in {"ICON", "CURSOR"}:
-        raise ImageResourceError("kind must be ICON or CURSOR")
-    if data.startswith(b"\x89PNG\r\n\x1a\n"):
-        return _png_to_bmp(data)
-    return _icon_dib_to_bmp(data)
-
-
-def _bmp_to_icon_dib(data: bytes) -> bytes:
-    if data.startswith(b"\x89PNG\r\n\x1a\n"):
-        data = _png_to_bmp(data)
-    bitmap = BitmapResource.from_bmp(data)
-    dib = bytearray(bitmap.to_dib())
-    height = struct.unpack_from("<i", dib, 8)[0]
-    if height == 0:
-        raise ImageResourceError("BMP height cannot be zero")
-    struct.pack_into("<i", dib, 8, height * 2)
-    mask_stride = ((bitmap.width + 31) // 32) * 4
-    return bytes(dib) + bytes(mask_stride * abs(height))
-
-
-def icon_cursor_bmp_to_payload(data: bytes, kind: str) -> bytes:
-    """Convert a BMP image to one ICON/CURSOR DIB payload."""
-    if kind.upper() not in {"ICON", "CURSOR"}:
-        raise ImageResourceError("kind must be ICON or CURSOR")
-    return _bmp_to_icon_dib(data)
 
 
 @dataclass(frozen=True)
@@ -189,18 +118,6 @@ class IconCursorGroup:
                 raise ImageResourceError("invalid icon/cursor group entry")
             entries.append(IconCursorEntry(width, height, color_count, first, second, size, resource_id))
         return cls("ICON" if kind_id == 1 else "CURSOR", tuple(entries))
-
-    def to_dict(self) -> dict[str, object]:
-        return {"format": "resource_studio.image_group.v1", "kind": self.kind, "entries": [entry.to_dict() for entry in self.entries]}
-
-    @classmethod
-    def from_dict(cls, payload: dict[str, object]) -> "IconCursorGroup":
-        if payload.get("format") != "resource_studio.image_group.v1":
-            raise ImageResourceError("unsupported image group model format")
-        entries = payload.get("entries")
-        if not isinstance(entries, list) or not entries:
-            raise ImageResourceError("image group requires entries")
-        return cls(str(payload["kind"]), tuple(IconCursorEntry.from_dict(entry) for entry in entries))
 
     def to_bytes(self) -> bytes:
         kind_id = {"ICON": 1, "CURSOR": 2}.get(self.kind.upper())

@@ -20,18 +20,6 @@ class MenuItem:
     flags: int = 0
     children: list[MenuItem] = field(default_factory=list)
 
-    def to_dict(self) -> dict[str, object]:
-        return {"id": self.item_id, "text": self.text, "flags": self.flags, "children": [child.to_dict() for child in self.children]}
-
-    @classmethod
-    def from_dict(cls, payload: dict[str, object]) -> "MenuItem":
-        if not isinstance(payload, dict):
-            raise MenuResourceError("menu item must be an object")
-        children = payload.get("children", [])
-        if not isinstance(children, list):
-            raise MenuResourceError("menu item children must be a list")
-        return cls(int(payload.get("id", 0)), str(payload.get("text", "")), int(payload.get("flags", 0)), [cls.from_dict(child) for child in children])
-
     @property
     def is_popup(self) -> bool:
         return bool(self.flags & MF_POPUP) or bool(self.children)
@@ -66,18 +54,6 @@ class MenuResource:
             raise MenuResourceError("menu must contain at least one item")
         return struct.pack("<HH", self.version, self.header_size) + _encode_level(self.items)
 
-    def to_dict(self) -> dict[str, object]:
-        return {"format": "resource_studio.menu.v1", "version": self.version, "headerSize": self.header_size, "items": [item.to_dict() for item in self.items]}
-
-    @classmethod
-    def from_dict(cls, payload: dict[str, object]) -> "MenuResource":
-        if payload.get("format") != "resource_studio.menu.v1":
-            raise MenuResourceError("unsupported menu model format")
-        items = payload.get("items")
-        if not isinstance(items, list) or not items:
-            raise MenuResourceError("menu model must contain items")
-        return cls([MenuItem.from_dict(item) for item in items], int(payload.get("version", 0)), int(payload.get("headerSize", 4)))
-
     def find_id(self, item_id: int) -> MenuItem | None:
         for item in self.items:
             if item.item_id == item_id:
@@ -86,55 +62,6 @@ class MenuResource:
             if nested is not None:
                 return nested
         return None
-
-    def move_item(self, item_id: int, new_parent_id: int | None, index: int) -> None:
-        """Move one node within the menu tree without changing its identity."""
-        if item_id == new_parent_id:
-            raise MenuResourceError("a menu item cannot be its own parent")
-        item = _detach_item(self.items, item_id)
-        if item is None:
-            raise MenuResourceError(f"menu item not found: {item_id}")
-        if new_parent_id is None:
-            target = self.items
-        else:
-            parent = self.find_id(new_parent_id)
-            if parent is None:
-                raise MenuResourceError(f"menu parent not found: {new_parent_id}")
-            if _contains_item(item, new_parent_id):
-                _restore_item(self.items, item)
-                raise MenuResourceError("cannot move a menu item below its descendant")
-            parent.flags |= MF_POPUP
-            target = parent.children
-        if index < 0 or index > len(target):
-            raise MenuResourceError("menu insertion index is outside the target list")
-        target.insert(index, item)
-
-    def update_item(self, item_id: int, *, text: str | None = None, flags: int | None = None) -> None:
-        item = self.find_id(item_id)
-        if item is None:
-            raise MenuResourceError(f"menu item not found: {item_id}")
-        if text is not None:
-            item.text = text
-        if flags is not None:
-            item.flags = flags
-
-
-def _detach_item(items: list[MenuItem], item_id: int) -> MenuItem | None:
-    for position, item in enumerate(items):
-        if item.item_id == item_id:
-            return items.pop(position)
-        detached = _detach_item(item.children, item_id)
-        if detached is not None:
-            return detached
-    return None
-
-
-def _restore_item(items: list[MenuItem], item: MenuItem) -> None:
-    items.append(item)
-
-
-def _contains_item(item: MenuItem, item_id: int) -> bool:
-    return item.item_id == item_id or any(_contains_item(child, item_id) for child in item.children)
 
 
 def _parse_level(data: bytes, offset: int) -> tuple[list[MenuItem], int]:
