@@ -295,3 +295,12 @@ Idle -> ResolvingCli -> Running -> ReadingOutput -> Validating -> Completed
 | AUDIT | post-commit verification report في WriteResult وProject/Batch audit وCLI JSON |
 
 أضيف أيضًا **structure-aware fuzzing** يغير مواضع PE header وsection وdata-directory ضمن حدود، واختبار crash consistency يحاكي فشل commit وفشل post-commit verification ويثبت بقاء output السابق وعدم ترك rollback artifacts. تبقى التغطية coverage-guided طويلة التشغيل ومصفوفة signed/MUI/LN الواسعة مراحل لاحقة، لا نتائج مفترضة.
+
+
+## انتقال UI/UX: من بنية يفهمها المطور إلى تجربة يفهمها الإنسان
+
+بعد تثبيت Verification Engine، أصبحت الأولوية التالية هي **قابلية فهم التجربة**. النواة تستطيع الآن إثبات صحة Save، لكن الإثبات لا يكفي إذا لم يفهم المستخدم ما الذي سيفعله البرنامج وما الذي حدث بعد الفعل. لذلك صيغ `docs/UIUX-GOAL.md` كامتداد لـmain-goal، لا كمسار Feature Engine.
+
+الدفعة الأولى أعادت ترتيب سطح WPF إلى Workspace/Editors/Tools، وأظهرت Current PE وسياسة `Save As only` وحالة CLI التفصيلية ومدة العملية. كما أضيفت أسماء وAutomationIds وtooltips لعناصر العمل والتبويبات والجداول والـpreview، مع استخدام system brushes بدل الألوان الثابتة في السطوح التي يجب أن تعمل مع high contrast. وأصبح UI automation يثبت سياق الملف ومناطق العمل والحالة وتفاصيل Preview وImage Wizard، لا مجرد فتح النافذة.
+
+المعيار الجديد هو أن يمر المستخدم بمسار مفهوم: **Open → Explore → Preview → Edit → Save As → Verify**. تبقى raw JSON وVerificationReport متاحة للمطور، لكنها ليست نقطة الدخول الوحيدة للمبتدئ. وتبقى الفجوات المعلنة: async cancellation وStop الكامل لكل النوافذ، checklist Verification summary المرئية الموحدة بعد Save، F6/TabIndex matrix، screen-reader verification الأوسع، واختبارات resize/failure لكل editor.

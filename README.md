@@ -172,3 +172,10 @@ Resource Studio كود مستقل. يعتمد backend PE على LIEF المرخ�
 تعمل دورة Save الآن كمسار تحقق قابل للتشخيص، لا كاستدعاء مباشر لـ`LIEF.write()`. يُبنى المرشح في temporary داخل نفس volume، ثم يُعاد فتحه ويُفحص عبر `PEHealth` و`DeepPEInvariantReport` و`ResourceGraph` وsemantic fingerprints وdifferential preservation checks قبل commit. على Windows يضاف loader resource oracle وWinVerifyTrust native، وبعد durable commit يعاد التحقق ويسجل التقرير في `WriteResult` وProject/Batch audit وCLI JSON.
 
 التسلسل المثبت هو: **PLAN → MUTATE → SERIALIZE → REOPEN → STRUCTURAL VALIDATION → RESOURCE GRAPH VALIDATION → SEMANTIC DIFF → PRESERVATION CHECK → WINDOWS VALIDATION → AUTHENTICODE VERIFICATION → COMMIT → AUDIT**. تشمل preservation checks imports وexports وTLS وLoad Config وDebug وOverlay وdirectories وnon-resource sections. كما توجد structure-aware bounded fuzzing وcrash-consistency tests لمسار parser/writer وcommit/rollback.
+
+
+## UI/UX-goal: من بنية يفهمها المطور إلى تجربة يفهمها الإنسان
+
+تتجه الدورة التالية إلى تحسين تجربة الهاوي والمطور والمترجم فوق الوظائف الحالية، لا إلى إضافة أنواع موارد جديدة. الواجهة تعيد تنظيم الأفعال ضمن **Workspace** و**Editors** و**Tools**، وتعرض سياق الملف وسياسة `Save As only` وحالة العملية وتفاصيلها. تبقى raw JSON وInspect وVerificationReport متاحة للمطور، لكن تصبح المعاينة والملخص نقطة الدخول الطبيعية للمستخدم الجديد.
+
+المسار المستهدف هو: **Open → Explore → Preview → Edit → Save As → Verify**. كل نافذة وكل عملية يجب أن تكون قابلة للفهم، قابلة للوصول بلوحة المفاتيح، واضحة الحالة، ولا تعتمد على اللون أو السحب وحده. التفاصيل والخطة القابلة للتتبع موجودة في [`docs/UIUX-GOAL.md`](docs/UIUX-GOAL.md)، وأدلة البحث في [`docs/UIUX-RESEARCH-NOTES-2026-08-20.md`](docs/UIUX-RESEARCH-NOTES-2026-08-20.md).

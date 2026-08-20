@@ -72,8 +72,13 @@ try {
     $openButton.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern) | Out-Null
 
     $pathBox = Wait-Until { Find-ById $main 'PathBox' } 'PathBox'
+    Find-ById $main 'OutputPolicyText' | Out-Null
+    Find-ById $main 'StatusDetailText' | Out-Null
+    foreach ($id in @('ResourcesTab', 'PreviewTab', 'SearchTab', 'BatchTab', 'LocalizationTab', 'InspectTab', 'DiffTab', 'ResourceGrid', 'PropertyGrid')) { Find-ById $main $id | Out-Null }
     Wait-Until { (Get-ElementText (Find-ById $main 'ResourceCountText')) -notmatch '^0 resources$' } 'resources loaded' | Out-Null
     Wait-Until { (Get-ElementText (Find-ById $main 'CliStateText')) -eq 'Completed' } 'CLI completed state' | Out-Null
+    Wait-Until { (Get-ElementText (Find-ById $main 'StatusDetailText')) -match 'completed' } 'CLI completion detail' | Out-Null
+    if ((Get-ElementText (Find-ById $main 'OutputPolicyText')) -notmatch 'Save As') { throw 'Save As policy is not visible' }
     Wait-Until { try { (Get-ElementValue $pathBox) -ieq $resolvedPe } catch { (Get-ElementText $pathBox) -match [regex]::Escape([System.IO.Path]::GetFileName($resolvedPe)) } } 'PE path loaded' | Out-Null
 
     $searchTab = Find-ByName $main ([System.Windows.Automation.ControlType]::TabItem) 'Search'
@@ -84,6 +89,10 @@ try {
 
     Invoke-Element (Find-ById $main 'ThemeButton')
     Wait-Until { (Get-ElementText (Find-ById $main 'MainStatusText')) -match 'Dark mode' } 'dark mode status' | Out-Null
+
+    $previewTab = Find-ByName $main ([System.Windows.Automation.ControlType]::TabItem) 'Preview'
+    Select-Element $previewTab
+    Wait-Until { Find-ById $main 'PreviewDetailsBox' } 'preview details box' | Out-Null
 
     Invoke-Element (Find-ById $main 'ImageWizardButton')
     $imageWindow = Wait-Until { Find-TopWindow '^Image Wizard$' } 'Image Wizard window'

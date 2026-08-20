@@ -32,9 +32,13 @@ public partial class MainWindow : Window
     {
         var arguments = Environment.GetCommandLineArgs();
         var openIndex = Array.FindIndex(arguments, argument => string.Equals(argument, "--open", StringComparison.OrdinalIgnoreCase));
-        if (openIndex < 0 || openIndex + 1 >= arguments.Length) return;
+        if (openIndex < 0 || openIndex + 1 >= arguments.Length)
+        {
+            StatusDetailText.Text = "Open a PE to begin";
+            return;
+        }
         var path = Path.GetFullPath(arguments[openIndex + 1]);
-        if (!File.Exists(path)) { StatusText.Text = $"PE not found: {path}"; return; }
+        if (!File.Exists(path)) { StatusText.Text = "PE not found"; StatusDetailText.Text = path; return; }
         _selectedPe = path;
         PathBox.Text = path;
         LoadResources();
@@ -490,10 +494,11 @@ public partial class MainWindow : Window
     private CliResult RunCliCapture(params string[] arguments)
     {
         var stopwatch = Stopwatch.StartNew();
-        SetCliState(CliOperationState.Running);
+        var operation = string.Join(" ", arguments.Take(2));
+        SetCliState(CliOperationState.Running, $"Running: {operation}");
         if (_cliPath is null)
         {
-            SetCliState(CliOperationState.Failed);
+            SetCliState(CliOperationState.Failed, "CLI not found — check the project folder");
             return new CliResult(2, "resource_studio_cli.py was not found.", CliOperationState.Failed, stopwatch.ElapsedMilliseconds);
         }
         try
@@ -520,20 +525,25 @@ public partial class MainWindow : Window
             var stdout = stdoutTask.Result;
             var stderr = stderrTask.Result;
             var state = process.ExitCode == 0 ? CliOperationState.Completed : CliOperationState.Failed;
-            SetCliState(state);
-            return new CliResult(process.ExitCode, string.IsNullOrWhiteSpace(stdout) ? stderr : stdout, state, stopwatch.ElapsedMilliseconds);
+            var resultText = string.IsNullOrWhiteSpace(stdout) ? stderr : stdout;
+            var detail = state == CliOperationState.Completed
+                ? $"{operation} completed in {stopwatch.Elapsed.TotalSeconds:0.0}s"
+                : $"{operation} failed — open Inspect for details";
+            SetCliState(state, detail);
+            return new CliResult(process.ExitCode, resultText, state, stopwatch.ElapsedMilliseconds);
         }
         catch (Exception exc)
         {
-            SetCliState(CliOperationState.Failed);
+            SetCliState(CliOperationState.Failed, "Could not start CLI — see the error details");
             return new CliResult(2, exc.ToString(), CliOperationState.Failed, stopwatch.ElapsedMilliseconds);
         }
     }
 
-    private void SetCliState(CliOperationState state)
+    private void SetCliState(CliOperationState state, string detail)
     {
         _cliState = state;
         CliStateText.Text = state.ToString();
+        StatusDetailText.Text = detail;
     }
 
     private static string? FindCliPath()

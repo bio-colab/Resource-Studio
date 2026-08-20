@@ -354,3 +354,38 @@
 | 2026-08-20 | structure-aware fuzzing وcrash consistency | مكتمل ومختبر | `structure_aware_cases` و`test_crash_consistency.py`؛ commit وpost-commit failure يعيدان output السابق |
 | 2026-08-20 | Save pipeline وCLI/Project/Batch audit | مكتمل ومختبر | WriteResult يحمل `verification` report، وCLI/Project/Batch يمررونه؛ جميع بوابات Manus وWindows نجحت |
 | 2026-08-20 | WPF/Job final gate | مكتمل ومختبر | WPF Release: 0 warnings/0 errors؛ Job Object وUI automation نجحا مع `CliStateText=Completed` و`BMP preview` |
+
+
+## main-goal extension: UI/UX-goal — من أداة تفهمها الآلة إلى تجربة يفهمها الإنسان
+
+هذه الدورة لا تعيد بناء النواة ولا تضيف أنواع موارد جديدة. هدفها جعل الواجهة الحالية مفهومة وآمنة وقابلة للتعلم والاختبار للهاوي والمطور والمترجم، مع إبقاء Verification Engine مصدر الحقيقة الوحيد.
+
+| الحالة | المعرّف | الطبقة | معيار الإنجاز |
+|---|---|---|---|
+| [x] | UX-00 | Research and audit | فحص MainWindow والنوافذ الثانوية وعقد UI automation؛ حفظ مصادر البحث في `docs/UIUX-RESEARCH-NOTES-2026-08-20.md` |
+| [x] | UX-01 | UI/UX-goal | `docs/UIUX-GOAL.md` يحدد personas وjourneys وIA وstate model وDefinition of Done |
+| [x] | UX-02 | Workspace context | تجميع الأفعال الرئيسية وإظهار PE path/output policy/current state كسياق واحد |
+| [x] | UX-03 | Action hierarchy | فصل primary Explore/Analyze/Edit/Verify عن الأدوات الثانوية دون حذف الوظائف الموجودة |
+| [~] | UX-04 | Verification summary | Inspect/JSON وVerificationReport موجودان، لكن checklist Save المرئية الموحدة تحتاج surface مستقل |
+| [~] | UX-05 | Responsive operation state | MainWindow يعرض Running/Completed/Failed ومدة العملية، لكن async cancellation/Stop الكامل ما يزال لاحقًا |
+| [~] | UX-06 | Accessibility contract | أضيفت names/ids/tooltips/automation surfaces وsystem gray brushes للـhigh contrast؛ TabIndex/F6/reader matrix الأوسع لاحقة |
+| [~] | UX-07 | Progressive disclosure | أضيفت hierarchy وtooltips وcontext؛ جعل raw/JSON طبقة details كاملة في كل المحررات ما يزال لاحقًا |
+| [~] | UX-08 | Workflow reliability | UI automation يثبت context/status/workbench/Preview/Image Wizard وBMP preview؛ failure/keyboard/resize matrix لاحقة |
+| [~] | UX-09 | Documentation and packaging | UI/UX-GOAL وresearch notes وREADME محدثة؛ الحزمة النهائية ستُعاد بعد إكمال دورة UX الحالية |
+
+### قاعدة UI/UX-goal
+
+لا يُقبل أي تعديل UI جديد إلا إذا حسّن واحدًا من: **الفهم الفوري للسياق، قابلية اكتشاف الفعل، وضوح الحالة، منع فقدان البيانات، الوصول بلوحة المفاتيح/التقنيات المساعدة، أو قابلية تشخيص النتيجة**. لا يضاف backend موازي، ولا custom control إذا كان WPF common control يحقق الغرض.
+
+
+## سجل تنفيذ UI/UX-goal — الدفعة الأولى
+
+| التاريخ | التنفيذ | الحالة | الدليل |
+|---|---|---|---|
+| 2026-08-20 | فحص UX الحالي والبحث المرجعي | مكتمل | `docs/UIUX-GOAL.md` و`docs/UIUX-RESEARCH-NOTES-2026-08-20.md` مع مصادر Microsoft/Fluent/NN/g ومرجع PE Explorer |
+| 2026-08-20 | Workspace context وAction hierarchy | مكتمل | MainWindow أصبح مقسمًا إلى Workspace/Editors/Tools، ويعرض Current PE وSave As only وtooltips |
+| 2026-08-20 | Status visibility | مكتمل جزئيًا | `CliStateText` بقي متوافقًا، وأضيف `StatusDetailText` يعرض Running/Completed/Failed ومدة العملية وnext action |
+| 2026-08-20 | Accessibility surface | مكتمل جزئيًا ومختبر | AutomationId/Name لعناصر العمل والتبويبات والجداول والـpreview، وفرش system للـhigh contrast |
+| 2026-08-20 | UI automation | مكتمل ومختبر | WPF build: 0 warnings/0 errors؛ UI automation نجح مع context/status/workbench/Preview/Image Wizard/BMP preview |
+
+الفجوات المتبقية عمدًا: async cancellation وStop الكامل لكل النوافذ، checklist Verification summary مرئية موحدة بعد Save، F6/TabIndex matrix، screen-reader verification الأوسع، واختبارات resize/failure لكل editor.

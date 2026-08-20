@@ -9,22 +9,32 @@
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
-        <WrapPanel>
-            <Button AutomationProperties.AutomationId="OpenPeButton" Content="Open PE" Click="OpenPe_Click" Margin="0,0,6,6" />
-            <Button Content="List resources" Click="List_Click" Margin="0,0,6,6" />
-            <Button Content="Inspect" Click="Inspect_Click" Margin="0,0,6,6" />
-            <Button Content="Validate" Click="Validate_Click" Margin="0,0,6,6" />
-            <Button Content="Open Python GUI" Click="OpenPythonGui_Click" Margin="0,0,6,6" />
-            <Button Content="Dialog Editor" Click="DialogEditor_Click" Margin="0,0,6,6" />
-            <Button Content="StringTable Editor" Click="StringTableEditor_Click" Margin="0,0,6,6" />
-            <Button Content="Resource Wizards" Click="ResourceWizards_Click" Margin="0,0,6,6" />
-            <Button AutomationProperties.AutomationId="ImageWizardButton" Content="Image Wizard" Click="ImageWizard_Click" Margin="0,0,6,6" />
-            <Button Content="Authenticode Tools" Click="AuthenticodeTools_Click" Margin="0,0,6,6" />
-            <Button AutomationProperties.AutomationId="ThemeButton" Content="Toggle dark mode" Click="Theme_Click" Margin="0,0,6,6" />
-        </WrapPanel>
-        <TextBox AutomationProperties.AutomationId="PathBox" x:Name="PathBox" Grid.Row="1" Margin="4,0,4,8" Padding="6" IsReadOnly="True" />
-        <TabControl Grid.Row="2" Margin="4,0,4,4">
-            <TabItem Header="Resources">
+        <ToolBarTray Grid.Row="0" AutomationProperties.Name="Primary actions" Margin="0,0,0,6">
+            <ToolBar Header="Workspace">
+                <Button AutomationProperties.AutomationId="OpenPeButton" AutomationProperties.AcceleratorKey="Ctrl+O" ToolTip="Open a PE file without modifying it" Content="Open PE" Click="OpenPe_Click" />
+                <Button AutomationProperties.AutomationId="ListResourcesButton" ToolTip="Explore the resources in the current PE" Content="Explore resources" Click="List_Click" />
+                <Button AutomationProperties.AutomationId="InspectButton" AutomationProperties.AcceleratorKey="Ctrl+I" ToolTip="Inspect PE structure and integrity" Content="Inspect" Click="Inspect_Click" />
+                <Button AutomationProperties.AutomationId="ValidateButton" ToolTip="Validate the current PE without writing" Content="Validate" Click="Validate_Click" />
+            </ToolBar>
+            <ToolBar Header="Editors">
+                <Button AutomationProperties.AutomationId="DialogEditorButton" ToolTip="Edit a dialog visually and save a new PE" Content="Dialog Editor" Click="DialogEditor_Click" />
+                <Button AutomationProperties.AutomationId="StringTableEditorButton" ToolTip="Edit StringTable entries and save a new PE" Content="StringTable Editor" Click="StringTableEditor_Click" />
+                <Button AutomationProperties.AutomationId="ResourceWizardsButton" ToolTip="Edit VersionInfo, Manifest, or Menu" Content="Resource Wizards" Click="ResourceWizards_Click" />
+                <Button AutomationProperties.AutomationId="ImageWizardButton" ToolTip="Preview and edit bitmap, icon, or cursor resources" Content="Image Wizard" Click="ImageWizard_Click" />
+            </ToolBar>
+            <ToolBar Header="Tools">
+                <Button AutomationProperties.AutomationId="AuthenticodeToolsButton" ToolTip="Inspect or change signature state using Save As" Content="Authenticode Tools" Click="AuthenticodeTools_Click" />
+                <Button AutomationProperties.AutomationId="PythonGuiButton" ToolTip="Open the legacy Python interface" Content="Open Python GUI" Click="OpenPythonGui_Click" />
+                <Button AutomationProperties.AutomationId="ThemeButton" ToolTip="Toggle light and dark appearance" Content="Toggle dark mode" Click="Theme_Click" />
+            </ToolBar>
+        </ToolBarTray>
+        <DockPanel Grid.Row="1" Margin="4,0,4,8" AutomationProperties.Name="Workspace context">
+            <TextBlock Text="Current PE" VerticalAlignment="Center" Margin="0,0,8,0" />
+            <TextBox AutomationProperties.AutomationId="PathBox" AutomationProperties.Name="Current PE path" x:Name="PathBox" Padding="6" IsReadOnly="True" ToolTip="The input PE is never overwritten; edits use Save As" />
+            <TextBlock AutomationProperties.AutomationId="OutputPolicyText" Text="Save As only" Foreground="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}" VerticalAlignment="Center" Margin="10,0,0,0" ToolTip="The original input remains unchanged" />
+        </DockPanel>
+        <TabControl Grid.Row="2" Margin="4,0,4,4" AutomationProperties.Name="Resource Studio workbench">
+            <TabItem AutomationProperties.AutomationId="ResourcesTab" Header="Resources">
                 <Grid Margin="6">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="3*" />
@@ -37,24 +47,24 @@
                     <DockPanel Grid.ColumnSpan="2" Margin="0,0,0,6">
                         <TextBlock Text="Filter" VerticalAlignment="Center" Margin="0,0,6,0" />
                         <TextBox x:Name="ResourceFilterBox" Width="260" TextChanged="ResourceFilterBox_TextChanged" />
-                        <TextBlock AutomationProperties.AutomationId="ResourceCountText" x:Name="ResourceCountText" Text="0 resources" VerticalAlignment="Center" Margin="12,0,0,0" Foreground="DarkSlateGray" />
+                        <TextBlock AutomationProperties.AutomationId="ResourceCountText" x:Name="ResourceCountText" Text="0 resources" VerticalAlignment="Center" Margin="12,0,0,0" Foreground="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}" />
                     </DockPanel>
-                    <DataGrid x:Name="ResourceGrid" Grid.Row="1" Grid.Column="0" AutoGenerateColumns="True" IsReadOnly="True" SelectionChanged="ResourceGrid_SelectionChanged" />
+                    <DataGrid AutomationProperties.AutomationId="ResourceGrid" AutomationProperties.Name="Resource list" x:Name="ResourceGrid" Grid.Row="1" Grid.Column="0" AutoGenerateColumns="True" IsReadOnly="True" SelectionChanged="ResourceGrid_SelectionChanged" />
                     <Grid Grid.Row="1" Grid.Column="1" Margin="8,0,0,0">
                         <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
                         <TextBlock Text="Properties" FontWeight="Bold" Margin="0,0,0,6" />
-                        <DataGrid x:Name="PropertyGrid" Grid.Row="1" AutoGenerateColumns="True" IsReadOnly="True" />
+                        <DataGrid AutomationProperties.AutomationId="PropertyGrid" AutomationProperties.Name="Selected resource properties" x:Name="PropertyGrid" Grid.Row="1" AutoGenerateColumns="True" IsReadOnly="True" />
                     </Grid>
                 </Grid>
             </TabItem>
-            <TabItem Header="Preview">
+            <TabItem AutomationProperties.AutomationId="PreviewTab" Header="Preview">
                 <Grid Margin="6">
                     <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
                     <TextBlock x:Name="PreviewHeader" Text="Select a resource to preview." Margin="0,0,0,6" />
-                    <Grid Grid.Row="1"><Grid.ColumnDefinitions><ColumnDefinition Width="2*" /><ColumnDefinition Width="3*" /></Grid.ColumnDefinitions><ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"><StackPanel x:Name="PreviewVisualPanel" Margin="4" /></ScrollViewer><TextBox x:Name="PreviewBox" Grid.Column="1" Margin="8,0,0,0" FontFamily="Consolas" FontSize="13" AcceptsReturn="True" IsReadOnly="True" TextWrapping="NoWrap" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" /></Grid>
+                    <Grid Grid.Row="1"><Grid.ColumnDefinitions><ColumnDefinition Width="2*" /><ColumnDefinition Width="3*" /></Grid.ColumnDefinitions><ScrollViewer AutomationProperties.Name="Visual preview" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"><StackPanel x:Name="PreviewVisualPanel" Margin="4" /></ScrollViewer><TextBox AutomationProperties.AutomationId="PreviewDetailsBox" AutomationProperties.Name="Preview details" x:Name="PreviewBox" Grid.Column="1" Margin="8,0,0,0" FontFamily="Consolas" FontSize="13" AcceptsReturn="True" IsReadOnly="True" TextWrapping="NoWrap" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" /></Grid>
                 </Grid>
             </TabItem>
-            <TabItem Header="Search">
+            <TabItem AutomationProperties.AutomationId="SearchTab" Header="Search">
                 <Grid Margin="6">
                     <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
                     <WrapPanel Margin="0,0,0,6">
@@ -63,10 +73,10 @@
                         <CheckBox x:Name="SearchHexBox" Content="Hex" VerticalAlignment="Center" Margin="0,0,8,0" />
                         <Button AutomationProperties.AutomationId="SearchButton" Content="Search" Click="Search_Click" />
                     </WrapPanel>
-                    <DataGrid x:Name="SearchGrid" Grid.Row="1" AutoGenerateColumns="True" IsReadOnly="True" />
+                    <DataGrid AutomationProperties.AutomationId="SearchResultsGrid" AutomationProperties.Name="Search results" x:Name="SearchGrid" Grid.Row="1" AutoGenerateColumns="True" IsReadOnly="True" />
                 </Grid>
             </TabItem>
-            <TabItem Header="Batch Workspace">
+            <TabItem AutomationProperties.AutomationId="BatchTab" Header="Batch Workspace">
                 <Grid Margin="6">
                     <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
                     <DockPanel Margin="0,0,0,6">
@@ -77,10 +87,10 @@
                         <Button Content="Plan (dry-run)" Click="BatchPlan_Click" Margin="0,0,6,0" />
                         <Button Content="Apply batch" Click="BatchApply_Click" />
                     </WrapPanel>
-                    <TextBox x:Name="BatchReportBox" Grid.Row="2" FontFamily="Consolas" FontSize="12" AcceptsReturn="True" IsReadOnly="True" TextWrapping="NoWrap" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" />
+                    <TextBox AutomationProperties.AutomationId="BatchReportBox" AutomationProperties.Name="Batch report" x:Name="BatchReportBox" Grid.Row="2" FontFamily="Consolas" FontSize="12" AcceptsReturn="True" IsReadOnly="True" TextWrapping="NoWrap" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" />
                 </Grid>
             </TabItem>
-            <TabItem Header="Localization">
+            <TabItem AutomationProperties.AutomationId="LocalizationTab" Header="Localization">
                 <Grid Margin="6">
                     <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
                     <DockPanel Margin="0,0,0,6">
@@ -95,13 +105,13 @@
                         <Button Content="Compare" Click="LocalizationCompare_Click" Margin="0,0,6,0" />
                         <Button Content="Pseudo-localize" Click="LocalizationPseudo_Click" />
                     </WrapPanel>
-                    <TextBox x:Name="LocalizationOutputBox" Grid.Row="2" FontFamily="Consolas" FontSize="12" AcceptsReturn="True" IsReadOnly="True" TextWrapping="NoWrap" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" />
+                    <TextBox AutomationProperties.AutomationId="LocalizationOutputBox" AutomationProperties.Name="Localization output" x:Name="LocalizationOutputBox" Grid.Row="2" FontFamily="Consolas" FontSize="12" AcceptsReturn="True" IsReadOnly="True" TextWrapping="NoWrap" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" />
                 </Grid>
             </TabItem>
-            <TabItem Header="Inspect">
-                <TextBox x:Name="InspectBox" Margin="6" FontFamily="Consolas" FontSize="12" AcceptsReturn="True" IsReadOnly="True" TextWrapping="NoWrap" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" />
+            <TabItem AutomationProperties.AutomationId="InspectTab" Header="Inspect">
+                <TextBox AutomationProperties.AutomationId="InspectDetailsBox" AutomationProperties.Name="Inspection details" x:Name="InspectBox" Margin="6" FontFamily="Consolas" FontSize="12" AcceptsReturn="True" IsReadOnly="True" TextWrapping="NoWrap" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" />
             </TabItem>
-            <TabItem Header="Diff">
+            <TabItem AutomationProperties.AutomationId="DiffTab" Header="Diff">
                 <Grid Margin="6">
                     <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
                     <DockPanel Margin="0,0,0,6">
@@ -120,6 +130,12 @@
                 </Grid>
             </TabItem>
         </TabControl>
-        <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="4"><TextBlock AutomationProperties.AutomationId="MainStatusText" x:Name="StatusText" Text="Ready" Margin="0,0,12,0" /><TextBlock AutomationProperties.AutomationId="CliStateText" x:Name="CliStateText" Text="Idle" /></StackPanel>
+        <Border Grid.Row="3" Margin="4" Padding="8,5" BorderBrush="#D0D7DE" BorderThickness="1" AutomationProperties.Name="Operation status">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock AutomationProperties.AutomationId="MainStatusText" x:Name="StatusText" Text="Ready" Margin="0,0,12,0" />
+                <TextBlock AutomationProperties.AutomationId="CliStateText" x:Name="CliStateText" Text="Idle" FontWeight="SemiBold" Margin="0,0,12,0" />
+                <TextBlock AutomationProperties.AutomationId="StatusDetailText" x:Name="StatusDetailText" Text="Open a PE to begin" Foreground="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}" TextTrimming="CharacterEllipsis" />
+            </StackPanel>
+        </Border>
     </Grid>
 </Window>
