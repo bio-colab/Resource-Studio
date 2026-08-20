@@ -1,5 +1,7 @@
 from .audit import AuditLog
+from .batch import BatchError, BatchJob, BatchWorkspace
 from .diff import DiffNode, diff_image_payloads, diff_resources, diff_texts, merge_selected_resources
+from .dialog_resources import DialogControl, DialogResource, DialogResourceError
 from .compatibility import PECompatibilityReport, inspect_compatibility
 from .commands import (
     AddResourceCommand,
@@ -26,7 +28,7 @@ from .project import Project, ResourceEntry
 from .provenance import build_provenance, write_provenance
 from .reports import render_report
 from .rc_format import RCDocument, RCMenus, RCStringTable
-from .signature import PESignatureReport, inspect_signature
+from .signature import PESignatureReport, SignatureOperationResult, SignatureToolError, create_test_certificate, find_signtool, inspect_signature, resign_authenticode, strip_authenticode
 from .search import SearchHit, search_resources
 from .res_format import ResFile, ResRecord
 from .string_table import StringTableBlock, string_table_block_id
@@ -34,6 +36,9 @@ from .version_info import VersionInfo
 from .windows_security import WindowsAuthenticodeReport, inspect_authenticode_windows
 
 __all__ = [
+    "BatchError",
+    "BatchJob",
+    "BatchWorkspace",
     "PECompatibilityReport",
     "inspect_compatibility",
     "AddResourceCommand",
@@ -44,6 +49,9 @@ __all__ = [
     "CommandHistory",
     "DeleteResourceCommand",
     "DiffNode",
+    "DialogControl",
+    "DialogResource",
+    "DialogResourceError",
     "diff_image_payloads",
     "merge_selected_resources",
     "HealthReport",
@@ -92,7 +100,13 @@ __all__ = [
     "RCMenus",
     "RCStringTable",
     "PESignatureReport",
+    "SignatureOperationResult",
+    "SignatureToolError",
+    "create_test_certificate",
+    "find_signtool",
     "inspect_signature",
+    "resign_authenticode",
+    "strip_authenticode",
     "SearchHit",
     "search_resources",
     "VersionInfo",

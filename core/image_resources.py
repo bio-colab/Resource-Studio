@@ -78,6 +78,13 @@ class IconCursorEntry:
     bytes_in_resource: int
     resource_id: int
 
+    def to_dict(self) -> dict[str, int]:
+        return {"width": self.width, "height": self.height, "colorCount": self.color_count, "planesOrHotspotX": self.planes_or_hotspot_x, "bitCountOrHotspotY": self.bit_count_or_hotspot_y, "bytesInResource": self.bytes_in_resource, "resourceId": self.resource_id}
+
+    @classmethod
+    def from_dict(cls, payload: dict[str, object]) -> "IconCursorEntry":
+        return cls(int(payload["width"]), int(payload["height"]), int(payload.get("colorCount", 0)), int(payload.get("planesOrHotspotX", 0)), int(payload.get("bitCountOrHotspotY", 0)), int(payload["bytesInResource"]), int(payload["resourceId"]))
+
     def to_bytes(self) -> bytes:
         if not 0 <= self.width <= 255 or not 0 <= self.height <= 255:
             raise ImageResourceError("icon/cursor dimensions must fit BYTE")
@@ -118,6 +125,18 @@ class IconCursorGroup:
                 raise ImageResourceError("invalid icon/cursor group entry")
             entries.append(IconCursorEntry(width, height, color_count, first, second, size, resource_id))
         return cls("ICON" if kind_id == 1 else "CURSOR", tuple(entries))
+
+    def to_dict(self) -> dict[str, object]:
+        return {"format": "resource_studio.image_group.v1", "kind": self.kind, "entries": [entry.to_dict() for entry in self.entries]}
+
+    @classmethod
+    def from_dict(cls, payload: dict[str, object]) -> "IconCursorGroup":
+        if payload.get("format") != "resource_studio.image_group.v1":
+            raise ImageResourceError("unsupported image group model format")
+        entries = payload.get("entries")
+        if not isinstance(entries, list) or not entries:
+            raise ImageResourceError("image group requires entries")
+        return cls(str(payload["kind"]), tuple(IconCursorEntry.from_dict(entry) for entry in entries))
 
     def to_bytes(self) -> bytes:
         kind_id = {"ICON": 1, "CURSOR": 2}.get(self.kind.upper())

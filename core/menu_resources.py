@@ -20,6 +20,18 @@ class MenuItem:
     flags: int = 0
     children: list[MenuItem] = field(default_factory=list)
 
+    def to_dict(self) -> dict[str, object]:
+        return {"id": self.item_id, "text": self.text, "flags": self.flags, "children": [child.to_dict() for child in self.children]}
+
+    @classmethod
+    def from_dict(cls, payload: dict[str, object]) -> "MenuItem":
+        if not isinstance(payload, dict):
+            raise MenuResourceError("menu item must be an object")
+        children = payload.get("children", [])
+        if not isinstance(children, list):
+            raise MenuResourceError("menu item children must be a list")
+        return cls(int(payload.get("id", 0)), str(payload.get("text", "")), int(payload.get("flags", 0)), [cls.from_dict(child) for child in children])
+
     @property
     def is_popup(self) -> bool:
         return bool(self.flags & MF_POPUP) or bool(self.children)
@@ -53,6 +65,18 @@ class MenuResource:
         if not self.items:
             raise MenuResourceError("menu must contain at least one item")
         return struct.pack("<HH", self.version, self.header_size) + _encode_level(self.items)
+
+    def to_dict(self) -> dict[str, object]:
+        return {"format": "resource_studio.menu.v1", "version": self.version, "headerSize": self.header_size, "items": [item.to_dict() for item in self.items]}
+
+    @classmethod
+    def from_dict(cls, payload: dict[str, object]) -> "MenuResource":
+        if payload.get("format") != "resource_studio.menu.v1":
+            raise MenuResourceError("unsupported menu model format")
+        items = payload.get("items")
+        if not isinstance(items, list) or not items:
+            raise MenuResourceError("menu model must contain items")
+        return cls([MenuItem.from_dict(item) for item in items], int(payload.get("version", 0)), int(payload.get("headerSize", 4)))
 
     def find_id(self, item_id: int) -> MenuItem | None:
         for item in self.items:

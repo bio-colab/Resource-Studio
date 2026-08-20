@@ -1,0 +1,12 @@
+<Window x:Class="ResourceStudio.Windows.ImageResourceWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Image Wizard" Height="700" Width="980" MinHeight="520" MinWidth="760">
+    <Grid Margin="12">
+        <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+        <WrapPanel Margin="0,0,0,8"><TextBlock Text="PE" VerticalAlignment="Center" Margin="0,0,6,0" /><TextBox x:Name="PePathBox" Width="430" Margin="0,0,8,0" /><TextBlock Text="Kind" VerticalAlignment="Center" Margin="0,0,6,0" /><ComboBox x:Name="KindBox" Width="100" SelectedIndex="0"><ComboBoxItem Content="bitmap" /><ComboBoxItem Content="icon" /><ComboBoxItem Content="cursor" /></ComboBox></WrapPanel>
+        <WrapPanel Grid.Row="1" Margin="0,0,0,8"><TextBlock Text="ID" VerticalAlignment="Center" Margin="0,0,6,0" /><TextBox x:Name="NameBox" Width="65" Text="1" Margin="0,0,8,0" /><TextBlock Text="Language" VerticalAlignment="Center" Margin="0,0,6,0" /><TextBox x:Name="LanguageBox" Width="75" Text="1033" Margin="0,0,8,0" /><Button Content="Load from PE" Click="Load_Click" Margin="0,0,6,0" /><Button Content="Choose payload" Click="ChoosePayload_Click" /></WrapPanel>
+        <Grid Grid.Row="2"><Grid.ColumnDefinitions><ColumnDefinition Width="2*" /><ColumnDefinition Width="3*" /></Grid.ColumnDefinitions><Border BorderBrush="Gray" BorderThickness="1" Margin="0,0,8,0"><Image x:Name="ImagePreview" Stretch="Uniform" /></Border><TextBox x:Name="ModelBox" Grid.Column="1" FontFamily="Consolas" FontSize="12" AcceptsReturn="True" TextWrapping="NoWrap" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" /></Grid>
+        <WrapPanel Grid.Row="3" Margin="0,8,0,0"><Button Content="Apply Save As" Click="Apply_Click" Margin="0,0,6,0" /><TextBlock x:Name="StatusText" Text="Ready" VerticalAlignment="Center" TextWrapping="Wrap" /></WrapPanel>
+    </Grid>
+</Window>

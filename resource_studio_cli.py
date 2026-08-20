@@ -3,21 +3,29 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import sys
 import tempfile
 from pathlib import Path
 from typing import Any
 
+from core.batch import BatchWorkspace
 from core.compatibility import inspect_compatibility
 from core.diff import diff_image_payloads, diff_resources
+from core.dialog_resources import DialogResource
 from core.health import PEHealth
+from core.image_resources import BitmapResource, IconCursorGroup
 from core.hex_view import HexViewer
 from core.pe_inspector import PEInspector
 from core.pe_metadata import PEMetadataInspector
 from core.project import Project, ResourceEntry
 from core.reports import FORMATS, render_report
 from core.search import search_resources
-from core.signature import inspect_signature
+from core.string_table import StringTableBlock
+from core.localization import LocalizationCatalog
+from core.manifest import ManifestDocument
+from core.menu_resources import MenuResource
+from core.signature import create_test_certificate, inspect_signature, resign_authenticode, strip_authenticode
 from core.version_info import VersionInfo
 
 
@@ -143,6 +151,13 @@ def command_import(args: argparse.Namespace) -> int:
     return 0
 
 
+def command_batch(args: argparse.Namespace) -> int:
+    workspace = BatchWorkspace.load(args.manifest)
+    payload = workspace.plan() if args.action == "plan" else workspace.apply(args.report)
+    _print(payload, args.json)
+    return 0 if payload.get("willWrite", True) else 1
+
+
 def command_build(args: argparse.Namespace) -> int:
     project = Project.load(args.project)
     output = project.build(args.output)
@@ -156,6 +171,188 @@ def command_inspect(args: argparse.Namespace) -> int:
     payload["signature"] = inspect_signature(args.input).to_dict()
     payload["compatibility"] = inspect_compatibility(args.input).to_dict()
     _print(payload, args.json)
+    return 0
+
+
+def _resource_match(input_path: Path, resource_type: str, name: str, language: int | None) -> ResourceEntry:
+    resource_name = str(name)
+    matches = [entry for entry in _entries(input_path) if entry.resource_type == resource_type and entry.name == resource_name and (language is None or entry.language == language)]
+    if not matches:
+        raise ValueError(f"{resource_type} resource was not found")
+    if len(matches) > 1:
+        raise ValueError(f"{resource_type} resource has multiple languages; pass --language")
+    return matches[0]
+
+
+def command_image_resource(args: argparse.Namespace) -> int:
+    kind = args.kind.upper()
+    resource_type = {"BITMAP": "BITMAP", "ICON": "GROUP_ICON", "CURSOR": "GROUP_CURSOR"}[kind]
+    if args.action == "export":
+        entry = _resource_match(args.input, resource_type, args.name, args.language)
+        if kind == "BITMAP":
+            payload = BitmapResource.from_dib(entry.data)
+            args.output.write_bytes(payload.to_bmp())
+            _print({"output": str(args.output.resolve()), "kind": kind, "width": payload.width, "height": payload.height, "bitCount": payload.bit_count}, args.json)
+        else:
+            group = IconCursorGroup.parse(entry.data)
+            args.output.write_text(json.dumps(group.to_dict(), ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+            _print({"output": str(args.output.resolve()), "kind": group.kind, "dimensions": group.dimensions()}, args.json)
+        return 0
+    from core.pe_writer import LiefPEWriter
+    name: int | str = int(args.name, 0) if args.name.isdigit() else args.name
+    if kind == "BITMAP":
+        data = BitmapResource.from_bmp(args.model.read_bytes()).to_dib()
+    else:
+        group = IconCursorGroup.from_dict(json.loads(args.model.read_text(encoding="utf-8")))
+        if group.kind.upper() != kind:
+            raise ValueError("image group kind does not match --kind")
+        data = group.to_bytes()
+    result = LiefPEWriter().replace_typed_resource(args.input, args.output, resource_type, name, args.language, data)
+    _print({"output": str(result.output_path), "beforeSha256": result.before_sha256, "afterSha256": result.after_sha256, "verified": result.verified}, args.json)
+    return 0
+
+
+def command_version_resource(args: argparse.Namespace) -> int:
+    if args.action == "export":
+        entry = _resource_match(args.input, "VERSION", args.name, args.language)
+        info = VersionInfo.from_bytes(entry.data)
+        args.output.write_text(info.to_json(), encoding="utf-8")
+        _print({"output": str(args.output.resolve()), "type": "VERSION", "name": args.name, "language": entry.language}, args.json)
+        return 0
+    model = VersionInfo.from_json(args.model.read_text(encoding="utf-8"))
+    from core.pe_writer import LiefPEWriter
+    name: int | str = int(args.name, 0) if args.name.isdigit() else args.name
+    result = LiefPEWriter().replace_typed_resource(args.input, args.output, "VERSION", name, args.language, model.to_bytes())
+    _print({"output": str(result.output_path), "beforeSha256": result.before_sha256, "afterSha256": result.after_sha256, "verified": result.verified}, args.json)
+    return 0
+
+
+def command_manifest_resource(args: argparse.Namespace) -> int:
+    if args.action == "export":
+        entry = _resource_match(args.input, "MANIFEST", args.name, args.language)
+        document = ManifestDocument.parse(entry.data.decode("utf-8-sig"))
+        args.output.write_text(json.dumps({"format": "resource_studio.manifest.v1", "xml": document.to_xml(), "validation": document.validate()}, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        _print({"output": str(args.output.resolve()), "type": "MANIFEST", "name": args.name, "language": entry.language}, args.json)
+        return 0
+    payload = json.loads(args.model.read_text(encoding="utf-8"))
+    if payload.get("format") != "resource_studio.manifest.v1":
+        raise ValueError("unsupported manifest model format")
+    document = ManifestDocument.parse(str(payload["xml"]))
+    report = document.validate()
+    if report["errors"]:
+        raise ValueError("cannot apply invalid manifest: " + "; ".join(report["errors"]))
+    from core.pe_writer import LiefPEWriter
+    result = LiefPEWriter().replace_manifest(args.input, args.output, document.to_xml())
+    _print({"output": str(result.output_path), "beforeSha256": result.before_sha256, "afterSha256": result.after_sha256, "verified": result.verified}, args.json)
+    return 0
+
+
+def command_menu_resource(args: argparse.Namespace) -> int:
+    if args.action == "export":
+        entry = _resource_match(args.input, "MENU", args.name, args.language)
+        menu = MenuResource.parse(entry.data)
+        args.output.write_text(json.dumps(menu.to_dict(), ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        _print({"output": str(args.output.resolve()), "type": "MENU", "name": args.name, "language": entry.language}, args.json)
+        return 0
+    menu = MenuResource.from_dict(json.loads(args.model.read_text(encoding="utf-8")))
+    from core.pe_writer import LiefPEWriter
+    name: int | str = int(args.name, 0) if args.name.isdigit() else args.name
+    result = LiefPEWriter().replace_typed_resource(args.input, args.output, "MENU", name, args.language, menu.to_bytes())
+    _print({"output": str(result.output_path), "beforeSha256": result.before_sha256, "afterSha256": result.after_sha256, "verified": result.verified}, args.json)
+    return 0
+
+
+def command_string_table(args: argparse.Namespace) -> int:
+    if args.action == "export":
+        matches = [entry for entry in _entries(args.input) if entry.resource_type == "STRING" and entry.name == str(args.name) and (args.language is None or entry.language == args.language)]
+        if not matches:
+            raise ValueError("STRINGTABLE resource was not found")
+        if len(matches) > 1:
+            raise ValueError("STRINGTABLE resource has multiple languages; pass --language")
+        block_id = int(str(args.name), 0)
+        block = StringTableBlock.from_bytes(block_id, matches[0].data)
+        output = args.output.expanduser().resolve()
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(json.dumps({"format": "resource_studio.string_table.v1", "blockId": block.block_id, "firstStringId": block.first_string_id, "strings": list(block.strings)}, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        _print({"output": str(output), "type": "STRING", "name": args.name, "language": matches[0].language, "firstStringId": block.first_string_id}, args.json)
+        return 0
+    if args.model is None:
+        raise ValueError("string-table apply requires --model")
+    model = json.loads(args.model.read_text(encoding="utf-8"))
+    if model.get("format") != "resource_studio.string_table.v1":
+        raise ValueError("unsupported STRINGTABLE model format")
+    block = StringTableBlock(int(model["blockId"]), tuple(str(value) for value in model["strings"]))
+    from core.pe_writer import LiefPEWriter
+
+    resource_name: int | str = int(str(args.name), 0) if str(args.name).isdigit() else args.name
+    result = LiefPEWriter().replace_typed_resource(args.input, args.output, "STRING", resource_name, args.language, block.to_bytes())
+    _print({"output": str(result.output_path), "beforeSha256": result.before_sha256, "afterSha256": result.after_sha256, "verified": result.verified}, args.json)
+    return 0
+
+
+def command_localization(args: argparse.Namespace) -> int:
+    catalog = LocalizationCatalog.from_json(args.input.read_text(encoding="utf-8"))
+    if args.action == "compare":
+        _print(catalog.mode_report(args.source_language, args.target_language), args.json)
+        return 0
+    pseudo = catalog.pseudo_localize(args.source_language, args.target_language)
+    if args.output is None:
+        raise ValueError("localization pseudo requires --output")
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    args.output.write_text(pseudo.to_json(), encoding="utf-8")
+    _print({"output": str(args.output), "sourceLanguage": args.source_language, "targetLanguage": args.target_language}, args.json)
+    return 0
+
+
+def command_signature(args: argparse.Namespace) -> int:
+    if args.action == "inspect":
+        _print(inspect_signature(args.input).to_dict(), args.json)
+        return 0
+    if args.action == "strip":
+        result = strip_authenticode(args.input, args.output)
+        _print(result.to_dict(), args.json)
+        return 0
+    if args.action == "re-sign":
+        result = resign_authenticode(
+            args.input,
+            args.output,
+            args.certificate,
+            password_env=args.password_env,
+            timestamp_url=args.timestamp_url,
+            signtool=args.signtool,
+            strip_existing=args.strip_existing,
+        )
+        _print(result.to_dict(), args.json)
+        return 0
+    password = os.environ.get(args.password_env, "")
+    if not password:
+        raise ValueError(f"certificate password is missing from environment variable {args.password_env}")
+    payload = create_test_certificate(args.output, password=password, subject=args.subject, days=args.days)
+    _print(payload, args.json)
+    return 0
+
+
+def command_dialog(args: argparse.Namespace) -> int:
+    if args.action == "export":
+        matches = [entry for entry in _entries(args.input) if entry.resource_type == "DIALOG" and entry.name == args.name and (args.language is None or entry.language == args.language)]
+        if not matches:
+            raise ValueError("DIALOG resource was not found")
+        if len(matches) > 1:
+            raise ValueError("DIALOG resource has multiple languages; pass --language")
+        dialog = DialogResource.parse(matches[0].data)
+        output = args.output.expanduser().resolve()
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(json.dumps(dialog.to_dict(), ensure_ascii=False, indent=2), encoding="utf-8")
+        _print({"output": str(output), "type": "DIALOG", "name": args.name, "language": matches[0].language}, args.json)
+        return 0
+    if args.model is None:
+        raise ValueError("dialog apply requires --model")
+    model = json.loads(args.model.read_text(encoding="utf-8"))
+    dialog = DialogResource.from_dict(model)
+    from core.pe_writer import LiefPEWriter
+
+    result = LiefPEWriter().replace_typed_resource(args.input, args.output, "DIALOG", args.name, args.language, dialog.to_bytes())
+    _print({"output": str(result.output_path), "beforeSha256": result.before_sha256, "afterSha256": result.after_sha256, "verified": result.verified}, args.json)
     return 0
 
 
@@ -295,6 +492,13 @@ def parser() -> argparse.ArgumentParser:
     import_parser.add_argument("--json", action="store_true")
     import_parser.set_defaults(handler=command_import)
 
+    batch_parser = subparsers.add_parser("batch", help="plan or apply a multi-file PE batch manifest")
+    batch_parser.add_argument("action", choices=("plan", "apply"))
+    batch_parser.add_argument("manifest", type=Path)
+    batch_parser.add_argument("--report", type=Path)
+    batch_parser.add_argument("--json", action="store_true")
+    batch_parser.set_defaults(handler=command_batch)
+
     build_parser = subparsers.add_parser("build", help="save an isolated project workspace as a new PE")
     build_parser.add_argument("project", type=Path)
     build_parser.add_argument("--output", required=True, type=Path)
@@ -305,6 +509,71 @@ def parser() -> argparse.ArgumentParser:
     inspect_parser.add_argument("input", type=Path)
     inspect_parser.add_argument("--json", action="store_true")
     inspect_parser.set_defaults(handler=command_inspect)
+
+    image_parser = subparsers.add_parser("image-resource", help="export or apply BITMAP or GROUP_ICON/GROUP_CURSOR")
+    image_parser.add_argument("action", choices=("export", "apply"))
+    image_parser.add_argument("input", type=Path)
+    image_parser.add_argument("--kind", choices=("bitmap", "icon", "cursor"), required=True)
+    image_parser.add_argument("--name", required=True)
+    image_parser.add_argument("--language", type=int, required=True)
+    image_parser.add_argument("--output", type=Path, required=True)
+    image_parser.add_argument("--model", type=Path)
+    image_parser.add_argument("--json", action="store_true")
+    image_parser.set_defaults(handler=command_image_resource)
+
+    for command_name, handler, help_text in (("version-resource", command_version_resource, "export or apply a typed VERSION resource"), ("manifest-resource", command_manifest_resource, "export or apply a typed MANIFEST resource"), ("menu-resource", command_menu_resource, "export or apply a typed MENU resource")):
+        resource_parser = subparsers.add_parser(command_name, help=help_text)
+        resource_parser.add_argument("action", choices=("export", "apply"))
+        resource_parser.add_argument("input", type=Path)
+        resource_parser.add_argument("--name", default="1")
+        resource_parser.add_argument("--language", type=int, required=True)
+        resource_parser.add_argument("--output", type=Path, required=True)
+        resource_parser.add_argument("--model", type=Path)
+        resource_parser.add_argument("--json", action="store_true")
+        resource_parser.set_defaults(handler=handler)
+
+    string_table_parser = subparsers.add_parser("string-table", help="export or apply a typed STRINGTABLE block")
+    string_table_parser.add_argument("action", choices=("export", "apply"))
+    string_table_parser.add_argument("input", type=Path)
+    string_table_parser.add_argument("--name", required=True)
+    string_table_parser.add_argument("--language", type=int, required=True)
+    string_table_parser.add_argument("--output", type=Path, required=True)
+    string_table_parser.add_argument("--model", type=Path)
+    string_table_parser.add_argument("--json", action="store_true")
+    string_table_parser.set_defaults(handler=command_string_table)
+
+    localization_parser = subparsers.add_parser("localization", help="compare or pseudo-localize a localization catalog")
+    localization_parser.add_argument("action", choices=("compare", "pseudo"))
+    localization_parser.add_argument("input", type=Path)
+    localization_parser.add_argument("--source-language", required=True)
+    localization_parser.add_argument("--target-language", required=True)
+    localization_parser.add_argument("--output", type=Path)
+    localization_parser.add_argument("--json", action="store_true")
+    localization_parser.set_defaults(handler=command_localization)
+
+    signature_parser = subparsers.add_parser("signature", help="inspect, strip, or test-sign Authenticode")
+    signature_parser.add_argument("action", choices=("inspect", "strip", "re-sign", "create-test-cert"))
+    signature_parser.add_argument("input", type=Path, nargs="?")
+    signature_parser.add_argument("--output", type=Path)
+    signature_parser.add_argument("--certificate", type=Path)
+    signature_parser.add_argument("--password-env", default="RS_PFX_PASSWORD")
+    signature_parser.add_argument("--timestamp-url")
+    signature_parser.add_argument("--signtool", type=Path)
+    signature_parser.add_argument("--strip-existing", action="store_true")
+    signature_parser.add_argument("--subject", default="CN=Resource Studio Test")
+    signature_parser.add_argument("--days", type=int, default=365)
+    signature_parser.add_argument("--json", action="store_true")
+    signature_parser.set_defaults(handler=command_signature)
+
+    dialog_parser = subparsers.add_parser("dialog", help="export or apply a binary Win32 Dialog resource")
+    dialog_parser.add_argument("action", choices=("export", "apply"))
+    dialog_parser.add_argument("input", type=Path)
+    dialog_parser.add_argument("--name", required=True)
+    dialog_parser.add_argument("--language", type=int)
+    dialog_parser.add_argument("--output", required=True, type=Path)
+    dialog_parser.add_argument("--model", type=Path)
+    dialog_parser.add_argument("--json", action="store_true")
+    dialog_parser.set_defaults(handler=command_dialog)
 
     version_parser = subparsers.add_parser("version-info", help="convert VersionInfo between RC and JSON")
     version_parser.add_argument("input", type=Path)
@@ -351,6 +620,19 @@ def main(argv: list[str] | None = None) -> int:
     arguments = parser().parse_args(argv)
     if arguments.command == "report" and arguments.kind in {"diff", "image-diff"} and arguments.right is None:
         parser().error(f"report {arguments.kind} requires LEFT and RIGHT inputs")
+    if arguments.command in {"string-table", "version-resource", "manifest-resource", "menu-resource", "image-resource"} and arguments.action == "apply" and arguments.model is None:
+        parser().error("string-table apply requires --model")
+    if arguments.command == "localization" and arguments.action == "pseudo" and arguments.output is None:
+        parser().error("localization pseudo requires --output")
+    if arguments.command == "signature":
+        if arguments.action == "inspect" and arguments.input is None:
+            parser().error("signature inspect requires INPUT")
+        if arguments.action in {"strip", "re-sign"} and (arguments.input is None or arguments.output is None):
+            parser().error(f"signature {arguments.action} requires INPUT and --output")
+        if arguments.action == "re-sign" and arguments.certificate is None:
+            parser().error("signature re-sign requires --certificate")
+        if arguments.action == "create-test-cert" and arguments.output is None:
+            parser().error("signature create-test-cert requires --output")
     try:
         return int(arguments.handler(arguments))
     except (OSError, ValueError, KeyError, RuntimeError) as exc:
