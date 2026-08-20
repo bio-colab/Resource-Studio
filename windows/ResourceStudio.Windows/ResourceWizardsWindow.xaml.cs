@@ -2,7 +2,10 @@ using System.Diagnostics;
 using System.IO;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Windows;
+using System.Windows.Input;
+using System.Windows.Media;
 using Microsoft.Win32;
 
 namespace ResourceStudio.Windows;
@@ -54,6 +57,99 @@ public partial class ResourceWizardsWindow : Window
     private void MenuExport_Click(object sender, RoutedEventArgs e)
     {
         ExportModel("menu-resource", MenuPeBox.Text, MenuNameBox.Text, MenuLanguageBox.Text, value => MenuJsonBox.Text = value);
+    }
+
+    private void MenuJsonBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
+    {
+        MenuTree.Items.Clear();
+        try
+        {
+            using var document = JsonDocument.Parse(MenuJsonBox.Text);
+            if (!document.RootElement.TryGetProperty("items", out var items) || items.ValueKind != JsonValueKind.Array) return;
+            foreach (var item in items.EnumerateArray()) MenuTree.Items.Add(BuildMenuNode(item));
+        }
+        catch (JsonException) { }
+    }
+
+    private static System.Windows.Controls.TreeViewItem BuildMenuNode(JsonElement item)
+    {
+        var id = item.TryGetProperty("id", out var idValue) ? idValue.ToString() : "?";
+        var text = item.TryGetProperty("text", out var textValue) ? textValue.ToString() : "";
+        var node = new System.Windows.Controls.TreeViewItem { Header = $"{id}: {text}", Tag = int.TryParse(id, out var numericId) ? numericId : null };
+        if (item.TryGetProperty("children", out var children) && children.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var child in children.EnumerateArray()) node.Items.Add(BuildMenuNode(child));
+        }
+        return node;
+    }
+
+    private void MenuTree_PreviewMouseMove(object sender, MouseEventArgs e)
+    {
+        if (e.LeftButton != MouseButtonState.Pressed || MenuTree.SelectedItem is not System.Windows.Controls.TreeViewItem node || node.Tag is not int itemId) return;
+        DragDrop.DoDragDrop(node, itemId, DragDropEffects.Move);
+    }
+
+    private void MenuTree_Drop(object sender, DragEventArgs e)
+    {
+        if (!e.Data.GetDataPresent(typeof(int)) || !int.TryParse(e.Data.GetData(typeof(int))?.ToString(), out var itemId)) return;
+        var target = FindTreeItem(e.OriginalSource as DependencyObject);
+        var parentId = target?.Tag is int targetId && targetId != itemId ? targetId : (int?)null;
+        try
+        {
+            var root = JsonNode.Parse(MenuJsonBox.Text)?.AsObject() ?? throw new InvalidOperationException("invalid menu JSON");
+            var items = root["items"]?.AsArray() ?? throw new InvalidOperationException("menu JSON has no items");
+            if (!RemoveMenuNode(items, itemId, out var moved)) throw new InvalidOperationException("dragged menu item was not found");
+            if (parentId is int destination && ContainsMenuId(moved, destination)) throw new InvalidOperationException("cannot move a menu item below its descendant");
+            var destinationItems = parentId is int parent ? FindMenuNode(items, parent)?["children"]?.AsArray() : items;
+            if (destinationItems is null)
+            {
+                if (parentId is int) throw new InvalidOperationException("drop target was not found");
+                destinationItems = items;
+            }
+            destinationItems.Add(moved);
+            MenuJsonBox.Text = root.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
+            SetStatus("Menu item moved; apply Save As to commit it.");
+        }
+        catch (Exception exc) { SetStatus(exc.Message); }
+    }
+
+    private static System.Windows.Controls.TreeViewItem? FindTreeItem(DependencyObject? source)
+    {
+        while (source is not null && source is not System.Windows.Controls.TreeViewItem) source = VisualTreeHelper.GetParent(source);
+        return source as System.Windows.Controls.TreeViewItem;
+    }
+
+    private static bool RemoveMenuNode(JsonArray items, int id, out JsonNode? removed)
+    {
+        for (var index = 0; index < items.Count; index++)
+        {
+            var node = items[index];
+            if (node?["id"]?.GetValue<int>() == id) { removed = node; items.RemoveAt(index); return true; }
+            if (node?["children"] is JsonArray children && RemoveMenuNode(children, id, out removed)) return true;
+        }
+        removed = null;
+        return false;
+    }
+
+    private static JsonObject? FindMenuNode(JsonArray items, int id)
+    {
+        foreach (var node in items)
+        {
+            if (node is not JsonObject obj) continue;
+            if (obj["id"]?.GetValue<int>() == id) return obj;
+            if (obj["children"] is JsonArray children)
+            {
+                var result = FindMenuNode(children, id);
+                if (result is not null) return result;
+            }
+        }
+        return null;
+    }
+
+    private static bool ContainsMenuId(JsonNode? node, int id)
+    {
+        if (node?["id"]?.GetValue<int>() == id) return true;
+        return node?["children"] is JsonArray children && children.Any(child => ContainsMenuId(child, id));
     }
 
     private void MenuApply_Click(object sender, RoutedEventArgs e)

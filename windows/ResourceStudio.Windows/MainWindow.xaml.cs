@@ -6,6 +6,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using Microsoft.Win32;
 
 namespace ResourceStudio.Windows;
@@ -184,7 +185,7 @@ public partial class MainWindow : Window
             new PropertyRow("Size", row.Size.ToString()),
             new PropertyRow("SHA-256", row.Sha256),
         };
-        PreviewHeader.Text = $"{row.Type} / {row.Name} / language {row.Language}: raw resource bytes";
+        PreviewHeader.Text = $"{row.Type} / {row.Name} / language {row.Language}: typed preview with raw fallback";
         PreviewResource(row);
     }
 
@@ -332,14 +333,85 @@ public partial class MainWindow : Window
 
     private void PreviewResource(ResourceRow row)
     {
+        PreviewVisualPanel.Children.Clear();
         if (!RequirePe() || row.Language is null)
         {
-            PreviewBox.Text = "A numeric language is required for the raw-byte preview.";
+            PreviewBox.Text = "A numeric language is required for the preview.";
             return;
         }
-        var result = RunCliCapture("hex", _selectedPe!, "--type", row.Type, "--name", row.Name, "--language", row.Language.Value.ToString(), "--length", "4096", "--json");
+        string? bitmapOutput = null;
+        var arguments = new List<string> { "preview", _selectedPe!, "--type", row.Type, "--name", row.Name, "--language", row.Language.Value.ToString(), "--length", "4096", "--json" };
+        if (row.Type.Equals("BITMAP", StringComparison.OrdinalIgnoreCase))
+        {
+            bitmapOutput = Path.Combine(Path.GetTempPath(), $"resource-studio-preview-{Guid.NewGuid():N}.bmp");
+            arguments.AddRange(new[] { "--output", bitmapOutput });
+        }
+        var result = RunCliCapture(arguments.ToArray());
         PreviewBox.Text = result.ExitCode == 0 ? PrettyJson(result.StdoutOrError) : result.StdoutOrError;
+        if (result.ExitCode == 0)
+        {
+            try
+            {
+                using var document = JsonDocument.Parse(result.StdoutOrError);
+                RenderVisualPreview(document.RootElement, bitmapOutput);
+            }
+            catch (Exception exc) { PreviewVisualPanel.Children.Add(new TextBlock { Text = $"Visual preview unavailable: {exc.Message}", TextWrapping = TextWrapping.Wrap }); }
+        }
+        if (bitmapOutput is not null) File.Delete(bitmapOutput);
     }
+
+    private void RenderVisualPreview(JsonElement root, string? bitmapOutput)
+    {
+        var kind = root.TryGetProperty("kind", out var kindValue) ? kindValue.GetString() : "raw";
+        var model = root.TryGetProperty("model", out var modelValue) && modelValue.ValueKind == JsonValueKind.Object ? modelValue : default;
+        if (kind == "bitmap" && bitmapOutput is not null && File.Exists(bitmapOutput))
+        {
+            var image = new Image { Stretch = Stretch.Uniform, MaxWidth = 420, MaxHeight = 320 };
+            var source = new BitmapImage();
+            using (var stream = File.OpenRead(bitmapOutput)) { source.BeginInit(); source.CacheOption = BitmapCacheOption.OnLoad; source.StreamSource = stream; source.EndInit(); }
+            image.Source = source; PreviewVisualPanel.Children.Add(image); return;
+        }
+        if (kind == "menu-tree" && model.ValueKind == JsonValueKind.Object && model.TryGetProperty("items", out var menuItems))
+        {
+            PreviewVisualPanel.Children.Add(RenderMenuPreview(menuItems)); return;
+        }
+        if (kind == "dialog" && model.ValueKind == JsonValueKind.Object)
+        {
+            var canvas = new Canvas { Width = Math.Max(240, ReadDouble(model, "width", 240) * 2), Height = Math.Max(160, ReadDouble(model, "height", 160) * 2), Background = Brushes.WhiteSmoke };
+            if (model.TryGetProperty("controls", out var controls) && controls.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var control in controls.EnumerateArray())
+                {
+                    var text = control.TryGetProperty("title", out var title) ? title.ToString() : "control";
+                    var border = new Border { BorderBrush = Brushes.SlateGray, BorderThickness = new Thickness(1), Background = Brushes.White, Child = new TextBlock { Text = text, Margin = new Thickness(3), TextWrapping = TextWrapping.Wrap }, Width = Math.Max(30, ReadDouble(control, "width", 40) * 2), Height = Math.Max(18, ReadDouble(control, "height", 14) * 2) };
+                    Canvas.SetLeft(border, ReadDouble(control, "x", 0) * 2); Canvas.SetTop(border, ReadDouble(control, "y", 0) * 2); canvas.Children.Add(border);
+                }
+            }
+            PreviewVisualPanel.Children.Add(canvas); return;
+        }
+        if ((kind == "xml" || kind == "version-info" || kind == "string-table" || kind == "image-group") && model.ValueKind == JsonValueKind.Object)
+        {
+            var summary = new TextBlock { Text = JsonSerializer.Serialize(model, new JsonSerializerOptions { WriteIndented = true }), FontFamily = new FontFamily("Consolas"), TextWrapping = TextWrapping.Wrap };
+            PreviewVisualPanel.Children.Add(summary); return;
+        }
+        PreviewVisualPanel.Children.Add(new TextBlock { Text = "No specialized visual renderer is available; use the raw/typed JSON preview.", TextWrapping = TextWrapping.Wrap });
+    }
+
+    private static StackPanel RenderMenuPreview(JsonElement items)
+    {
+        var panel = new StackPanel { Orientation = Orientation.Vertical };
+        if (items.ValueKind != JsonValueKind.Array) return panel;
+        foreach (var item in items.EnumerateArray())
+        {
+            var text = item.TryGetProperty("text", out var value) ? value.ToString() : "";
+            var row = new Border { BorderBrush = Brushes.SlateGray, BorderThickness = new Thickness(1), Background = Brushes.WhiteSmoke, Margin = new Thickness(0, 1, 0, 1), Padding = new Thickness(4), Child = new TextBlock { Text = text } };
+            panel.Children.Add(row);
+            if (item.TryGetProperty("children", out var children)) { var nested = RenderMenuPreview(children); nested.Margin = new Thickness(18, 0, 0, 0); panel.Children.Add(nested); }
+        }
+        return panel;
+    }
+
+    private static double ReadDouble(JsonElement node, string name, double fallback) => node.TryGetProperty(name, out var value) && value.TryGetDouble(out var number) ? number : fallback;
 
     private TreeViewItem BuildTreeItem(JsonElement node)
     {

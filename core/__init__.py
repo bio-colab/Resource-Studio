@@ -24,6 +24,7 @@ from .pe_metadata import PEMetadataInspector, PEMetadataReport
 from .pe_writer import LiefPEWriter, PEWriterError, WriteResult
 from .plugin_host import PluginHost, PluginHostError, PluginLimits, PluginResult
 from .plugins import PluginContext, PluginManifest, PluginRegistry, ResourceTypeDefinition
+from .preview import PreviewEngine, PreviewResult
 from .project import Project, ResourceEntry
 from .provenance import build_provenance, write_provenance
 from .reports import render_report
@@ -86,6 +87,8 @@ __all__ = [
     "PluginRegistry",
     "ResourceTypeDefinition",
     "PluginResult",
+    "PreviewEngine",
+    "PreviewResult",
     "Project",
     "ReplaceResourceCommand",
     "ResourceEntry",

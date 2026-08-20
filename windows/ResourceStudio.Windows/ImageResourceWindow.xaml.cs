@@ -1,6 +1,8 @@
 using System.Diagnostics;
 using System.IO;
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Windows;
 using System.Windows.Media.Imaging;
 using Microsoft.Win32;
@@ -11,6 +13,7 @@ public partial class ImageResourceWindow : Window
 {
     private readonly string _cliPath;
     private string? _payloadPath;
+    private readonly List<GroupEntry> _entries = new();
 
     public ImageResourceWindow(string cliPath, string? selectedPe)
     {
@@ -35,8 +38,13 @@ public partial class ImageResourceWindow : Window
             {
                 ImagePreview.Source = new BitmapImage(new Uri(temporary));
                 ModelBox.Text = result.Output;
+                GroupEntriesList.ItemsSource = null;
             }
-            else ModelBox.Text = File.ReadAllText(temporary);
+            else
+            {
+                ModelBox.Text = File.ReadAllText(temporary);
+                LoadGroupModel(ModelBox.Text);
+            }
             SetStatus("Image resource loaded from PE.");
         }
         catch (Exception exc) { SetStatus(exc.Message); }
@@ -47,14 +55,78 @@ public partial class ImageResourceWindow : Window
         var dialog = new OpenFileDialog { Filter = Kind == "bitmap" ? "BMP files (*.bmp)|*.bmp|All files (*.*)|*.*" : "Image models (*.json)|*.json|All files (*.*)|*.*" };
         if (dialog.ShowDialog() != true) return;
         _payloadPath = dialog.FileName;
-        if (Kind == "bitmap") ImagePreview.Source = new BitmapImage(new Uri(dialog.FileName));
-        ModelBox.Text = Kind == "bitmap" ? dialog.FileName : File.ReadAllText(dialog.FileName);
+        if (Kind == "bitmap")
+        {
+            ImagePreview.Source = new BitmapImage(new Uri(dialog.FileName));
+            GroupEntriesList.ItemsSource = null;
+        }
+        else
+        {
+            ModelBox.Text = File.ReadAllText(dialog.FileName);
+            LoadGroupModel(ModelBox.Text);
+        }
         SetStatus("Payload selected.");
+    }
+
+    private void GroupEntriesList_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (GroupEntriesList.SelectedItem is not GroupEntry entry) return;
+        EntryWidthBox.Text = entry.Width.ToString();
+        EntryHeightBox.Text = entry.Height.ToString();
+        EntryIdBox.Text = entry.ResourceId.ToString();
+    }
+
+    private void UpdateEntry_Click(object sender, RoutedEventArgs e)
+    {
+        if (GroupEntriesList.SelectedItem is not GroupEntry entry) { SetStatus("Select an image entry first."); return; }
+        if (!int.TryParse(EntryWidthBox.Text, out var width) || !int.TryParse(EntryHeightBox.Text, out var height) || !int.TryParse(EntryIdBox.Text, out var id) || width < 0 || width > 255 || height < 0 || height > 255 || id < 0 || id > 65535)
+        {
+            SetStatus("Width, height, and resource ID are invalid."); return;
+        }
+        entry.Width = width; entry.Height = height; entry.ResourceId = id;
+        GroupEntriesList.Items.Refresh();
+        SyncGroupModel();
+        SetStatus("Image entry updated; apply Save As to commit it.");
+    }
+
+    private void AddEntry_Click(object sender, RoutedEventArgs e)
+    {
+        if (Kind == "bitmap") { SetStatus("Bitmap resources do not contain a group list."); return; }
+        var entry = new GroupEntry { Width = 32, Height = 32, BytesInResource = 1, PlanesOrHotspotX = 1, BitCountOrHotspotY = 32, ResourceId = _entries.Count + 1 };
+        _entries.Add(entry); GroupEntriesList.Items.Refresh(); GroupEntriesList.SelectedItem = entry; SyncGroupModel();
+        SetStatus("Image entry added; supply its resource ID before applying.");
+    }
+
+    private void RemoveEntry_Click(object sender, RoutedEventArgs e)
+    {
+        if (GroupEntriesList.SelectedItem is not GroupEntry entry) { SetStatus("Select an image entry first."); return; }
+        _entries.Remove(entry); GroupEntriesList.Items.Refresh(); SyncGroupModel();
+        SetStatus("Image entry removed; apply Save As to commit it.");
+    }
+
+    private void LoadGroupModel(string text)
+    {
+        try
+        {
+            var model = JsonSerializer.Deserialize<GroupModel>(text, JsonOptions) ?? throw new InvalidOperationException("image group model is empty");
+            _entries.Clear(); _entries.AddRange(model.Entries ?? new List<GroupEntry>());
+            GroupEntriesList.ItemsSource = _entries;
+            if (_entries.Count > 0) GroupEntriesList.SelectedIndex = 0;
+        }
+        catch (Exception exc) { GroupEntriesList.ItemsSource = null; SetStatus($"Group model unavailable: {exc.Message}"); }
+    }
+
+    private void SyncGroupModel()
+    {
+        if (Kind == "bitmap") return;
+        var model = new GroupModel { Format = "resource_studio.image_group.v1", Kind = Kind.ToUpperInvariant(), Entries = _entries };
+        ModelBox.Text = JsonSerializer.Serialize(model, JsonOptions);
     }
 
     private void Apply_Click(object sender, RoutedEventArgs e)
     {
         if (!File.Exists(PePathBox.Text)) { SetStatus("Choose a PE file first."); return; }
+        if (Kind != "bitmap") SyncGroupModel();
         var payload = _payloadPath;
         if (Kind != "bitmap")
         {
@@ -84,5 +156,23 @@ public partial class ImageResourceWindow : Window
     }
 
     private void SetStatus(string text) => StatusText.Text = text;
+    private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true, WriteIndented = true };
     private sealed record CliResult(int ExitCode, string Output);
+    private sealed class GroupModel
+    {
+        [JsonPropertyName("format")] public string Format { get; set; } = "resource_studio.image_group.v1";
+        [JsonPropertyName("kind")] public string Kind { get; set; } = "ICON";
+        [JsonPropertyName("entries")] public List<GroupEntry> Entries { get; set; } = new();
+    }
+    private sealed class GroupEntry
+    {
+        [JsonPropertyName("width")] public int Width { get; set; }
+        [JsonPropertyName("height")] public int Height { get; set; }
+        [JsonPropertyName("colorCount")] public int ColorCount { get; set; }
+        [JsonPropertyName("planesOrHotspotX")] public int PlanesOrHotspotX { get; set; }
+        [JsonPropertyName("bitCountOrHotspotY")] public int BitCountOrHotspotY { get; set; }
+        [JsonPropertyName("bytesInResource")] public int BytesInResource { get; set; }
+        [JsonPropertyName("resourceId")] public int ResourceId { get; set; }
+        [JsonIgnore] public string Label => $"{Width}x{Height} · ID {ResourceId}";
+    }
 }

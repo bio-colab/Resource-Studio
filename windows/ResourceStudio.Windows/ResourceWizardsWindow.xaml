@@ -31,7 +31,7 @@
                 <Grid Margin="8">
                     <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                     <WrapPanel Margin="0,0,0,8"><TextBlock Text="PE" VerticalAlignment="Center" Margin="0,0,6,0" /><TextBox x:Name="MenuPeBox" Width="390" Margin="0,0,8,0" /><TextBlock Text="ID" VerticalAlignment="Center" Margin="0,0,6,0" /><TextBox x:Name="MenuNameBox" Width="55" Text="1" Margin="0,0,8,0" /><TextBlock Text="Lang" VerticalAlignment="Center" Margin="0,0,6,0" /><TextBox x:Name="MenuLanguageBox" Width="70" Text="1033" /></WrapPanel>
-                    <TextBox x:Name="MenuJsonBox" Grid.Row="1" FontFamily="Consolas" FontSize="12" AcceptsReturn="True" TextWrapping="NoWrap" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" />
+                    <Grid Grid.Row="1"><Grid.ColumnDefinitions><ColumnDefinition Width="3*" /><ColumnDefinition Width="2*" /></Grid.ColumnDefinitions><TextBox x:Name="MenuJsonBox" FontFamily="Consolas" FontSize="12" AcceptsReturn="True" TextWrapping="NoWrap" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" TextChanged="MenuJsonBox_TextChanged" /><TreeView x:Name="MenuTree" Grid.Column="1" Margin="8,0,0,0" AllowDrop="True" PreviewMouseMove="MenuTree_PreviewMouseMove" Drop="MenuTree_Drop" /></Grid>
                     <WrapPanel Grid.Row="2" Margin="0,8,0,0"><Button Content="Load from PE" Click="MenuExport_Click" Margin="0,0,6,0" /><Button Content="Apply Save As" Click="MenuApply_Click" /></WrapPanel>
                 </Grid>
             </TabItem>

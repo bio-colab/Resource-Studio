@@ -18,6 +18,7 @@ from core.image_resources import BitmapResource, IconCursorGroup
 from core.hex_view import HexViewer
 from core.pe_inspector import PEInspector
 from core.pe_metadata import PEMetadataInspector
+from core.preview import PreviewEngine
 from core.project import Project, ResourceEntry
 from core.reports import FORMATS, render_report
 from core.search import search_resources
@@ -182,6 +183,14 @@ def _resource_match(input_path: Path, resource_type: str, name: str, language: i
     if len(matches) > 1:
         raise ValueError(f"{resource_type} resource has multiple languages; pass --language")
     return matches[0]
+
+
+def command_preview(args: argparse.Namespace) -> int:
+    entry = _resource_match(args.input, args.type.upper(), args.name, args.language)
+    output = args.output if args.output is not None else None
+    result = PreviewEngine.preview(args.type, entry.data, resource_name=entry.name, language=entry.language, raw_length=args.length, output_path=output)
+    _print(result.to_dict(), args.json)
+    return 0
 
 
 def command_image_resource(args: argparse.Namespace) -> int:
@@ -509,6 +518,16 @@ def parser() -> argparse.ArgumentParser:
     inspect_parser.add_argument("input", type=Path)
     inspect_parser.add_argument("--json", action="store_true")
     inspect_parser.set_defaults(handler=command_inspect)
+
+    preview_parser = subparsers.add_parser("preview", help="preview a typed resource with raw fallback")
+    preview_parser.add_argument("input", type=Path)
+    preview_parser.add_argument("--type", required=True)
+    preview_parser.add_argument("--name", required=True)
+    preview_parser.add_argument("--language", type=int, required=True)
+    preview_parser.add_argument("--length", type=int, default=4096)
+    preview_parser.add_argument("--output", type=Path)
+    preview_parser.add_argument("--json", action="store_true")
+    preview_parser.set_defaults(handler=command_preview)
 
     image_parser = subparsers.add_parser("image-resource", help="export or apply BITMAP or GROUP_ICON/GROUP_CURSOR")
     image_parser.add_argument("action", choices=("export", "apply"))

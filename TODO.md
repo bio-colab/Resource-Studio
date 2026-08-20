@@ -149,6 +149,10 @@
 | [x] | QA-09 | Batch Workspace على ملفات PE متعددة | اختبارات core وCLI تغطي plan/apply، replace/delete، التقرير، backup، رفض in-place، وحماية SHA للـfixture |
 | [x] | QA-10 | StringTable/Version/Manifest/Menu typed workflows | اختبار CLI export/apply وround-trip وvalidation ورفض Manifest غير الصالح وJSON menu model |
 | [x] | QA-11 | Image resource workflow | اختبار BITMAP BMP↔DIB export/apply وJSON model للمجموعات مع حماية fixture |
+| [x] | QA-12 | PreviewEngine typed/raw contract | اختبار Manifest/Version/Menu/StringTable/Bitmap وraw fallback وmalformed fallback وBMP output |
+| [x] | QA-13 | PreviewEngine golden contract | `tests/golden/preview_models.json` يثبت kind/title/summary/raw fields للـManifest/Menu/raw preview |
+| [x] | QA-14 | Menu tree mutation contract | اختبار move/reparent/reorder/update ورفض نقل العقدة أسفل descendant مع round-trip |
+| [~] | QA-15 | WPF visual rendering smoke | بناء WPF وتشغيل العملية ووجود handlers؛ اختبار UI automation المرئي الكامل ما يزال لاحقًا |
 | [ ] | QA-05 | UI automation وAccessibility keyboard/screen reader |
 | [~] | QA-06 | مقارنة SHA-256 للأصل قبل وبعد كل اختبار | SHA guards تشمل Project/writer/editors/inspector؛ تعميم helper على كل اختبار قديم لاحق |
 | [x] | QA-07 | لا تشغيل MCP أو نقل بعيد في هذه الدورة | MCP بقي مؤجلًا ولم تُضف وظائف جديدة أثناء الدورة |
@@ -225,6 +229,9 @@
 | 2026-08-20 | تنفيذ متطلبات المرحلة الثامنة UI-02/UI-03/UI-04 | مكتمل جزئيًا ومختبر | WPF Resources/Properties/Preview/Search/Diff/Localization tabs، اختصارات Dark/High Contrast، CLI localization، اختبار `test_phase8_localization_cli.py`، وبناء WPF ناجح بلا تحذيرات |
 | 2026-08-20 | بدء Productization بـ Batch Workspace | مكتمل جزئيًا ومختبر | `core/batch.py`, CLI `batch plan/apply`, تبويب WPF Batch Workspace، اختبارات `test_batch.py` و`test_batch_cli.py`، وWPF build ناجح على Windows |
 | 2026-08-20 | تنفيذ Common Resource Wizards لـStringTable/Version/Manifest/Menu/Image | مكتمل جزئيًا ومختبر | `StringTableEditorWindow`, `ResourceWizardsWindow`, `ImageResourceWindow`, أوامر `string-table`, `version-resource`, `manifest-resource`, `menu-resource`, `image-resource`، 52 اختبارًا مسجلًا، وبناء WPF ناجح بـ0 تحذيرات و0 أخطاء |
+| 2026-08-20 | تنفيذ PreviewEngine الموحد وربطه بـWPF | مكتمل جزئيًا ومختبر | `core/preview.py`, CLI `preview`, WPF Preview tab typed summary/raw fallback، اختبار `test_preview_engine.py`، وأمر preview الفعلي على Windows نجح |
+| 2026-08-20 | توسيع Menu Wizard وإضافة Preview golden contract | مكتمل جزئيًا ومختبر | Menu TreeView حي من JSON، `preview_models.json`, `test_preview_golden.py`، وبناء WPF النهائي نجح بـ0 أخطاء و0 تحذيرات |
+| 2026-08-20 | تنفيذ Menu drag-and-drop وIcon/Cursor group editor وvisual Preview | مكتمل جزئيًا ومختبر | `MenuResource.move_item/update_item`, WPF drag/drop، قائمة Icon/Cursor وعناصر Update/Add/Remove، Bitmap/Menu/Dialog visual rendering، `test_menu_editing.py` نجح على Windows، وبناء WPF بـ0 أخطاء و0 تحذيرات |
 
 ## المرحلة 10: Productization backlog وفق احتياجات المطورين والهواة
 
@@ -233,8 +240,8 @@
 | الحالة | المعرّف | المهمة | الأولوية | معيار الإنجاز |
 |---|---|---|---|---|
 | [~] | PROD-01 | Batch Workspace متعدد الملفات | حرجة | `core/batch.py` وCLI `batch plan/apply` يدعمان manifest متعدد الملفات، add/replace/delete/change-language، dry-run، staging، atomic Save As، backup، rollback عند فشل commit، report JSON، وWPF Batch Workspace؛ فهرسة المجلد والـqueue التفاعلي وresume الكامل لاحقة |
-| [~] | PROD-02 | Common Resource Wizards والمحررات المرئية | حرجة | StringTable Editor WPF بجدول 16 خانة وCLI export/apply؛ Resource Wizards WPF لـVersionInfo/Manifest/Menu مع JSON/XML وSave As؛ Image Wizard WPF لمعاينة BMP وJSON Icon/Cursor؛ typed CLI وround-trip tests مكتملة، بينما tree editing المتقدم للـMenu وmulti-image editing المتقدم لاحق |
-| [ ] | PROD-03 | Preview Engine موحد | عالية | معاينة icon/cursor/bitmap/dialog/menu/manifest، raw fallback، واختبارات golden للعرض والتحويل |
+| [~] | PROD-02 | Common Resource Wizards والمحررات المرئية | حرجة | StringTable Editor WPF بجدول 16 خانة وCLI export/apply؛ Resource Wizards WPF لـVersionInfo/Manifest/Menu مع JSON/XML وSave As؛ Menu يدعم drag-and-drop إلى parent وإعادة بناء JSON؛ Image Wizard يحرر عناصر Icon/Cursor الفردية ويزامن group JSON؛ multi-image payload editing وUI automation لاحقان |
+| [~] | PROD-03 | Preview Engine موحد | عالية | `core/preview.py` وCLI `preview` يدعمان Manifest/Version/Menu/Dialog/StringTable/Bitmap/Icon/Cursor مع summary typed وraw fallback وBMP output اختياري؛ WPF Preview يرسم Bitmap وMenu وDialog ويعرض typed models للأنواع الأخرى؛ golden screenshots وrendering المتخصص الكامل لاحق |
 | [ ] | PROD-04 | Localization Workbench | حرجة | multi-file/multi-locale grid، comments/context، placeholder وhotkey checks، XLIFF/PO/RESX، side-by-side editing |
 | [ ] | PROD-05 | Post-write Diagnostics Center | حرجة | تقرير before/after للأقسام وdirectories وchecksum وsignature وoverlay وresource bounds مع تفسير قابل للفهم |
 | [ ] | PROD-06 | UI Automation وAccessibility | عالية | اختبارات WPF قابلة لإعادة التشغيل للفتح/البحث/التعديل/Save As، keyboard navigation، AutomationProperties، High Contrast وscreen-reader smoke test |

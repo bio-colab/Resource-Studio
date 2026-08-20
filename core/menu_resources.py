@@ -87,6 +87,55 @@ class MenuResource:
                 return nested
         return None
 
+    def move_item(self, item_id: int, new_parent_id: int | None, index: int) -> None:
+        """Move one node within the menu tree without changing its identity."""
+        if item_id == new_parent_id:
+            raise MenuResourceError("a menu item cannot be its own parent")
+        item = _detach_item(self.items, item_id)
+        if item is None:
+            raise MenuResourceError(f"menu item not found: {item_id}")
+        if new_parent_id is None:
+            target = self.items
+        else:
+            parent = self.find_id(new_parent_id)
+            if parent is None:
+                raise MenuResourceError(f"menu parent not found: {new_parent_id}")
+            if _contains_item(item, new_parent_id):
+                _restore_item(self.items, item)
+                raise MenuResourceError("cannot move a menu item below its descendant")
+            parent.flags |= MF_POPUP
+            target = parent.children
+        if index < 0 or index > len(target):
+            raise MenuResourceError("menu insertion index is outside the target list")
+        target.insert(index, item)
+
+    def update_item(self, item_id: int, *, text: str | None = None, flags: int | None = None) -> None:
+        item = self.find_id(item_id)
+        if item is None:
+            raise MenuResourceError(f"menu item not found: {item_id}")
+        if text is not None:
+            item.text = text
+        if flags is not None:
+            item.flags = flags
+
+
+def _detach_item(items: list[MenuItem], item_id: int) -> MenuItem | None:
+    for position, item in enumerate(items):
+        if item.item_id == item_id:
+            return items.pop(position)
+        detached = _detach_item(item.children, item_id)
+        if detached is not None:
+            return detached
+    return None
+
+
+def _restore_item(items: list[MenuItem], item: MenuItem) -> None:
+    items.append(item)
+
+
+def _contains_item(item: MenuItem, item_id: int) -> bool:
+    return item.item_id == item_id or any(_contains_item(child, item_id) for child in item.children)
+
 
 def _parse_level(data: bytes, offset: int) -> tuple[list[MenuItem], int]:
     items: list[MenuItem] = []
