@@ -11,10 +11,10 @@
         </Grid.RowDefinitions>
         <ToolBarTray Grid.Row="0" AutomationProperties.Name="Primary actions" Margin="0,0,0,6">
             <ToolBar Header="Workspace">
-                <Button AutomationProperties.AutomationId="OpenPeButton" AutomationProperties.AcceleratorKey="Ctrl+O" ToolTip="Open a PE file without modifying it" Content="Open PE" Click="OpenPe_Click" />
+                <Button AutomationProperties.AutomationId="OpenPeButton" AutomationProperties.AcceleratorKey="Ctrl+O" AutomationProperties.HelpText="Open a PE file without modifying it; shortcut Ctrl+O" ToolTip="Open a PE file without modifying it" Content="Open PE" Click="OpenPe_Click" />
                 <Button AutomationProperties.AutomationId="ListResourcesButton" ToolTip="Explore the resources in the current PE" Content="Explore resources" Click="List_Click" />
-                <Button AutomationProperties.AutomationId="InspectButton" AutomationProperties.AcceleratorKey="Ctrl+I" ToolTip="Inspect PE structure and integrity" Content="Inspect" Click="Inspect_Click" />
-                <Button AutomationProperties.AutomationId="ValidateButton" ToolTip="Validate the current PE without writing" Content="Validate" Click="Validate_Click" />
+                <Button AutomationProperties.AutomationId="InspectButton" AutomationProperties.AcceleratorKey="Ctrl+I" AutomationProperties.HelpText="Inspect PE structure and integrity; shortcut Ctrl+I" ToolTip="Inspect PE structure and integrity" Content="Inspect" Click="Inspect_Click" />
+                <Button AutomationProperties.AutomationId="ValidateButton" AutomationProperties.HelpText="Validate the current PE without writing" ToolTip="Validate the current PE without writing" Content="Validate" Click="Validate_Click" />
             </ToolBar>
             <ToolBar Header="Editors">
                 <Button AutomationProperties.AutomationId="DialogEditorButton" ToolTip="Edit a dialog visually and save a new PE" Content="Dialog Editor" Click="DialogEditor_Click" />
@@ -134,7 +134,8 @@
             <StackPanel Orientation="Horizontal">
                 <TextBlock AutomationProperties.AutomationId="MainStatusText" x:Name="StatusText" Text="Ready" Margin="0,0,12,0" />
                 <TextBlock AutomationProperties.AutomationId="CliStateText" x:Name="CliStateText" Text="Idle" FontWeight="SemiBold" Margin="0,0,12,0" />
-                <TextBlock AutomationProperties.AutomationId="StatusDetailText" x:Name="StatusDetailText" Text="Open a PE to begin" Foreground="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}" TextTrimming="CharacterEllipsis" />
+                <TextBlock AutomationProperties.AutomationId="StatusDetailText" x:Name="StatusDetailText" Text="Open a PE to begin" Foreground="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}" TextTrimming="CharacterEllipsis" Margin="0,0,12,0" />
+                <Button AutomationProperties.AutomationId="StopCliButton" AutomationProperties.HelpText="Stop the active CLI process; the input remains unchanged" x:Name="StopCliButton" Content="Stop" Click="StopCli_Click" IsEnabled="False" Padding="10,2" ToolTip="Stop the current CLI operation; the input remains unchanged" />
             </StackPanel>
         </Border>
     </Grid>

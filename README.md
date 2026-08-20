@@ -179,3 +179,18 @@ Resource Studio كود مستقل. يعتمد backend PE على LIEF المرخ�
 تتجه الدورة التالية إلى تحسين تجربة الهاوي والمطور والمترجم فوق الوظائف الحالية، لا إلى إضافة أنواع موارد جديدة. الواجهة تعيد تنظيم الأفعال ضمن **Workspace** و**Editors** و**Tools**، وتعرض سياق الملف وسياسة `Save As only` وحالة العملية وتفاصيلها. تبقى raw JSON وInspect وVerificationReport متاحة للمطور، لكن تصبح المعاينة والملخص نقطة الدخول الطبيعية للمستخدم الجديد.
 
 المسار المستهدف هو: **Open → Explore → Preview → Edit → Save As → Verify**. كل نافذة وكل عملية يجب أن تكون قابلة للفهم، قابلة للوصول بلوحة المفاتيح، واضحة الحالة، ولا تعتمد على اللون أو السحب وحده. التفاصيل والخطة القابلة للتتبع موجودة في [`docs/UIUX-GOAL.md`](docs/UIUX-GOAL.md)، وأدلة البحث في [`docs/UIUX-RESEARCH-NOTES-2026-08-20.md`](docs/UIUX-RESEARCH-NOTES-2026-08-20.md).
+
+
+### دفعة UI/UX الثانية
+
+تعرض نوافذ Dialog Editor وImage Wizard وResource Wizards وStringTable Editor وAuthenticode Tools الآن **Verification summary** مفهومة بعد عمليات Save As، مع إبقاء JSON الخام للتشخيص. كما أصبح MainWindow يشغّل CLI بطريقة asynchronous ويعرض زر **Stop** أثناء العملية؛ الإيقاف يترك input دون تغيير ويعرض حالة `Stopped`، بينما تثبت UI automation أن الزر يعود معطلًا بعد اكتمال العملية.
+
+
+### دفعة UI/UX الثالثة: async موحّد
+
+تم توحيد تشغيل CLI في MainWindow وجميع النوافذ الثانوية عبر `CliProcessRunner`. عمليات Load وExport وApply وInspect لا تحجب واجهة WPF، وزر Stop يقتل شجرة العملية ويعرض `Stopped — input unchanged` مع الحفاظ على سياسة Save As والتحقق الموجودين في النواة. ما تزال مصفوفة اختبار الضغط الطويل وkeyboard/accessibility/failure/resize الأوسع مسجلة كخطوات تحقق لاحقة، لا كضمانات ضمنية.
+
+
+### دفعة إغلاق الفجوات
+
+تستخدم كل نوافذ WPF التي تشغّل CLI الآن runner غير حاجبًا موحدًا مع Stop وحالة `Stopped — input unchanged`. أضيفت HelpText لأفعال Open/Inspect/Validate وStop، وثبت UI automation وجود Stop في Image Wizard وتعطيله عند الخمول مع استمرار BMP preview. تبقى اختبارات Stop أثناء عملية طويلة فعلية، وF6/TabIndex/screen-reader، وfailure/resize matrix ضمن قائمة التحقق التالية لأنها تحتاج fixtures تشغيل مخصصة ولا ينبغي تزويرها داخل الإنتاج.

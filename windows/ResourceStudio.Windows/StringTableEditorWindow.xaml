@@ -13,7 +13,8 @@
             <Button Content="Load from PE" Click="LoadPe_Click" Margin="0,0,6,6" />
             <Button Content="Load JSON" Click="LoadJson_Click" Margin="0,0,6,6" />
             <Button Content="Save JSON" Click="SaveJson_Click" Margin="0,0,6,6" />
-            <Button Content="Apply Save As" Click="Apply_Click" Margin="0,0,6,6" />
+            <Button Content="Apply Save As" Click="Apply_Click" Margin="0,0,6,0" />
+            <Button AutomationProperties.AutomationId="StopCliButton" x:Name="StopCliButton" Content="Stop" Click="StopCli_Click" IsEnabled="False" ToolTip="Stop the current operation; the input remains unchanged" />
         </WrapPanel>
         <Grid Grid.Row="1" Margin="0,0,0,8">
             <Grid.ColumnDefinitions>
@@ -34,6 +35,9 @@
                 <DataGridTextColumn Header="Text" Binding="{Binding Text, UpdateSourceTrigger=PropertyChanged}" Width="*" />
             </DataGrid.Columns>
         </DataGrid>
-        <TextBlock x:Name="StatusText" Grid.Row="3" Text="Ready" TextWrapping="Wrap" />
+        <StackPanel Grid.Row="3">
+            <TextBlock x:Name="StatusText" Text="Ready" TextWrapping="Wrap" />
+            <TextBox AutomationProperties.AutomationId="VerificationSummaryText" AutomationProperties.Name="Verification summary" x:Name="VerificationSummaryText" Margin="0,4,0,0" IsReadOnly="True" TextWrapping="Wrap" Visibility="Collapsed" />
+        </StackPanel>
     </Grid>
 </Window>

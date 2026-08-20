@@ -149,3 +149,26 @@ Ready
 [7]: https://www.nngroup.com/articles/visibility-system-status/ "Visibility of System Status — Nielsen Norman Group"
 
 [8]: https://www.pe-explorer.com/peexplorer-tour-resource-editor.htm "PE Explorer resource editor feature tour"
+
+
+## حالة التطبيق — الدفعة الثانية
+
+أصبح VerificationReport الموجود في النواة ظاهرًا في النوافذ التي تنفذ Save As: Dialog Editor وImage Wizard وResource Wizards وStringTable Editor وAuthenticode Tools. يعرض الملخص `Output is valid PE` و`Target resource changed` أو no-op preserved و`Resource round-trip` و`Resource graph` و`Non-target PE structures` وWindows/signature/commit state، بينما يبقى JSON الخام متاحًا في output details.
+
+وفي MainWindow أصبح تشغيل CLI asynchronous بدل انتظار blocking على UI thread. يظهر زر **Stop** أثناء العملية فقط، وعند الإيقاف تعرض الواجهة `Stopped — input unchanged`، مع قتل شجرة process التابعة للـCLI وعدم تعديل input. يعود الزر معطلًا بعد `Completed` أو `Failed`، وتثبت UI automation هذا السلوك الأساسي.
+
+هذه الدفعة لا تدّعي بعد أن كل النوافذ الثانوية asynchronous أو أن كل Save dialog قابل للإلغاء من داخل UI؛ تلك فجوة لاحقة مسجلة في TODO. كما أن verification summary يعتمد على حقل `verification` الصادر من CLI ولا يكرر منطق Verification Engine في WPF.
+
+
+## حالة التطبيق — الدفعة الثالثة: async موحّد للنوافذ الثانوية
+
+تم توحيد تشغيل CLI في MainWindow وDialog Editor وImage Wizard وResource Wizards وStringTable Editor وAuthenticode Tools عبر `CliProcessRunner`. كل نافذة تنفذ عملياتها بقراءة stdout/stderr غير حاجبة، وتملك Stop واضحًا يعيد حالة `Stopped — input unchanged`، بينما يبقى Save As وrollback وVerification Engine في النواة كما هما. لم يُنشأ backend جديد؛ runner المشترك هو طبقة WPF صغيرة فقط لإدارة process lifetime وCancellationToken.
+
+أثبت بناء WPF نجاح التكامل، وأثبت UI automation بقاء المسار الرئيسي وImage Wizard وBMP preview بعد التغيير. أما اختبار ضغط Stop أثناء عملية طويلة حقيقية، واختبارات failure/resize الشاملة، فما تزالان مرحلتين منفصلتين لأنهما تحتاجان fixture تشغيل متعمدًا وطويلًا لا ينبغي إدخاله في مسار الإنتاج.
+
+
+## حالة التطبيق — إغلاق فجوات التشغيل والوصول
+
+أصبحت جميع نوافذ WPF التي تستدعي CLI — MainWindow وDialog Editor وImage Wizard وResource Wizards وStringTable Editor وAuthenticode Tools — تستخدم `CliProcessRunner` غير الحاجب، مع Stop موحد وحالة `Stopped — input unchanged`. أضيفت HelpText لأفعال Open/Inspect/Validate/Stop واختصارات Ctrl+O وCtrl+I، كما يثبت UI automation أن Stop في Image Wizard موجود ومعطل عند الخمول، وأن المسار الكامل للمعاينة الفردية BMP ما يزال ناجحًا.
+
+يبقى الاختبار الوحيد غير المدعى هو الضغط على Stop أثناء عملية إنتاجية طويلة متعمدة؛ البنية نفسها تدعم الإلغاء وقتل شجرة العملية، لكن اختبار الضغط يحتاج fixture process طويلًا معزولًا لا يدخل إلى البرنامج المستخدم فعليًا.

@@ -11,6 +11,7 @@ public partial class SignatureToolsWindow : Window
 {
     private readonly string _cliPath;
     private readonly string? _selectedPe;
+    private CancellationTokenSource? _cliCancellation;
 
     public SignatureToolsWindow(string cliPath, string? selectedPe)
     {
@@ -19,12 +20,12 @@ public partial class SignatureToolsWindow : Window
         _selectedPe = selectedPe;
     }
 
-    private void Inspect_Click(object sender, RoutedEventArgs e)
+    private async void Inspect_Click(object sender, RoutedEventArgs e)
     {
-        if (RequirePe()) RunCli("signature", "inspect", _selectedPe!, "--json");
+        if (RequirePe()) await RunCliAsync(new[] { "signature", "inspect", _selectedPe!, "--json" }, null);
     }
 
-    private void Strip_Click(object sender, RoutedEventArgs e)
+    private async void Strip_Click(object sender, RoutedEventArgs e)
     {
         if (!RequirePe()) return;
         var dialog = new SaveFileDialog
@@ -34,11 +35,11 @@ public partial class SignatureToolsWindow : Window
         };
         if (dialog.ShowDialog() == true)
         {
-            RunCli("signature", "strip", _selectedPe!, "--output", dialog.FileName, "--json");
+            await RunCliAsync(new[] { "signature", "strip", _selectedPe!, "--output", dialog.FileName, "--json" }, null);
         }
     }
 
-    private void CreateCertificate_Click(object sender, RoutedEventArgs e)
+    private async void CreateCertificate_Click(object sender, RoutedEventArgs e)
     {
         if (string.IsNullOrEmpty(PasswordBox.Password))
         {
@@ -52,12 +53,12 @@ public partial class SignatureToolsWindow : Window
         };
         if (dialog.ShowDialog() == true)
         {
-            RunCliWithPassword(PasswordBox.Password, "signature", "create-test-cert", "--output", dialog.FileName, "--password-env", "RS_PFX_PASSWORD", "--json");
+            await RunCliAsync(new[] { "signature", "create-test-cert", "--output", dialog.FileName, "--password-env", "RS_PFX_PASSWORD", "--json" }, new Dictionary<string, string> { ["RS_PFX_PASSWORD"] = PasswordBox.Password });
             if (File.Exists(dialog.FileName)) CertificatePathBox.Text = dialog.FileName;
         }
     }
 
-    private void Resign_Click(object sender, RoutedEventArgs e)
+    private async void Resign_Click(object sender, RoutedEventArgs e)
     {
         if (!RequirePe()) return;
         if (string.IsNullOrWhiteSpace(CertificatePathBox.Text) || !File.Exists(CertificatePathBox.Text))
@@ -80,7 +81,7 @@ public partial class SignatureToolsWindow : Window
         var args = new List<string> { "signature", "re-sign", _selectedPe!, "--output", output.FileName, "--certificate", CertificatePathBox.Text, "--password-env", "RS_PFX_PASSWORD" };
         if (ReplaceExistingBox.IsChecked == true) args.Add("--strip-existing");
         args.Add("--json");
-        RunCliWithPassword(PasswordBox.Password, args.ToArray());
+        await RunCliAsync(args.ToArray(), new Dictionary<string, string> { ["RS_PFX_PASSWORD"] = PasswordBox.Password });
     }
 
     private bool RequirePe()
@@ -97,48 +98,36 @@ public partial class SignatureToolsWindow : Window
         return Path.Combine(directory, $"{Path.GetFileNameWithoutExtension(_selectedPe)}.{suffix}{Path.GetExtension(_selectedPe)}");
     }
 
-    private void RunCliWithPassword(string password, params string[] arguments)
+    private async Task RunCliAsync(IEnumerable<string> arguments, IReadOnlyDictionary<string, string>? environment)
     {
-        RunCli(arguments, new Dictionary<string, string> { ["RS_PFX_PASSWORD"] = password });
-    }
-
-    private void RunCli(params string[] arguments) => RunCli(arguments, null);
-
-    private void RunCli(string[] arguments, Dictionary<string, string>? environment)
-    {
+        using var cancellation = new CancellationTokenSource();
+        _cliCancellation = cancellation;
+        StopCliButton.IsEnabled = true;
+        StatusText.Text = "Authenticode operation running";
         try
         {
-            var info = new ProcessStartInfo
-            {
-                FileName = "py.exe",
-                WorkingDirectory = Path.GetDirectoryName(_cliPath) ?? Environment.CurrentDirectory,
-                UseShellExecute = false,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                CreateNoWindow = true,
-                StandardOutputEncoding = Encoding.UTF8,
-                StandardErrorEncoding = Encoding.UTF8,
-            };
-            info.ArgumentList.Add("-3.12");
-            info.ArgumentList.Add(_cliPath);
-            foreach (var argument in arguments) info.ArgumentList.Add(argument);
-            if (environment is not null)
-            {
-                foreach (var item in environment) info.Environment[item.Key] = item.Value;
-            }
-            using var process = Process.Start(info) ?? throw new InvalidOperationException("Could not start Python CLI");
-            var stdout = process.StandardOutput.ReadToEnd();
-            var stderr = process.StandardError.ReadToEnd();
-            process.WaitForExit();
-            OutputBox.Text = string.IsNullOrWhiteSpace(stdout) ? stderr : PrettyJson(stdout);
-            StatusText.Text = process.ExitCode == 0 ? "Completed" : $"CLI exited with code {process.ExitCode}";
+            var result = await CliProcessRunner.RunAsync(_cliPath, arguments, cancellation.Token, environment);
+            OutputBox.Text = result.Output.TrimStart().StartsWith("{") ? PrettyJson(result.Output) : result.Output;
+            var report = VerificationSummary.Format(result.Output);
+            VerificationSummaryText.Text = report;
+            VerificationSummaryText.Visibility = string.IsNullOrWhiteSpace(report) ? Visibility.Collapsed : Visibility.Visible;
+            StatusText.Text = result.Stopped ? "Stopped — input unchanged" : result.ExitCode == 0 ? "Completed" : "CLI operation failed — see details";
         }
         catch (Exception exc)
         {
             OutputBox.Text = exc.ToString();
+            VerificationSummaryText.Text = $"FAIL {exc.Message}";
+            VerificationSummaryText.Visibility = Visibility.Visible;
             StatusText.Text = "Failed";
         }
+        finally
+        {
+            _cliCancellation = null;
+            StopCliButton.IsEnabled = false;
+        }
     }
+
+    private void StopCli_Click(object sender, RoutedEventArgs e) => _cliCancellation?.Cancel();
 
     private static string PrettyJson(string text)
     {

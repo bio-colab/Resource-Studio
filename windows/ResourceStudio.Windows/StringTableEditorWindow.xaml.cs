@@ -12,6 +12,7 @@ public partial class StringTableEditorWindow : Window
     private readonly List<StringRow> _rows = new();
     private readonly JsonSerializerOptions _jsonOptions = new() { PropertyNameCaseInsensitive = true };
     private readonly string _cliPath;
+    private CancellationTokenSource? _cliCancellation;
 
     public StringTableEditorWindow(string cliPath, string? selectedPe)
     {
@@ -21,7 +22,7 @@ public partial class StringTableEditorWindow : Window
         ResetRows(1);
     }
 
-    private void LoadPe_Click(object sender, RoutedEventArgs e)
+    private async void LoadPe_Click(object sender, RoutedEventArgs e)
     {
         if (!File.Exists(PePathBox.Text))
         {
@@ -36,7 +37,7 @@ public partial class StringTableEditorWindow : Window
         var temporary = Path.Combine(Path.GetTempPath(), $"resource-studio-string-{Guid.NewGuid():N}.json");
         try
         {
-            var result = RunCli("string-table", "export", PePathBox.Text, "--name", block.ToString(), "--language", language.ToString(), "--output", temporary, "--json");
+            var result = await RunCliAsync("string-table", "export", PePathBox.Text, "--name", block.ToString(), "--language", language.ToString(), "--output", temporary, "--json");
             if (result.ExitCode != 0) { SetStatus(result.Output); return; }
             LoadModel(JsonSerializer.Deserialize<StringTableModel>(File.ReadAllText(temporary), _jsonOptions) ?? throw new InvalidDataException("empty StringTable model"));
             SetStatus("StringTable loaded from PE.");
@@ -69,7 +70,7 @@ public partial class StringTableEditorWindow : Window
         catch (Exception exc) { SetStatus(exc.Message); }
     }
 
-    private void Apply_Click(object sender, RoutedEventArgs e)
+    private async void Apply_Click(object sender, RoutedEventArgs e)
     {
         if (!File.Exists(PePathBox.Text)) { SetStatus("Choose a PE file first."); return; }
         var outputDialog = new SaveFileDialog { Filter = "PE files (*.exe;*.dll;*.sys)|*.exe;*.dll;*.sys|All files (*.*)|*.*", FileName = Path.GetFileNameWithoutExtension(PePathBox.Text) + ".stringtable" + Path.GetExtension(PePathBox.Text) };
@@ -79,7 +80,7 @@ public partial class StringTableEditorWindow : Window
         {
             var model = BuildModel();
             File.WriteAllText(temporary, JsonSerializer.Serialize(model, new JsonSerializerOptions { WriteIndented = true }), Encoding.UTF8);
-            var result = RunCli("string-table", "apply", PePathBox.Text, "--name", BlockBox.Text, "--language", LanguageBox.Text, "--model", temporary, "--output", outputDialog.FileName, "--json");
+            var result = await RunCliAsync("string-table", "apply", PePathBox.Text, "--name", BlockBox.Text, "--language", LanguageBox.Text, "--model", temporary, "--output", outputDialog.FileName, "--json");
             SetStatus(result.ExitCode == 0 ? $"Applied to {outputDialog.FileName}" : result.Output);
         }
         catch (Exception exc) { SetStatus(exc.Message); }
@@ -111,18 +112,36 @@ public partial class StringTableEditorWindow : Window
         StringsGrid.ItemsSource = _rows;
     }
 
-    private CliResult RunCli(params string[] arguments)
+    private async Task<CliProcessRunner.Result> RunCliAsync(params string[] arguments)
     {
-        var info = new ProcessStartInfo("py.exe") { WorkingDirectory = Path.GetDirectoryName(_cliPath) ?? Environment.CurrentDirectory, UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true, CreateNoWindow = true, StandardOutputEncoding = Encoding.UTF8, StandardErrorEncoding = Encoding.UTF8 };
-        info.ArgumentList.Add("-3.12");
-        info.ArgumentList.Add(_cliPath);
-        foreach (var argument in arguments) info.ArgumentList.Add(argument);
-        using var process = Process.Start(info) ?? throw new InvalidOperationException("Could not start Python CLI");
-        var stdout = process.StandardOutput.ReadToEnd();
-        var stderr = process.StandardError.ReadToEnd();
-        process.WaitForExit();
-        return new CliResult(process.ExitCode, string.IsNullOrWhiteSpace(stdout) ? stderr : stdout);
+        using var cancellation = new CancellationTokenSource();
+        _cliCancellation = cancellation;
+        StopCliButton.IsEnabled = true;
+        SetStatus("StringTable operation running");
+        try
+        {
+            var result = await CliProcessRunner.RunAsync(_cliPath, arguments, cancellation.Token);
+            var report = VerificationSummary.Format(result.Output);
+            VerificationSummaryText.Text = report;
+            VerificationSummaryText.Visibility = string.IsNullOrWhiteSpace(report) ? Visibility.Collapsed : Visibility.Visible;
+            SetStatus(result.Stopped ? "Stopped — input unchanged" : result.ExitCode == 0 ? "StringTable operation completed" : "StringTable operation failed — see details");
+            return result;
+        }
+        catch (Exception exc)
+        {
+            SetStatus($"StringTable operation failed: {exc.Message}");
+            VerificationSummaryText.Text = $"FAIL {exc.Message}";
+            VerificationSummaryText.Visibility = Visibility.Visible;
+            return new CliProcessRunner.Result(2, exc.ToString(), false);
+        }
+        finally
+        {
+            _cliCancellation = null;
+            StopCliButton.IsEnabled = false;
+        }
     }
+
+    private void StopCli_Click(object sender, RoutedEventArgs e) => _cliCancellation?.Cancel();
 
     private void SetStatus(string text) => StatusText.Text = text;
 

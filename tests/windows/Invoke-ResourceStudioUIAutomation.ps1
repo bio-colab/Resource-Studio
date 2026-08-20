@@ -77,6 +77,8 @@ try {
     foreach ($id in @('ResourcesTab', 'PreviewTab', 'SearchTab', 'BatchTab', 'LocalizationTab', 'InspectTab', 'DiffTab', 'ResourceGrid', 'PropertyGrid')) { Find-ById $main $id | Out-Null }
     Wait-Until { (Get-ElementText (Find-ById $main 'ResourceCountText')) -notmatch '^0 resources$' } 'resources loaded' | Out-Null
     Wait-Until { (Get-ElementText (Find-ById $main 'CliStateText')) -eq 'Completed' } 'CLI completed state' | Out-Null
+    $stopButton = Find-ById $main 'StopCliButton'
+    if ($stopButton.Current.IsEnabled) { throw 'Stop button remained enabled after completion' }
     Wait-Until { (Get-ElementText (Find-ById $main 'StatusDetailText')) -match 'completed' } 'CLI completion detail' | Out-Null
     if ((Get-ElementText (Find-ById $main 'OutputPolicyText')) -notmatch 'Save As') { throw 'Save As policy is not visible' }
     Wait-Until { try { (Get-ElementValue $pathBox) -ieq $resolvedPe } catch { (Get-ElementText $pathBox) -match [regex]::Escape([System.IO.Path]::GetFileName($resolvedPe)) } } 'PE path loaded' | Out-Null
@@ -96,7 +98,8 @@ try {
 
     Invoke-Element (Find-ById $main 'ImageWizardButton')
     $imageWindow = Wait-Until { Find-TopWindow '^Image Wizard$' } 'Image Wizard window'
-    foreach ($id in @('ImagePePathBox', 'ImageKindBox', 'ImageLoadButton', 'ImagePreview', 'ImageExportBmpButton', 'ImageApplyBmpButton')) { Find-ById $imageWindow $id | Out-Null }
+    foreach ($id in @('ImagePePathBox', 'ImageKindBox', 'ImageLoadButton', 'ImagePreview', 'ImageExportBmpButton', 'ImageApplyBmpButton', 'StopCliButton')) { Find-ById $imageWindow $id | Out-Null }
+    if ((Find-ById $imageWindow 'StopCliButton').Current.IsEnabled) { throw 'Image Wizard Stop button remained enabled while idle' }
     Wait-Until { (Get-ElementValue (Find-ById $imageWindow 'ImagePePathBox')) -ieq $resolvedPe } 'Image Wizard PE path' | Out-Null
     Invoke-Element (Find-ById $imageWindow 'ImageLoadButton')
     Wait-Until { (Get-ElementText (Find-ById $imageWindow 'ImagePreview')) -match '^BMP preview' } 'individual BMP preview' | Out-Null

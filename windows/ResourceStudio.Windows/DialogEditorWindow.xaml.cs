@@ -54,6 +54,7 @@ public partial class DialogEditorWindow : Window
 
     private DialogModel _model = NewModel();
     private string? _cliPath;
+    private CancellationTokenSource? _cliCancellation;
     private Canvas? _draggedVisual;
     private Point _dragStart;
     private int _dragStartX;
@@ -228,17 +229,18 @@ public partial class DialogEditorWindow : Window
         StatusText.Text = "Dialog JSON saved";
     }
 
-    private void LoadFromPe_Click(object sender, RoutedEventArgs e)
+    private async void LoadFromPe_Click(object sender, RoutedEventArgs e)
     {
         if (_cliPath is null || !File.Exists(_cliPath)) { MessageBox.Show("resource_studio_cli.py was not found."); return; }
         if (!File.Exists(PePathBox.Text)) { MessageBox.Show("Select a PE path first."); return; }
         var temp = Path.Combine(Path.GetTempPath(), "resource-studio-dialog-" + Guid.NewGuid().ToString("N") + ".json");
-        if (!RunCli("dialog", "export", PePathBox.Text, "--name", ResourceNameBox.Text, "--language", LanguageBox.Text, "--output", temp, "--json")) return;
+        var result = await RunCliAsync("dialog", "export", PePathBox.Text, "--name", ResourceNameBox.Text, "--language", LanguageBox.Text, "--output", temp, "--json");
+        if (result.ExitCode != 0) return;
         try { _model = JsonSerializer.Deserialize<DialogModel>(File.ReadAllText(temp), new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? NewModel(); RefreshEditor(); }
         finally { TryDelete(temp); }
     }
 
-    private void SaveAsPe_Click(object sender, RoutedEventArgs e)
+    private async void SaveAsPe_Click(object sender, RoutedEventArgs e)
     {
         if (_cliPath is null || !File.Exists(_cliPath)) { MessageBox.Show("resource_studio_cli.py was not found."); return; }
         if (!File.Exists(PePathBox.Text)) { MessageBox.Show("Select a PE path first."); return; }
@@ -246,22 +248,42 @@ public partial class DialogEditorWindow : Window
         if (dialog.ShowDialog() != true) return;
         var model = Path.Combine(Path.GetTempPath(), "resource-studio-dialog-" + Guid.NewGuid().ToString("N") + ".json");
         File.WriteAllText(model, JsonSerializer.Serialize(_model, new JsonSerializerOptions { WriteIndented = true }), Encoding.UTF8);
-        try { RunCli("dialog", "apply", PePathBox.Text, "--name", ResourceNameBox.Text, "--language", LanguageBox.Text, "--model", model, "--output", dialog.FileName, "--json"); }
+        try { await RunCliAsync("dialog", "apply", PePathBox.Text, "--name", ResourceNameBox.Text, "--language", LanguageBox.Text, "--model", model, "--output", dialog.FileName, "--json"); }
         finally { TryDelete(model); }
     }
 
-    private bool RunCli(params string[] arguments)
+    private async Task<CliProcessRunner.Result> RunCliAsync(params string[] arguments)
     {
-        var info = new ProcessStartInfo("py.exe") { UseShellExecute = false, WorkingDirectory = Path.GetDirectoryName(_cliPath), RedirectStandardOutput = true, RedirectStandardError = true, CreateNoWindow = true, StandardOutputEncoding = Encoding.UTF8, StandardErrorEncoding = Encoding.UTF8 };
-        info.ArgumentList.Add("-3.12"); info.ArgumentList.Add(_cliPath!);
-        foreach (var argument in arguments) info.ArgumentList.Add(argument);
-        using var process = Process.Start(info);
-        if (process is null) { MessageBox.Show("Could not start Python CLI."); return false; }
-        var output = process.StandardOutput.ReadToEnd(); var error = process.StandardError.ReadToEnd(); process.WaitForExit();
-        if (process.ExitCode != 0) { MessageBox.Show(string.IsNullOrWhiteSpace(error) ? output : error, "Dialog operation failed", MessageBoxButton.OK, MessageBoxImage.Error); return false; }
-        StatusText.Text = "Dialog operation completed";
-        return true;
+        using var cancellation = new CancellationTokenSource();
+        _cliCancellation = cancellation;
+        StopCliButton.IsEnabled = true;
+        StatusText.Text = "Dialog operation running";
+        try
+        {
+            var result = await CliProcessRunner.RunAsync(_cliPath!, arguments, cancellation.Token);
+            var report = VerificationSummary.Format(result.Output);
+            VerificationSummaryText.Text = report;
+            VerificationSummaryText.Visibility = string.IsNullOrWhiteSpace(report) ? Visibility.Collapsed : Visibility.Visible;
+            StatusText.Text = result.Stopped ? "Stopped — input unchanged" : result.ExitCode == 0 ? "Dialog operation completed" : "Dialog operation failed — see details";
+            if (result.ExitCode != 0 && !result.Stopped) MessageBox.Show(result.Output, "Dialog operation failed", MessageBoxButton.OK, MessageBoxImage.Error);
+            return result;
+        }
+        catch (Exception exc)
+        {
+            StatusText.Text = "Dialog operation failed — see details";
+            VerificationSummaryText.Text = $"FAIL {exc.Message}";
+            VerificationSummaryText.Visibility = Visibility.Visible;
+            MessageBox.Show(exc.Message, "Dialog operation failed", MessageBoxButton.OK, MessageBoxImage.Error);
+            return new CliProcessRunner.Result(2, exc.ToString(), false);
+        }
+        finally
+        {
+            _cliCancellation = null;
+            StopCliButton.IsEnabled = false;
+        }
     }
+
+    private void StopCli_Click(object sender, RoutedEventArgs e) => _cliCancellation?.Cancel();
 
     private static void TryDelete(string path) { try { if (File.Exists(path)) File.Delete(path); } catch { } }
 }

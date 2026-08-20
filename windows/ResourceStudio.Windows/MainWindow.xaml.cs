@@ -19,6 +19,8 @@ public partial class MainWindow : Window
     private string? _cliPath;
     private bool _darkMode;
     private CliOperationState _cliState = CliOperationState.Idle;
+    private Process? _activeCliProcess;
+    private CancellationTokenSource? _cliCancellation;
 
     public MainWindow()
     {
@@ -28,7 +30,7 @@ public partial class MainWindow : Window
         if (SystemParameters.HighContrast) ApplyHighContrastTheme();
     }
 
-    private void MainWindow_Loaded(object sender, RoutedEventArgs e)
+    private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
     {
         var arguments = Environment.GetCommandLineArgs();
         var openIndex = Array.FindIndex(arguments, argument => string.Equals(argument, "--open", StringComparison.OrdinalIgnoreCase));
@@ -41,8 +43,8 @@ public partial class MainWindow : Window
         if (!File.Exists(path)) { StatusText.Text = "PE not found"; StatusDetailText.Text = path; return; }
         _selectedPe = path;
         PathBox.Text = path;
-        LoadResources();
-        Inspect_Click(this, new RoutedEventArgs());
+        await LoadResourcesAsync();
+        await InspectCurrentAsync();
     }
 
     private void Theme_Click(object sender, RoutedEventArgs e)
@@ -71,7 +73,7 @@ public partial class MainWindow : Window
         StatusText.Text = "Windows high contrast detected";
     }
 
-    private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
+    private async void Window_PreviewKeyDown(object sender, KeyEventArgs e)
     {
         if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.O)
         {
@@ -90,12 +92,12 @@ public partial class MainWindow : Window
         }
         else if (e.Key == Key.F5)
         {
-            LoadResources();
+            await LoadResourcesAsync();
             e.Handled = true;
         }
     }
 
-    private void OpenPe_Click(object sender, RoutedEventArgs e)
+    private async void OpenPe_Click(object sender, RoutedEventArgs e)
     {
         var dialog = new OpenFileDialog
         {
@@ -105,24 +107,26 @@ public partial class MainWindow : Window
         if (dialog.ShowDialog() != true) return;
         _selectedPe = dialog.FileName;
         PathBox.Text = _selectedPe;
-        LoadResources();
-        Inspect_Click(sender, e);
+        await LoadResourcesAsync();
+        await InspectCurrentAsync();
     }
 
-    private void List_Click(object sender, RoutedEventArgs e) => LoadResources();
+    private async void List_Click(object sender, RoutedEventArgs e) => await LoadResourcesAsync();
 
-    private void Inspect_Click(object sender, RoutedEventArgs e)
+    private async void Inspect_Click(object sender, RoutedEventArgs e) => await InspectCurrentAsync();
+
+    private async Task InspectCurrentAsync()
     {
         if (!RequirePe()) return;
-        var result = RunCliCapture("inspect", _selectedPe!, "--json");
+        var result = await RunCliCaptureAsync("inspect", _selectedPe!, "--json");
         InspectBox.Text = PrettyJson(result.StdoutOrError);
         StatusText.Text = result.ExitCode == 0 ? "Inspection completed" : $"CLI exited with code {result.ExitCode}";
     }
 
-    private void Validate_Click(object sender, RoutedEventArgs e)
+    private async void Validate_Click(object sender, RoutedEventArgs e)
     {
         if (!RequirePe()) return;
-        var result = RunCliCapture("validate", _selectedPe!, "--json");
+        var result = await RunCliCaptureAsync("validate", _selectedPe!, "--json");
         InspectBox.Text = PrettyJson(result.StdoutOrError);
         StatusText.Text = result.ExitCode == 0 ? "Validation completed" : $"CLI exited with code {result.ExitCode}";
     }
@@ -230,7 +234,7 @@ public partial class MainWindow : Window
         if (answer == MessageBoxResult.Yes) RunBatch("apply");
     }
 
-    private void RunBatch(string action)
+    private async void RunBatch(string action)
     {
         if (!File.Exists(BatchManifestBox.Text))
         {
@@ -240,7 +244,7 @@ public partial class MainWindow : Window
         var manifest = Path.GetFullPath(BatchManifestBox.Text);
         var args = new List<string> { "batch", action, manifest, "--json" };
         if (action == "apply") args.AddRange(new[] { "--report", Path.ChangeExtension(manifest, ".batch-report.json") });
-        var result = RunCliCapture(args.ToArray());
+        var result = await RunCliCaptureAsync(args.ToArray());
         BatchReportBox.Text = PrettyJson(result.StdoutOrError);
         StatusText.Text = result.ExitCode == 0 ? $"Batch {action} completed" : $"CLI exited with code {result.ExitCode}";
     }
@@ -251,19 +255,19 @@ public partial class MainWindow : Window
         if (dialog.ShowDialog() == true) LocalizationCatalogBox.Text = dialog.FileName;
     }
 
-    private void LocalizationCompare_Click(object sender, RoutedEventArgs e)
+    private async void LocalizationCompare_Click(object sender, RoutedEventArgs e)
     {
         if (!File.Exists(LocalizationCatalogBox.Text))
         {
             MessageBox.Show("Choose a localization JSON catalog first.", "Localization", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
-        var result = RunCliCapture("localization", "compare", LocalizationCatalogBox.Text, "--source-language", LocalizationSourceBox.Text, "--target-language", LocalizationTargetBox.Text, "--json");
+        var result = await RunCliCaptureAsync("localization", "compare", LocalizationCatalogBox.Text, "--source-language", LocalizationSourceBox.Text, "--target-language", LocalizationTargetBox.Text, "--json");
         LocalizationOutputBox.Text = PrettyJson(result.StdoutOrError);
         StatusText.Text = result.ExitCode == 0 ? "Localization comparison completed" : $"CLI exited with code {result.ExitCode}";
     }
 
-    private void LocalizationPseudo_Click(object sender, RoutedEventArgs e)
+    private async void LocalizationPseudo_Click(object sender, RoutedEventArgs e)
     {
         if (!File.Exists(LocalizationCatalogBox.Text))
         {
@@ -272,12 +276,12 @@ public partial class MainWindow : Window
         }
         var dialog = new SaveFileDialog { Filter = "Localization catalogs (*.json)|*.json|All files (*.*)|*.*", FileName = "pseudo-localized.json" };
         if (dialog.ShowDialog() != true) return;
-        var result = RunCliCapture("localization", "pseudo", LocalizationCatalogBox.Text, "--source-language", LocalizationSourceBox.Text, "--target-language", LocalizationTargetBox.Text, "--output", dialog.FileName, "--json");
+        var result = await RunCliCaptureAsync("localization", "pseudo", LocalizationCatalogBox.Text, "--source-language", LocalizationSourceBox.Text, "--target-language", LocalizationTargetBox.Text, "--output", dialog.FileName, "--json");
         LocalizationOutputBox.Text = PrettyJson(result.StdoutOrError);
         StatusText.Text = result.ExitCode == 0 ? "Pseudo-localization completed" : $"CLI exited with code {result.ExitCode}";
     }
 
-    private void Search_Click(object sender, RoutedEventArgs e)
+    private async void Search_Click(object sender, RoutedEventArgs e)
     {
         if (!RequirePe()) return;
         if (string.IsNullOrWhiteSpace(SearchQueryBox.Text))
@@ -289,7 +293,7 @@ public partial class MainWindow : Window
         if (SearchRegexBox.IsChecked == true) args.Add("--regex");
         if (SearchHexBox.IsChecked == true) args.Add("--hex");
         args.Add("--json");
-        var result = RunCliCapture(args.ToArray());
+        var result = await RunCliCaptureAsync(args.ToArray());
         if (result.ExitCode != 0)
         {
             SearchGrid.ItemsSource = null;
@@ -305,14 +309,14 @@ public partial class MainWindow : Window
 
     private void DiffRightBrowse_Click(object sender, RoutedEventArgs e) => ChooseDiffFile(DiffRightBox);
 
-    private void CompareDiff_Click(object sender, RoutedEventArgs e)
+    private async void CompareDiff_Click(object sender, RoutedEventArgs e)
     {
         if (!File.Exists(DiffLeftBox.Text) || !File.Exists(DiffRightBox.Text))
         {
             MessageBox.Show("Choose two PE files first.", "Diff", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
-        var result = RunCliCapture("diff", DiffLeftBox.Text, DiffRightBox.Text, "--json");
+        var result = await RunCliCaptureAsync("diff", DiffLeftBox.Text, DiffRightBox.Text, "--json");
         DiffTree.Items.Clear();
         if (result.ExitCode != 0)
         {
@@ -328,10 +332,10 @@ public partial class MainWindow : Window
         StatusText.Text = "Diff completed";
     }
 
-    private void LoadResources()
+    private async Task LoadResourcesAsync()
     {
         if (!RequirePe()) return;
-        var result = RunCliCapture("list", _selectedPe!, "--json");
+        var result = await RunCliCaptureAsync("list", _selectedPe!, "--json");
         if (result.ExitCode != 0)
         {
             StatusText.Text = $"CLI exited with code {result.ExitCode}";
@@ -353,7 +357,7 @@ public partial class MainWindow : Window
             : _resources.Where(row => $"{row.Type} {row.Name} {row.Language} {row.Sha256}".Contains(query, StringComparison.OrdinalIgnoreCase)).ToList();
     }
 
-    private void PreviewResource(ResourceRow row)
+    private async void PreviewResource(ResourceRow row)
     {
         PreviewVisualPanel.Children.Clear();
         if (!RequirePe() || row.Language is null)
@@ -368,7 +372,7 @@ public partial class MainWindow : Window
             bitmapOutput = Path.Combine(Path.GetTempPath(), $"resource-studio-preview-{Guid.NewGuid():N}.bmp");
             arguments.AddRange(new[] { "--output", bitmapOutput });
         }
-        var result = RunCliCapture(arguments.ToArray());
+        var result = await RunCliCaptureAsync(arguments.ToArray());
         PreviewBox.Text = result.ExitCode == 0 ? PrettyJson(result.StdoutOrError) : result.StdoutOrError;
         if (result.ExitCode == 0)
         {
@@ -491,14 +495,17 @@ public partial class MainWindow : Window
         return false;
     }
 
-    private CliResult RunCliCapture(params string[] arguments)
+    private async Task<CliResult> RunCliCaptureAsync(params string[] arguments)
     {
         var stopwatch = Stopwatch.StartNew();
         var operation = string.Join(" ", arguments.Take(2));
+        using var cancellation = new CancellationTokenSource();
+        _cliCancellation = cancellation;
         SetCliState(CliOperationState.Running, $"Running: {operation}");
         if (_cliPath is null)
         {
             SetCliState(CliOperationState.Failed, "CLI not found — check the project folder");
+            _cliCancellation = null;
             return new CliResult(2, "resource_studio_cli.py was not found.", CliOperationState.Failed, stopwatch.ElapsedMilliseconds);
         }
         try
@@ -518,12 +525,12 @@ public partial class MainWindow : Window
             info.ArgumentList.Add(_cliPath);
             foreach (var argument in arguments) info.ArgumentList.Add(argument);
             using var process = Process.Start(info) ?? throw new InvalidOperationException("Could not start Python CLI");
+            _activeCliProcess = process;
             var stdoutTask = process.StandardOutput.ReadToEndAsync();
             var stderrTask = process.StandardError.ReadToEndAsync();
-            Task.WaitAll(stdoutTask, stderrTask);
-            process.WaitForExit();
-            var stdout = stdoutTask.Result;
-            var stderr = stderrTask.Result;
+            await Task.WhenAll(stdoutTask, stderrTask, process.WaitForExitAsync(cancellation.Token));
+            var stdout = await stdoutTask;
+            var stderr = await stderrTask;
             var state = process.ExitCode == 0 ? CliOperationState.Completed : CliOperationState.Failed;
             var resultText = string.IsNullOrWhiteSpace(stdout) ? stderr : stdout;
             var detail = state == CliOperationState.Completed
@@ -532,11 +539,29 @@ public partial class MainWindow : Window
             SetCliState(state, detail);
             return new CliResult(process.ExitCode, resultText, state, stopwatch.ElapsedMilliseconds);
         }
+        catch (OperationCanceledException)
+        {
+            if (_activeCliProcess is { HasExited: false }) _activeCliProcess.Kill(entireProcessTree: true);
+            SetCliState(CliOperationState.Stopped, $"{operation} stopped — input unchanged");
+            return new CliResult(130, "Operation stopped; input unchanged.", CliOperationState.Stopped, stopwatch.ElapsedMilliseconds);
+        }
         catch (Exception exc)
         {
             SetCliState(CliOperationState.Failed, "Could not start CLI — see the error details");
             return new CliResult(2, exc.ToString(), CliOperationState.Failed, stopwatch.ElapsedMilliseconds);
         }
+        finally
+        {
+            _activeCliProcess = null;
+            _cliCancellation = null;
+        }
+    }
+
+    private void StopCli_Click(object sender, RoutedEventArgs e)
+    {
+        if (_cliState != CliOperationState.Running) return;
+        _cliCancellation?.Cancel();
+        if (_activeCliProcess is { HasExited: false }) _activeCliProcess.Kill(entireProcessTree: true);
     }
 
     private void SetCliState(CliOperationState state, string detail)
@@ -544,6 +569,7 @@ public partial class MainWindow : Window
         _cliState = state;
         CliStateText.Text = state.ToString();
         StatusDetailText.Text = detail;
+        StopCliButton.IsEnabled = state == CliOperationState.Running;
     }
 
     private static string? FindCliPath()
@@ -596,6 +622,7 @@ public partial class MainWindow : Window
         Running,
         Completed,
         Failed,
+        Stopped,
     }
 
     private sealed record CliResult(int ExitCode, string StdoutOrError, CliOperationState State, long DurationMilliseconds);

@@ -15,6 +15,7 @@
             <Button Content="Add Label" Click="AddLabel_Click" />
             <Button Content="Save As PE" Click="SaveAsPe_Click" />
             <Button Content="Save JSON" Click="SaveJson_Click" />
+            <Button AutomationProperties.AutomationId="StopCliButton" x:Name="StopCliButton" Content="Stop" Click="StopCli_Click" IsEnabled="False" ToolTip="Stop the current operation; the input remains unchanged" />
         </WrapPanel>
         <Grid Grid.Row="1" Margin="0,8,0,8">
             <Grid.ColumnDefinitions>
@@ -62,6 +63,9 @@
                 </StackPanel>
             </ScrollViewer>
         </Grid>
-        <TextBlock x:Name="StatusText" Grid.Row="2" Text="Ready" />
+        <StackPanel Grid.Row="2">
+            <TextBlock x:Name="StatusText" Text="Ready" />
+            <TextBox AutomationProperties.AutomationId="VerificationSummaryText" AutomationProperties.Name="Verification summary" x:Name="VerificationSummaryText" Margin="0,4,0,0" IsReadOnly="True" TextWrapping="Wrap" Visibility="Collapsed" />
+        </StackPanel>
     </Grid>
 </Window>

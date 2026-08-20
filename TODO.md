@@ -366,11 +366,11 @@
 | [x] | UX-01 | UI/UX-goal | `docs/UIUX-GOAL.md` يحدد personas وjourneys وIA وstate model وDefinition of Done |
 | [x] | UX-02 | Workspace context | تجميع الأفعال الرئيسية وإظهار PE path/output policy/current state كسياق واحد |
 | [x] | UX-03 | Action hierarchy | فصل primary Explore/Analyze/Edit/Verify عن الأدوات الثانوية دون حذف الوظائف الموجودة |
-| [~] | UX-04 | Verification summary | Inspect/JSON وVerificationReport موجودان، لكن checklist Save المرئية الموحدة تحتاج surface مستقل |
-| [~] | UX-05 | Responsive operation state | MainWindow يعرض Running/Completed/Failed ومدة العملية، لكن async cancellation/Stop الكامل ما يزال لاحقًا |
+| [x] | UX-04 | Verification summary | VerificationSummary formatter يظهر checklist مفهومة في Dialog/Image/Wizards/StringTable/Signature، وraw JSON يبقى متاحًا |
+| [x] | UX-05 | Responsive operation state | MainWindow وكل النوافذ الثانوية تستخدم CliProcessRunner async مع Stop وStopped/input unchanged؛ اختبار الضغط الطويل ما يزال منفصلًا |
 | [~] | UX-06 | Accessibility contract | أضيفت names/ids/tooltips/automation surfaces وsystem gray brushes للـhigh contrast؛ TabIndex/F6/reader matrix الأوسع لاحقة |
 | [~] | UX-07 | Progressive disclosure | أضيفت hierarchy وtooltips وcontext؛ جعل raw/JSON طبقة details كاملة في كل المحررات ما يزال لاحقًا |
-| [~] | UX-08 | Workflow reliability | UI automation يثبت context/status/workbench/Preview/Image Wizard وBMP preview؛ failure/keyboard/resize matrix لاحقة |
+| [~] | UX-08 | Workflow reliability | UI automation يثبت context/status/Stop disabled/workbench/Preview/Image Wizard/BMP preview بعد runner الموحد؛ failure/keyboard/resize matrix لاحقة |
 | [~] | UX-09 | Documentation and packaging | UI/UX-GOAL وresearch notes وREADME محدثة؛ الحزمة النهائية ستُعاد بعد إكمال دورة UX الحالية |
 
 ### قاعدة UI/UX-goal
@@ -389,3 +389,39 @@
 | 2026-08-20 | UI automation | مكتمل ومختبر | WPF build: 0 warnings/0 errors؛ UI automation نجح مع context/status/workbench/Preview/Image Wizard/BMP preview |
 
 الفجوات المتبقية عمدًا: async cancellation وStop الكامل لكل النوافذ، checklist Verification summary مرئية موحدة بعد Save، F6/TabIndex matrix، screen-reader verification الأوسع، واختبارات resize/failure لكل editor.
+
+
+## سجل تنفيذ UI/UX-goal — الدفعة الثانية
+
+| التاريخ | التنفيذ | الحالة | الدليل |
+|---|---|---|---|
+| 2026-08-20 | Verification summary في النوافذ الثانوية | مكتمل ومختبر بالبناء | `VerificationSummary.cs` يستهلك `verification` من CLI دون تكرار النواة، ويعرض checklist مع raw output |
+| 2026-08-20 | MainWindow async CLI runner | مكتمل ومختبر | `RunCliCaptureAsync` يستخدم `WaitForExitAsync` وقراءة stdout/stderr غير حاجبة |
+| 2026-08-20 | Stop contract | مكتمل ومختبر جزئيًا | Stop يقتل process tree ويعرض `Stopped — input unchanged`؛ UIA يثبت وجود الزر وتعطيله بعد النجاح |
+| 2026-08-20 | WPF regression gate | مكتمل ومختبر | `dotnet build -c Release --no-restore`: 0 warnings و0 errors؛ UI automation: passed |
+
+الفجوات المتبقية: async/Stop موحد في النوافذ الثانوية، اختبار فعلي لإيقاف عملية طويلة أثناء التشغيل، F6 وTabIndex/access-key matrix، screen-reader checks، وSave failure/resize workflows.
+
+
+## سجل تنفيذ UI/UX-goal — الدفعة الثالثة
+
+| التاريخ | التنفيذ | الحالة | الدليل |
+|---|---|---|---|
+| 2026-08-20 | CliProcessRunner مشترك | مكتمل ومختبر | runner واحد للنوافذ الثانوية يستخدم CancellationToken وWaitForExitAsync وقتل process tree عند الإيقاف |
+| 2026-08-20 | Dialog/Image/Wizards/StringTable/Signature async | مكتمل ومختبر بالبناء | كل Save/Apply/Export/Inspect يمر عبر runner المشترك، مع Stop وحالة input unchanged |
+| 2026-08-20 | WPF build | مكتمل ومختبر | 0 أخطاء و0 تحذيرات بعد إضافة runner وتحويل النوافذ الثانوية |
+| 2026-08-20 | UI automation regression | مكتمل ومختبر | MainWindow وStop disabled after completion وImage Wizard وBMP preview: passed |
+
+الفجوة المتبقية بدقة: اختبار UIA يضغط Stop أثناء عملية طويلة متعمدة، ومصفوفة keyboard/accessibility/failure/resize الأوسع. لم تُضاف آلية delay إلى الإنتاج فقط لتسهيل الاختبار؛ يجب أن يستخدم اختبار الضغط fixture أو process test معزولًا.
+
+
+## سجل إغلاق فجوات UI/UX — الدفعة الرابعة
+
+| التاريخ | التنفيذ | الحالة | الدليل |
+|---|---|---|---|
+| 2026-08-20 | Stop موحد في النوافذ الثانوية | مكتمل ومختبر بالبناء | Dialog/Image/Resource Wizards/StringTable/Authenticode تستخدم `CliProcessRunner` وStop وinput unchanged |
+| 2026-08-20 | Keyboard discoverability | مكتمل جزئيًا | HelpText وAcceleratorKey لـCtrl+O وCtrl+I وStop؛ F6/TabIndex/access-key matrix الأوسع لاحقة |
+| 2026-08-20 | Image Wizard workflow | مكتمل ومختبر | Stop button idle assertion وindividual BMP preview: passed |
+| 2026-08-20 | WPF regression gate | مكتمل ومختبر | dotnet build: 0 warnings/0 errors؛ UI automation: passed |
+
+الفجوات المتبقية: اختبار إيقاف عملية طويلة فعلية عبر fixture معزول، F6/TabIndex/access-key matrix كاملة، screen-reader verification، واختبارات failure/resize الشاملة لكل نافذة.

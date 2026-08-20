@@ -15,6 +15,7 @@ public partial class ImageResourceWindow : Window
     private string? _payloadPath;
     private string? _individualPreviewPath;
     private readonly List<GroupEntry> _entries = new();
+    private CancellationTokenSource? _cliCancellation;
 
     public ImageResourceWindow(string cliPath, string? selectedPe, string? defaultKind = null)
     {
@@ -27,14 +28,14 @@ public partial class ImageResourceWindow : Window
 
     private string Kind => ((System.Windows.Controls.ComboBoxItem)KindBox.SelectedItem).Content?.ToString() ?? "bitmap";
 
-    private void Load_Click(object sender, RoutedEventArgs e)
+    private async void Load_Click(object sender, RoutedEventArgs e)
     {
         if (!File.Exists(PePathBox.Text)) { SetStatus("Choose a PE file first."); return; }
         var extension = Kind == "bitmap" ? ".bmp" : ".json";
         var temporary = Path.Combine(Path.GetTempPath(), $"resource-studio-image-{Guid.NewGuid():N}{extension}");
         try
         {
-            var result = RunCli("image-resource", "export", PePathBox.Text, "--kind", Kind, "--name", NameBox.Text, "--language", LanguageBox.Text, "--output", temporary, "--json");
+            var result = await RunCliAsync("image-resource", "export", PePathBox.Text, "--kind", Kind, "--name", NameBox.Text, "--language", LanguageBox.Text, "--output", temporary, "--json");
             if (result.ExitCode != 0) { SetStatus(result.Output); return; }
             _payloadPath = temporary;
             if (Kind == "bitmap")
@@ -71,22 +72,22 @@ public partial class ImageResourceWindow : Window
         SetStatus("Payload selected.");
     }
 
-    private void GroupEntriesList_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    private async void GroupEntriesList_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
         if (GroupEntriesList.SelectedItem is not GroupEntry entry) return;
         EntryWidthBox.Text = entry.Width.ToString();
         EntryHeightBox.Text = entry.Height.ToString();
         EntryIdBox.Text = entry.ResourceId.ToString();
-        LoadSelectedPayloadPreview(entry);
+        await LoadSelectedPayloadPreviewAsync(entry);
     }
 
-    private void LoadSelectedPayloadPreview(GroupEntry entry)
+    private async Task LoadSelectedPayloadPreviewAsync(GroupEntry entry)
     {
         if (Kind == "bitmap" || !File.Exists(PePathBox.Text)) return;
         try
         {
             var temporary = Path.Combine(Path.GetTempPath(), $"resource-studio-icon-preview-{Guid.NewGuid():N}.bmp");
-            var result = RunCli("image-payload", "export", PePathBox.Text, "--kind", Kind, "--resource-id", entry.ResourceId.ToString(), "--language", LanguageBox.Text, "--output", temporary, "--format", "bmp", "--json");
+            var result = await RunCliAsync("image-payload", "export", PePathBox.Text, "--kind", Kind, "--resource-id", entry.ResourceId.ToString(), "--language", LanguageBox.Text, "--output", temporary, "--format", "bmp", "--json");
             if (result.ExitCode != 0) { SetStatus($"Payload preview unavailable: {result.Output}"); return; }
             if (_individualPreviewPath is not null) TryDelete(_individualPreviewPath);
             _individualPreviewPath = temporary;
@@ -144,27 +145,27 @@ public partial class ImageResourceWindow : Window
         ModelBox.Text = JsonSerializer.Serialize(model, JsonOptions);
     }
 
-    private void ExportPayload_Click(object sender, RoutedEventArgs e)
+    private async void ExportPayload_Click(object sender, RoutedEventArgs e)
     {
         if (Kind == "bitmap" || GroupEntriesList.SelectedItem is not GroupEntry entry) { SetStatus("Select an Icon/Cursor entry first."); return; }
         var dialog = new SaveFileDialog { Filter = "Bitmap files (*.bmp)|*.bmp|All files (*.*)|*.*", FileName = $"{Kind}-{entry.ResourceId}.bmp" };
         if (dialog.ShowDialog() != true) return;
-        var result = RunCli("image-payload", "export", PePathBox.Text, "--kind", Kind, "--resource-id", entry.ResourceId.ToString(), "--language", LanguageBox.Text, "--output", dialog.FileName, "--format", "bmp", "--json");
+        var result = await RunCliAsync("image-payload", "export", PePathBox.Text, "--kind", Kind, "--resource-id", entry.ResourceId.ToString(), "--language", LanguageBox.Text, "--output", dialog.FileName, "--format", "bmp", "--json");
         SetStatus(result.ExitCode == 0 ? $"Payload exported to {dialog.FileName}" : result.Output);
     }
 
-    private void ApplyPayload_Click(object sender, RoutedEventArgs e)
+    private async void ApplyPayload_Click(object sender, RoutedEventArgs e)
     {
         if (Kind == "bitmap" || GroupEntriesList.SelectedItem is not GroupEntry entry) { SetStatus("Select an Icon/Cursor entry first."); return; }
         var payloadDialog = new OpenFileDialog { Filter = "Image files (*.bmp;*.png)|*.bmp;*.png|Bitmap files (*.bmp)|*.bmp|PNG files (*.png)|*.png|All files (*.*)|*.*" };
         if (payloadDialog.ShowDialog() != true) return;
         var outputDialog = new SaveFileDialog { Filter = "PE files (*.exe;*.dll;*.sys)|*.exe;*.dll;*.sys|All files (*.*)|*.*", FileName = Path.GetFileNameWithoutExtension(PePathBox.Text) + ".payload" + Path.GetExtension(PePathBox.Text) };
         if (outputDialog.ShowDialog() != true) return;
-        var result = RunCli("image-payload", "apply", PePathBox.Text, "--kind", Kind, "--resource-id", entry.ResourceId.ToString(), "--language", LanguageBox.Text, "--payload", payloadDialog.FileName, "--format", "bmp", "--output", outputDialog.FileName, "--json");
+        var result = await RunCliAsync("image-payload", "apply", PePathBox.Text, "--kind", Kind, "--resource-id", entry.ResourceId.ToString(), "--language", LanguageBox.Text, "--payload", payloadDialog.FileName, "--format", "bmp", "--output", outputDialog.FileName, "--json");
         SetStatus(result.ExitCode == 0 ? $"Payload applied to {outputDialog.FileName}" : result.Output);
     }
 
-    private void Apply_Click(object sender, RoutedEventArgs e)
+    private async void Apply_Click(object sender, RoutedEventArgs e)
     {
         if (!File.Exists(PePathBox.Text)) { SetStatus("Choose a PE file first."); return; }
         if (Kind != "bitmap") SyncGroupModel();
@@ -180,7 +181,7 @@ public partial class ImageResourceWindow : Window
         if (outputDialog.ShowDialog() != true) return;
         try
         {
-            var result = RunCli("image-resource", "apply", PePathBox.Text, "--kind", Kind, "--name", NameBox.Text, "--language", LanguageBox.Text, "--model", payload, "--output", outputDialog.FileName, "--json");
+            var result = await RunCliAsync("image-resource", "apply", PePathBox.Text, "--kind", Kind, "--name", NameBox.Text, "--language", LanguageBox.Text, "--model", payload, "--output", outputDialog.FileName, "--json");
             SetStatus(result.ExitCode == 0 ? $"Applied to {outputDialog.FileName}" : result.Output);
         }
         catch (Exception exc) { SetStatus(exc.Message); }
@@ -196,20 +197,43 @@ public partial class ImageResourceWindow : Window
 
     private static void TryDelete(string path) { try { File.Delete(path); } catch { } }
 
-    private CliResult RunCli(params string[] arguments)
+    private async Task<CliProcessRunner.Result> RunCliAsync(params string[] arguments)
     {
-        var info = new ProcessStartInfo("py.exe") { WorkingDirectory = Path.GetDirectoryName(_cliPath) ?? Environment.CurrentDirectory, UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true, CreateNoWindow = true, StandardOutputEncoding = Encoding.UTF8, StandardErrorEncoding = Encoding.UTF8 };
-        info.ArgumentList.Add("-3.12"); info.ArgumentList.Add(_cliPath); foreach (var argument in arguments) info.ArgumentList.Add(argument);
-        using var process = Process.Start(info) ?? throw new InvalidOperationException("Could not start Python CLI");
-        var stdoutTask = process.StandardOutput.ReadToEndAsync(); var stderrTask = process.StandardError.ReadToEndAsync();
-        Task.WaitAll(stdoutTask, stderrTask); process.WaitForExit();
-        var stdout = stdoutTask.Result; var stderr = stderrTask.Result;
-        return new CliResult(process.ExitCode, string.IsNullOrWhiteSpace(stdout) ? stderr : stdout);
+        using var cancellation = new CancellationTokenSource();
+        _cliCancellation = cancellation;
+        StopCliButton.IsEnabled = true;
+        SetStatus("Image operation running");
+        try
+        {
+            var result = await CliProcessRunner.RunAsync(_cliPath, arguments, cancellation.Token);
+            ShowVerificationSummary(result.Output);
+            SetStatus(result.Stopped ? "Stopped — input unchanged" : result.ExitCode == 0 ? "Image operation completed" : "Image operation failed — see details");
+            return result;
+        }
+        catch (Exception exc)
+        {
+            ShowVerificationSummary($"{{\"errors\":[\"{exc.Message.Replace("\\", "\\\\").Replace("\"", "\\\"")}\"]}}");
+            SetStatus($"Image operation failed: {exc.Message}");
+            return new CliProcessRunner.Result(2, exc.ToString(), false);
+        }
+        finally
+        {
+            _cliCancellation = null;
+            StopCliButton.IsEnabled = false;
+        }
+    }
+
+    private void StopCli_Click(object sender, RoutedEventArgs e) => _cliCancellation?.Cancel();
+
+    private void ShowVerificationSummary(string output)
+    {
+        var report = VerificationSummary.Format(output);
+        VerificationSummaryText.Text = report;
+        VerificationSummaryText.Visibility = string.IsNullOrWhiteSpace(report) ? Visibility.Collapsed : Visibility.Visible;
     }
 
     private void SetStatus(string text) => StatusText.Text = text;
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true, WriteIndented = true };
-    private sealed record CliResult(int ExitCode, string Output);
     private sealed class GroupModel
     {
         [JsonPropertyName("format")] public string Format { get; set; } = "resource_studio.image_group.v1";

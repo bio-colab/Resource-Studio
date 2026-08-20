@@ -36,6 +36,9 @@
                 </Grid>
             </TabItem>
         </TabControl>
-        <TextBlock x:Name="StatusText" VerticalAlignment="Bottom" Margin="8,0,0,-22" Text="Ready" />
+        <StackPanel VerticalAlignment="Bottom" Margin="8,0,0,-22">
+            <WrapPanel><TextBlock x:Name="StatusText" Text="Ready" VerticalAlignment="Center" Margin="0,0,8,0" /><Button AutomationProperties.AutomationId="StopCliButton" x:Name="StopCliButton" Content="Stop" Click="StopCli_Click" IsEnabled="False" ToolTip="Stop the current operation; the input remains unchanged" /></WrapPanel>
+            <TextBox AutomationProperties.AutomationId="VerificationSummaryText" AutomationProperties.Name="Verification summary" x:Name="VerificationSummaryText" Margin="0,4,0,0" IsReadOnly="True" TextWrapping="Wrap" Visibility="Collapsed" />
+        </StackPanel>
     </Grid>
 </Window>

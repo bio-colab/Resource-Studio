@@ -13,6 +13,7 @@ namespace ResourceStudio.Windows;
 public partial class ResourceWizardsWindow : Window
 {
     private readonly string _cliPath;
+    private CancellationTokenSource? _cliCancellation;
 
     public ResourceWizardsWindow(string cliPath, string? selectedPe)
     {
@@ -23,22 +24,22 @@ public partial class ResourceWizardsWindow : Window
         MenuPeBox.Text = selectedPe ?? "";
     }
 
-    private void VersionExport_Click(object sender, RoutedEventArgs e)
+    private async void VersionExport_Click(object sender, RoutedEventArgs e)
     {
-        ExportModel("version-resource", VersionPeBox.Text, VersionNameBox.Text, VersionLanguageBox.Text, value => VersionJsonBox.Text = value);
+        await ExportModelAsync("version-resource", VersionPeBox.Text, VersionNameBox.Text, VersionLanguageBox.Text, value => VersionJsonBox.Text = value);
     }
 
-    private void VersionApply_Click(object sender, RoutedEventArgs e)
+    private async void VersionApply_Click(object sender, RoutedEventArgs e)
     {
-        ApplyModel("version-resource", VersionPeBox.Text, VersionNameBox.Text, VersionLanguageBox.Text, VersionJsonBox.Text);
+        await ApplyModelAsync("version-resource", VersionPeBox.Text, VersionNameBox.Text, VersionLanguageBox.Text, VersionJsonBox.Text);
     }
 
-    private void ManifestExport_Click(object sender, RoutedEventArgs e)
+    private async void ManifestExport_Click(object sender, RoutedEventArgs e)
     {
         var temporary = TempFile("manifest");
         try
         {
-            var result = RunCli("manifest-resource", "export", ManifestPeBox.Text, "--language", ManifestLanguageBox.Text, "--output", temporary, "--json");
+            var result = await RunCliAsync("manifest-resource", "export", ManifestPeBox.Text, "--language", ManifestLanguageBox.Text, "--output", temporary, "--json");
             if (result.ExitCode != 0) { SetStatus(result.Output); return; }
             using var document = JsonDocument.Parse(File.ReadAllText(temporary));
             ManifestXmlBox.Text = document.RootElement.GetProperty("xml").GetString() ?? "";
@@ -48,15 +49,15 @@ public partial class ResourceWizardsWindow : Window
         finally { File.Delete(temporary); }
     }
 
-    private void ManifestApply_Click(object sender, RoutedEventArgs e)
+    private async void ManifestApply_Click(object sender, RoutedEventArgs e)
     {
         var model = JsonSerializer.Serialize(new { format = "resource_studio.manifest.v1", xml = ManifestXmlBox.Text });
-        ApplyModel("manifest-resource", ManifestPeBox.Text, "1", ManifestLanguageBox.Text, model);
+        await ApplyModelAsync("manifest-resource", ManifestPeBox.Text, "1", ManifestLanguageBox.Text, model);
     }
 
-    private void MenuExport_Click(object sender, RoutedEventArgs e)
+    private async void MenuExport_Click(object sender, RoutedEventArgs e)
     {
-        ExportModel("menu-resource", MenuPeBox.Text, MenuNameBox.Text, MenuLanguageBox.Text, value => MenuJsonBox.Text = value);
+        await ExportModelAsync("menu-resource", MenuPeBox.Text, MenuNameBox.Text, MenuLanguageBox.Text, value => MenuJsonBox.Text = value);
     }
 
     private void MenuJsonBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
@@ -152,18 +153,18 @@ public partial class ResourceWizardsWindow : Window
         return node?["children"] is JsonArray children && children.Any(child => ContainsMenuId(child, id));
     }
 
-    private void MenuApply_Click(object sender, RoutedEventArgs e)
+    private async void MenuApply_Click(object sender, RoutedEventArgs e)
     {
-        ApplyModel("menu-resource", MenuPeBox.Text, MenuNameBox.Text, MenuLanguageBox.Text, MenuJsonBox.Text);
+        await ApplyModelAsync("menu-resource", MenuPeBox.Text, MenuNameBox.Text, MenuLanguageBox.Text, MenuJsonBox.Text);
     }
 
-    private void ExportModel(string command, string pe, string name, string language, Action<string> setValue)
+    private async Task ExportModelAsync(string command, string pe, string name, string language, Action<string> setValue)
     {
         if (!File.Exists(pe)) { SetStatus("Choose a PE file first."); return; }
         var temporary = TempFile(command);
         try
         {
-            var result = RunCli(command, "export", pe, "--name", name, "--language", language, "--output", temporary, "--json");
+            var result = await RunCliAsync(command, "export", pe, "--name", name, "--language", language, "--output", temporary, "--json");
             if (result.ExitCode != 0) { SetStatus(result.Output); return; }
             setValue(File.ReadAllText(temporary));
             SetStatus($"{command} loaded from PE.");
@@ -172,7 +173,7 @@ public partial class ResourceWizardsWindow : Window
         finally { File.Delete(temporary); }
     }
 
-    private void ApplyModel(string command, string pe, string name, string language, string modelText)
+    private async Task ApplyModelAsync(string command, string pe, string name, string language, string modelText)
     {
         if (!File.Exists(pe)) { SetStatus("Choose a PE file first."); return; }
         var outputDialog = new SaveFileDialog { Filter = "PE files (*.exe;*.dll;*.sys)|*.exe;*.dll;*.sys|All files (*.*)|*.*", FileName = Path.GetFileNameWithoutExtension(pe) + ".edited" + Path.GetExtension(pe) };
@@ -182,7 +183,7 @@ public partial class ResourceWizardsWindow : Window
         {
             JsonDocument.Parse(modelText);
             File.WriteAllText(temporary, modelText, Encoding.UTF8);
-            var result = RunCli(command, "apply", pe, "--name", name, "--language", language, "--model", temporary, "--output", outputDialog.FileName, "--json");
+            var result = await RunCliAsync(command, "apply", pe, "--name", name, "--language", language, "--model", temporary, "--output", outputDialog.FileName, "--json");
             SetStatus(result.ExitCode == 0 ? $"Applied to {outputDialog.FileName}" : result.Output);
         }
         catch (Exception exc) { SetStatus(exc.Message); }
@@ -191,19 +192,36 @@ public partial class ResourceWizardsWindow : Window
 
     private static string TempFile(string prefix) => Path.Combine(Path.GetTempPath(), $"resource-studio-{prefix}-{Guid.NewGuid():N}.json");
 
-    private CliResult RunCli(params string[] arguments)
+    private async Task<CliProcessRunner.Result> RunCliAsync(params string[] arguments)
     {
-        var info = new ProcessStartInfo("py.exe") { WorkingDirectory = Path.GetDirectoryName(_cliPath) ?? Environment.CurrentDirectory, UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true, CreateNoWindow = true, StandardOutputEncoding = Encoding.UTF8, StandardErrorEncoding = Encoding.UTF8 };
-        info.ArgumentList.Add("-3.12");
-        info.ArgumentList.Add(_cliPath);
-        foreach (var argument in arguments) info.ArgumentList.Add(argument);
-        using var process = Process.Start(info) ?? throw new InvalidOperationException("Could not start Python CLI");
-        var stdout = process.StandardOutput.ReadToEnd();
-        var stderr = process.StandardError.ReadToEnd();
-        process.WaitForExit();
-        return new CliResult(process.ExitCode, string.IsNullOrWhiteSpace(stdout) ? stderr : stdout);
+        using var cancellation = new CancellationTokenSource();
+        _cliCancellation = cancellation;
+        StopCliButton.IsEnabled = true;
+        SetStatus("Resource operation running");
+        try
+        {
+            var result = await CliProcessRunner.RunAsync(_cliPath, arguments, cancellation.Token);
+            var report = VerificationSummary.Format(result.Output);
+            VerificationSummaryText.Text = report;
+            VerificationSummaryText.Visibility = string.IsNullOrWhiteSpace(report) ? Visibility.Collapsed : Visibility.Visible;
+            SetStatus(result.Stopped ? "Stopped — input unchanged" : result.ExitCode == 0 ? "Resource operation completed" : "Resource operation failed — see details");
+            return result;
+        }
+        catch (Exception exc)
+        {
+            SetStatus($"Resource operation failed: {exc.Message}");
+            VerificationSummaryText.Text = $"FAIL {exc.Message}";
+            VerificationSummaryText.Visibility = Visibility.Visible;
+            return new CliProcessRunner.Result(2, exc.ToString(), false);
+        }
+        finally
+        {
+            _cliCancellation = null;
+            StopCliButton.IsEnabled = false;
+        }
     }
 
+    private void StopCli_Click(object sender, RoutedEventArgs e) => _cliCancellation?.Cancel();
+
     private void SetStatus(string text) => StatusText.Text = text;
-    private sealed record CliResult(int ExitCode, string Output);
 }
