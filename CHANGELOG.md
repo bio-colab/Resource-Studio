@@ -48,6 +48,9 @@
 - نجاح release workflow السابق `32440078729` في إنشاء source bundle وSHA-256 مع اجتياز فحص الملفات المحظورة.
 - نشر screenshot حقيقي لنافذة WPF في `assets/screenshots/resource-studio-main.png`، وإنشاء Issue المجتمع الأول [#1](https://github.com/bio-colab/Resource-Studio/issues/1). Discussion بقيت اختيارية بسبب رفض صلاحية `createDiscussion` من GitHub integration.
 - إضافة regression لنموذج Evidence وCLI inspect وForensicEvidence، مع إبقاء RSQL وMutation Timeline مخططين لا منفذين في هذه الدفعة.
+- تنفيذ `core/diagnostics.py` وأمر `report diagnostics` لتفسير before/after للأقسام والبنى المحمية وdirectories وchecksum وsignature وoverlay وresource graph وraw corroboration، مع findings وصيغ التقارير الحالية.
+- إضافة journal JSONL لكل Batch job وخيار `--resume` الذي يتحقق من hash الناتج ويخطي العناصر المكتملة بأمان، مع اختبارات core وCLI.
+- إضافة `docs/PRODUCTIZATION.md` وتحديث المرحلة 10 لتحديد ما اكتمل وما بقي مؤجلًا حسب احتياجات المطورين والهواة.
 
 ### ما يزال قيد التنفيذ
 

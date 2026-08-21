@@ -163,6 +163,22 @@ python3 resource_studio_cli.py evidence-ledger append --ledger evidence.jsonl --
 python3 resource_studio_cli.py evidence-ledger verify --ledger evidence.jsonl --json
 ```
 
+لعمليات batch القابلة للاستئناف:
+
+```bash
+python3 resource_studio_cli.py batch plan batch.json --json
+python3 resource_studio_cli.py batch apply batch.json --journal batch.journal.jsonl --report batch-report.json --json
+python3 resource_studio_cli.py batch apply batch.json --journal batch.journal.jsonl --resume --json
+```
+
+ولإنشاء تقرير before/after مفهوم بعد الكتابة:
+
+```bash
+python3 resource_studio_cli.py report diagnostics before.dll after.dll --format markdown --output diagnostics.md
+```
+
+توثّق [`docs/PRODUCTIZATION.md`](docs/PRODUCTIZATION.md) عقود journal/resume وPost-write Diagnostics وحدود المرحلة التالية.
+
 ينفذ `durable_commit` أيضًا post-commit readback ويعيد `verifiedSha256` للbytes المقروءة من الهدف بعد الاستبدال. ويثبت Writer determinism regression أن نفس mutation ينتج نفس SHA-256، مع تثبيت COFF timestamp الأصلي بدل تركه يتغير عشوائيًا.
 
 ## الاختبارات
@@ -216,6 +232,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tests\windows\Invoke-Resourc
 - [UI/UX-goal](docs/UIUX-GOAL.md)
 - [TODO and execution ledger](TODO.md)
 - [PE Evidence model](docs/PE-EVIDENCE-MODEL.md)
+- [Productization backlog](docs/PRODUCTIZATION.md)
 - [Changelog](CHANGELOG.md)
 - [Contributing guide](CONTRIBUTING.md)
 - [GitHub repository](https://github.com/bio-colab/Resource-Studio)

@@ -21,6 +21,7 @@ from .image_resources import BitmapResource, IconCursorEntry, IconCursorGroup, I
 from .hex_view import HexSlice, HexViewer
 from .invariants import PEInvariantSnapshot, PESurgicalChangeReport, compare_surgical_change, snapshot
 from .deep_invariants import DeepPEInvariantReport, inspect_deep
+from .diagnostics import build_post_write_diagnostics
 from .localization import LocalizationCatalog, LocalizedString
 from .menu_resources import MenuItem, MenuResource, MenuResourceError
 from .manifest import ManifestDocument
@@ -95,6 +96,7 @@ __all__ = [
     "compare_surgical_change",
     "snapshot",
     "DeepPEInvariantReport",
+    "build_post_write_diagnostics",
     "inspect_deep",
     "LocalizationCatalog",
     "LocalizedString",

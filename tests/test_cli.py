@@ -132,6 +132,15 @@ def main() -> None:
         assert inspect_report.returncode == 0, inspect_report.stderr
         assert json.loads(inspect_report.stdout)["imports"]
 
+        diagnostics_report = run_cli("report", "diagnostics", str(FIXTURE), str(FIXTURE), "--format", "json")
+        assert diagnostics_report.returncode == 0, diagnostics_report.stderr
+        diagnostics_payload = json.loads(diagnostics_report.stdout)
+        assert diagnostics_payload["schema"] == "resource_studio.post_write_diagnostics.v1"
+        assert diagnostics_payload["protected"]["imports"] is True
+        diagnostics_markdown = run_cli("report", "diagnostics", str(FIXTURE), str(FIXTURE), "--format", "markdown")
+        assert diagnostics_markdown.returncode == 0, diagnostics_markdown.stderr
+        assert "schema" in diagnostics_markdown.stdout
+
         portable = temporary_path / "portable"
         exported = run_cli("export", str(project.project_dir), "--output", str(portable), "--json")
         assert exported.returncode == 0, exported.stderr

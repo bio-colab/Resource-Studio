@@ -12,6 +12,7 @@ from typing import Any
 from core.batch import BatchWorkspace
 from core.compatibility import inspect_compatibility
 from core.diff import diff_image_payloads, diff_resources
+from core.diagnostics import build_post_write_diagnostics
 from core.evidence_ledger import EvidenceLedger, generate_ed25519_keypair
 from core.evidence_model import build_evidence_summary, evidence_summary_hash
 from core.forensics import ForensicBaseline
@@ -162,7 +163,10 @@ def command_import(args: argparse.Namespace) -> int:
 
 def command_batch(args: argparse.Namespace) -> int:
     workspace = BatchWorkspace.load(args.manifest)
-    payload = workspace.plan() if args.action == "plan" else workspace.apply(args.report)
+    if args.action == "plan":
+        payload = workspace.plan()
+    else:
+        payload = workspace.apply(args.report, journal_path=args.journal, resume=args.resume)
     _print(payload, args.json)
     return 0 if payload.get("willWrite", True) else 1
 
@@ -527,6 +531,10 @@ def command_report(args: argparse.Namespace) -> int:
         payload["compatibility"] = inspect_compatibility(args.input).to_dict()
     elif args.kind == "image-diff":
         payload = diff_image_payloads(args.input.read_bytes(), args.right.read_bytes(), kind=args.image_kind).to_dict()
+    elif args.kind == "diagnostics":
+        if args.right is None:
+            raise ValueError("diagnostics report requires a before and after PE")
+        payload = build_post_write_diagnostics(args.input, args.right)
     else:
         payload = _diff_payload(args.input, args.right)
     rendered = render_report(payload, args.format)
@@ -613,6 +621,8 @@ def parser() -> argparse.ArgumentParser:
     batch_parser.add_argument("action", choices=("plan", "apply"))
     batch_parser.add_argument("manifest", type=Path)
     batch_parser.add_argument("--report", type=Path)
+    batch_parser.add_argument("--journal", type=Path)
+    batch_parser.add_argument("--resume", action="store_true")
     batch_parser.add_argument("--json", action="store_true")
     batch_parser.set_defaults(handler=command_batch)
 
@@ -769,7 +779,7 @@ def parser() -> argparse.ArgumentParser:
     validate_parser.set_defaults(handler=command_validate)
 
     report_parser = subparsers.add_parser("report", help="write a health or diff report")
-    report_parser.add_argument("kind", choices=("health", "inspect", "diff", "image-diff"))
+    report_parser.add_argument("kind", choices=("health", "inspect", "diff", "image-diff", "diagnostics"))
     report_parser.add_argument("input", type=Path)
     report_parser.add_argument("right", type=Path, nargs="?")
     report_parser.add_argument("--image-kind", choices=("bitmap", "icon", "cursor"), default="bitmap")

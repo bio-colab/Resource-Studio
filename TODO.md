@@ -277,22 +277,24 @@
 
 | الحالة | المعرّف | المهمة | الأولوية | معيار الإنجاز |
 |---|---|---|---|---|
-| [~] | PROD-01 | Batch Workspace متعدد الملفات | حرجة | `core/batch.py` وCLI `batch plan/apply` يدعمان manifest متعدد الملفات، add/replace/delete/change-language، dry-run، staging، atomic Save As، backup، rollback عند فشل commit، report JSON، وWPF Batch Workspace؛ فهرسة المجلد والـqueue التفاعلي وresume الكامل لاحقة |
+| [~] | PROD-01 | Batch Workspace متعدد الملفات | حرجة | `core/batch.py` وCLI `batch plan/apply` يدعمان manifest متعدد الملفات، add/replace/delete/change-language، dry-run، staging، atomic Save As، backup، rollback عند فشل commit، report JSON، وWPF Batch Workspace؛ أضيف journal JSONL و`--resume` مع hash verification؛ فهرسة المجلد والـqueue التفاعلي وresume داخل WPF لاحقة |
 | [~] | PROD-02 | Common Resource Wizards والمحررات المرئية | حرجة | StringTable Editor WPF بجدول 16 خانة وCLI export/apply؛ Resource Wizards WPF لـVersionInfo/Manifest/Menu مع JSON/XML وSave As؛ Menu يدعم drag-and-drop إلى parent وإعادة بناء JSON؛ Image Wizard يحرر عناصر Icon/Cursor الفردية ويزامن group JSON، مع export/apply BMP/PNG وpreview بصري؛ multi-image payload editing وAccessibility automation اللاحقة |
 | [~] | PROD-03 | Preview Engine موحد | عالية | `core/preview.py` وCLI `preview` يدعمان Manifest/Version/Menu/Dialog/StringTable/Bitmap/Icon/Cursor مع summary typed وraw fallback وBMP output اختياري؛ WPF Preview يرسم Bitmap وMenu وDialog، ويعرض VersionInfo كحقول وstrings، Manifest كـXML، StringTable كسجل ID/text، وIcon/Cursor group كبطاقات؛ Image Wizard يعرض payload الفردي بصيغة BMP، بينما golden screenshots ومعاينة cursor hotspot المتقدمة لاحقة |
 | [ ] | PROD-04 | Localization Workbench | حرجة | multi-file/multi-locale grid، comments/context، placeholder وhotkey checks، XLIFF/PO/RESX، side-by-side editing |
-| [ ] | PROD-05 | Post-write Diagnostics Center | حرجة | تقرير before/after للأقسام وdirectories وchecksum وsignature وoverlay وresource bounds مع تفسير قابل للفهم |
+| [x] | PROD-05 | Post-write Diagnostics Center | حرجة | `core/diagnostics.py` وأمر `report diagnostics` يقدمان before/after للأقسام وdirectories وimports/exports/TLS/Load Config/debug وchecksum وsignature وoverlay وresource graph وraw corroboration مع findings قابلة للفهم وصيغ JSON/Markdown/CSV/HTML |
 | [ ] | PROD-06 | UI Automation وAccessibility | عالية | اختبارات WPF قابلة لإعادة التشغيل للفتح/البحث/التعديل/Save As، keyboard navigation، AutomationProperties، High Contrast وscreen-reader smoke test |
 | [ ] | PROD-07 | Resource Transfer/Merge | عالية | نقل نوع/ID/لغة بين PE مع conflict resolver وdry-run وinvariants وحماية signature/overlay |
 | [ ] | PROD-08 | Accelerator/MessageTable/Font/RCData | عالية | parser/serializer محافظ، raw fallback، typed bridge، CLI، fixtures malformed وgolden round-trip، ثم editor عند ثبات الصيغ |
 | [ ] | PROD-09 | MUI و.NET satellite workflow | عالية | فتح المجموعة المرتبطة، مقارنة neutral/satellite، culture validation، ومسار منفصل لموارد .NET |
 | [ ] | PROD-10 | Windows shell وworkspace convenience | متوسطة | drag/drop، recent/favorites، portable mode، file association اختيارية، context menu محلي، وتفضيلات theme محفوظة |
-| [ ] | PROD-11 | Batch reports وresume | عالية | journal لكل عنصر، resume من آخر نجاح، JSON Lines، exit codes، hashes وartifacts قابلة للتحقق |
+| [~] | PROD-11 | Batch reports وresume | عالية | journal JSONL لكل job، resume من آخر نجاح مع hash verification، exit codes، hashes وreport artifacts منجزة؛ resume التفاعلي ومراقبة التقدم داخل WPF لاحقان |
 | [ ] | PROD-12 | Plugin SDK sample pack | متوسطة | أمثلة Viewer/Parser/Exporter، contract tests، capability discovery، وثائق API مولدة وإصدار SDK متوافق |
 | [ ] | PROD-13 | PE diagnostics المتقدمة | متوسطة | dependency scanner وimports/exports/TLS/CLR/packer hints وتقارير واضحة، دون كتابة headers قبل اكتمال corpus |
 | [ ] | PROD-14 | Adapters للأدوات المتقدمة | منخفضة | adapters اختيارية لـ disassembler/import editor/PE rebuilder أو unpacker خارج النواة وبصلاحيات وتحذيرات صريحة |
 
 **الدليل التحليلي:** `docs/RESOURCE-STUDIO-MARKET-ASSESSMENT-2026-08-20.md` و`docs/research_competitors_notes.md`.
+
+**دفعة Productization الحالية:** `docs/PRODUCTIZATION.md`؛ تثبت هذه الدفعة أن الأولوية العملية هي إعادة التشغيل والتشخيص القابل للفهم قبل إضافة محررات أو adapters جديدة.
 
 
 ## سجل بوابة main-goal النهائية

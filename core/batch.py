@@ -6,6 +6,7 @@ import os
 import shutil
 import tempfile
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -84,29 +85,49 @@ class BatchWorkspace:
             "jobs": results,
         }
 
-    def apply(self, report_path: Path | None = None) -> dict[str, Any]:
+    def apply(self, report_path: Path | None = None, *, journal_path: Path | None = None, resume: bool = False) -> dict[str, Any]:
+        if resume and journal_path is None:
+            raise BatchError("resume requires --journal")
+        journal_path = Path(journal_path).expanduser().resolve() if journal_path is not None else None
+        journal = _load_journal(journal_path) if resume else {}
         with tempfile.TemporaryDirectory(prefix="resource-studio-batch-apply-") as temporary:
-            staged = [(job, self._run_job(job, Path(temporary), commit=True)) for job in self.jobs]
+            staged: list[tuple[BatchJob, dict[str, Any]]] = []
+            for job in self.jobs:
+                previous = journal.get(_job_key(job))
+                if resume and previous and previous.get("status") == "committed" and job.output_path.is_file() and _sha256(job.output_path) == previous.get("afterSha256"):
+                    result = dict(previous.get("result", {}))
+                    result.update({"resumed": True, "skipped": True, "outputPath": str(job.output_path)})
+                else:
+                    result = self._run_job(job, Path(temporary), commit=True)
+                staged.append((job, result))
             committed: list[tuple[Path, Path | None]] = []
             try:
                 for job, result in staged:
+                    if result.get("skipped"):
+                        continue
                     backup = _backup_existing(job.output_path)
                     _atomic_copy(Path(result["stagedPath"]), job.output_path)
                     committed.append((job.output_path, backup))
                     result["outputPath"] = str(job.output_path)
                     result["backupPath"] = str(backup) if backup else None
                     result.pop("stagedPath", None)
-            except Exception:
+                    if journal_path is not None:
+                        _append_journal(journal_path, {"status": "committed", "job": _job_key(job), "afterSha256": result["afterSha256"], "result": dict(result)})
+            except Exception as exc:
                 for output, backup in reversed(committed):
                     if backup and backup.is_file():
                         _atomic_copy(backup, output)
                     else:
                         output.unlink(missing_ok=True)
+                if journal_path is not None:
+                    _append_journal(journal_path, {"status": "failed", "job": _job_key(job), "error": str(exc)})
                 raise
         payload = {
             "format": self.FORMAT,
             "manifest": str(self.manifest_path),
             "mode": "apply",
+            "resumed": resume,
+            "journalPath": str(journal_path) if journal_path else None,
             "jobs": [result for _, result in staged],
         }
         if report_path is not None:
@@ -193,6 +214,33 @@ def _apply_operation(writer: LiefPEWriter, input_path: Path, output_path: Path, 
     if action == "delete":
         return writer.delete_resource(input_path, output_path, str(resource_type), name, int(operation["language"]))
     return writer.change_language(input_path, output_path, str(resource_type), name, int(operation["sourceLanguage"]), int(operation["targetLanguage"]))
+
+
+def _job_key(job: BatchJob) -> str:
+    payload = {"input": str(job.input_path), "output": str(job.output_path), "operations": list(job.operations)}
+    return hashlib.sha256(json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
+
+
+def _load_journal(path: Path | None) -> dict[str, dict[str, Any]]:
+    if path is None or not path.is_file():
+        return {}
+    result: dict[str, dict[str, Any]] = {}
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        record = json.loads(line)
+        if record.get("status") in {"committed", "failed"} and record.get("job"):
+            result[str(record["job"])] = record
+    return result
+
+
+def _append_journal(path: Path, record: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {"format": "resource_studio.batch_journal.v1", "timestampUtc": datetime.now(UTC).isoformat(), **record}
+    with path.open("a", encoding="utf-8") as stream:
+        stream.write(json.dumps(payload, ensure_ascii=False, sort_keys=True) + "\n")
+        stream.flush()
+        os.fsync(stream.fileno())
 
 
 def _resolve(base: Path, value: Any, field: str) -> Path:

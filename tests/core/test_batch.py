@@ -26,6 +26,7 @@ def main() -> None:
         first = root / "first.dll"
         second = root / "second.dll"
         manifest = root / "batch.json"
+        journal = root / "batch.journal.jsonl"
         manifest.write_text(
             json.dumps(
                 {
@@ -50,11 +51,15 @@ def main() -> None:
         plan = workspace.plan()
         assert plan["willWrite"] is True
         assert not first.exists() and not second.exists()
-        applied = workspace.apply(root / "batch-report.json")
+        applied = workspace.apply(root / "batch-report.json", journal_path=journal)
         assert all(job["verified"] for job in applied["jobs"])
+        assert journal.is_file()
         assert first.is_file() and second.is_file()
         assert (root / "batch-report.json").is_file()
         first_hash = sha256(first)
+        resumed = workspace.apply(journal_path=journal, resume=True)
+        assert resumed["resumed"] is True
+        assert all(job.get("skipped") is True for job in resumed["jobs"])
         workspace.apply()
         assert sha256(first) == first_hash
         assert first.with_suffix(first.suffix + ".batch.bak").is_file()
