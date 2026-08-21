@@ -150,7 +150,7 @@
 | [~] | GAP-05 | قفل المشروع والتعافي من الانقطاع | عالية | `Project.acquire_lock/release_lock/locked` تمنع التشغيل المتزامن؛ transaction journal والاستعادة التلقائية الكاملة لاحقان |
 | [~] | GAP-06 | حدود أمان الإضافات خارج العملية | حرجة | `PluginLimits` وWindows Job Object process/memory cap تعمل؛ filesystem/network isolation الكامل لاحق |
 | [x] | GAP-07 | بحث موحد متقدم | عالية | `core/search.py` وCLI `search` يدعمان metadata وUTF-8 وUTF-16 وregex وhex وفلترة type/language مع offset |
-| [~] | GAP-08 | تغطية Dialog وAccelerator وFont وMessageTable | عالية | Dialog مكتمل جزئيًا: DIALOG/DIALOGEX parser/serializer، JSON model، malformed/round-trip tests، Project/CLI bridge وWPF WYSIWYG؛ Accelerator/Font/MessageTable وخصائص Win32 المتقدمة لاحقة |
+| [~] | GAP-08 | تغطية Dialog وAccelerator وFont وMessageTable | عالية | DIALOG/DIALOGEX أصبح له typed WYSIWYG editor، standard controls، properties، validation، round-trip وSave As؛ Accelerator/Font/MessageTable وcustom owner-draw preview لاحقة |
 | [ ] | GAP-09 | تعريب تبادلي كامل | متوسطة | XLIFF/PO/RESX مع حفظ التعليقات والسياق وplural rules وplaceholder validation، دون خلطه بمحرر الموارد الأساسي |
 | [~] | GAP-10 | حفظ provenance والإصدارات والتراخيص | عالية | `core/provenance.py` ينشئ manifest للبناء يحوي LIEF/version/input/output hashes/resources/licenses؛ SBOM وreproducible metadata الكاملان لاحقان |
 | [~] | GAP-11 | اختبار PE خارج الموارد وخصائص loader | عالية | invariants وcompatibility وPEInspector تغطي directories/imports/exports/TLS/debug/CLR/overlay؛ corpus loader profiles الأوسع لاحق |
@@ -580,7 +580,7 @@
 | HEX-02 | WPF Hex surface | [ ] | ربط viewer الخام بواجهة WPF بعد تحديد workflow وacceptance على Windows؛ CLI الحالي يحقق الحد الأدنى المطلوب |
 | RC-01 | RC subset compiler | [x] | `rc compile` يحول STRINGTABLE وMENU/MENUEX وVERSIONINFO إلى RES |
 | RC-02 | RC subset decompiler | [x] | `rc decompile` يعيد RES المدعوم إلى RC ويحافظ على unsupported records كتعليقات |
-| RC-03 | RC expansion | [ ] | DIALOG/ICON/ACCELERATORS وfixtures حقيقية فقط بعد round-trip contracts مستقلة |
+| RC-03 | RC expansion | [~] | DIALOG وMENU أصبحا مدعومين typed/round-trip داخل Resource Studio؛ RC text expansion لـDIALOG/ACCELERATORS وfixtures الحقيقية باقية |
 
 ### تحقق الدفعة
 

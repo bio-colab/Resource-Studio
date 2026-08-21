@@ -107,11 +107,16 @@ public partial class DialogEditorWindow : Window
     private FrameworkElement CreateControlVisual(ControlModel control)
     {
         var text = control.Title?.ToString() ?? "";
-        FrameworkElement visual = control.Class is JsonElement element && element.ValueKind == JsonValueKind.Number && element.GetInt32() == 0x0080 || control.Class is int number && number == 0x0080
+        var classNumber = GetClassNumber(control.Class);
+        FrameworkElement visual = classNumber == 0x0080
             ? new Button { Content = text }
-            : control.Class is JsonElement staticElement && staticElement.ValueKind == JsonValueKind.Number && staticElement.GetInt32() == 0x0082 || control.Class is int staticNumber && staticNumber == 0x0082
+            : classNumber == 0x0082
                 ? new Label { Content = text, BorderBrush = Brushes.LightGray, BorderThickness = new Thickness(1) }
-                : new TextBox { Text = text };
+                : classNumber == 0x0083
+                    ? new ListBox { ItemsSource = new[] { text, "Item 2", "Item 3" } }
+                    : classNumber == 0x0085
+                        ? new ComboBox { ItemsSource = new[] { text, "Item 2", "Item 3" }, SelectedIndex = 0 }
+                        : new TextBox { Text = text };
         visual.Width = Math.Max(8, control.Width * 2);
         visual.Height = Math.Max(8, control.Height * 2);
         visual.Tag = control;
@@ -129,18 +134,28 @@ public partial class DialogEditorWindow : Window
         var control = SelectedControl;
         if (control is null)
         {
+            ControlIdBox.Text = "";
+            ControlHelpIdBox.Text = "";
+            ControlClassBox.Text = "";
             ControlTextBox.Text = "";
             ControlXBox.Text = "";
             ControlYBox.Text = "";
             ControlWidthBox.Text = "";
             ControlHeightBox.Text = "";
+            ControlStyleBox.Text = "";
+            ControlExstyleBox.Text = "";
             return;
         }
+        ControlIdBox.Text = control.ControlId.ToString();
+        ControlHelpIdBox.Text = control.HelpId.ToString();
+        ControlClassBox.Text = FormatValue(control.Class);
         ControlTextBox.Text = control.Title?.ToString() ?? "";
         ControlXBox.Text = control.X.ToString();
         ControlYBox.Text = control.Y.ToString();
         ControlWidthBox.Text = control.Width.ToString();
         ControlHeightBox.Text = control.Height.ToString();
+        ControlStyleBox.Text = $"0x{control.Style:X}";
+        ControlExstyleBox.Text = $"0x{control.Exstyle:X}";
     }
 
     private void DialogProperty_LostFocus(object sender, RoutedEventArgs e)
@@ -155,12 +170,18 @@ public partial class DialogEditorWindow : Window
     {
         var control = SelectedControl;
         if (control is null) return;
+        if (int.TryParse(ControlIdBox.Text, out var controlId)) control.ControlId = Math.Clamp(controlId, 0, 65535);
+        if (int.TryParse(ControlHelpIdBox.Text, out var helpId)) control.HelpId = Math.Max(0, helpId);
+        control.Class = ParseValue(ControlClassBox.Text);
         control.Title = ControlTextBox.Text;
         if (int.TryParse(ControlXBox.Text, out var x)) control.X = Math.Clamp(x, -32768, 32767);
         if (int.TryParse(ControlYBox.Text, out var y)) control.Y = Math.Clamp(y, -32768, 32767);
         if (int.TryParse(ControlWidthBox.Text, out var width)) control.Width = Math.Clamp(width, 1, 32767);
         if (int.TryParse(ControlHeightBox.Text, out var height)) control.Height = Math.Clamp(height, 1, 32767);
+        if (TryParseInteger(ControlStyleBox.Text, out var style)) control.Style = style;
+        if (TryParseInteger(ControlExstyleBox.Text, out var exstyle)) control.Exstyle = exstyle;
         RefreshEditor();
+        ControlsList.SelectedItem = control;
     }
 
     private void AddButton_Click(object sender, RoutedEventArgs e)
@@ -173,6 +194,35 @@ public partial class DialogEditorWindow : Window
     {
         _model.Controls.Add(new ControlModel { ControlId = NextId(), X = 16, Y = 30 + _model.Controls.Count * 24, Width = 100, Height = 18, Class = 0x0082, Title = "Label" });
         RefreshEditor();
+    }
+
+    private void AddEdit_Click(object sender, RoutedEventArgs e) => AddControl(0x0081, "Edit", 110, 20);
+
+    private void AddList_Click(object sender, RoutedEventArgs e) => AddControl(0x0083, "List", 120, 45);
+
+    private void AddCombo_Click(object sender, RoutedEventArgs e) => AddControl(0x0085, "Combo", 120, 22);
+
+    private void AddControl(int className, string title, int width, int height)
+    {
+        _model.Controls.Add(new ControlModel { ControlId = NextId(), X = 16, Y = 30 + _model.Controls.Count * 24, Width = width, Height = height, Class = className, Title = title });
+        RefreshEditor();
+        ControlsList.SelectedIndex = _model.Controls.Count - 1;
+    }
+
+    private void DeleteControl_Click(object sender, RoutedEventArgs e)
+    {
+        if (SelectedControl is not ControlModel control) return;
+        _model.Controls.Remove(control);
+        RefreshEditor();
+    }
+
+    private void DuplicateControl_Click(object sender, RoutedEventArgs e)
+    {
+        if (SelectedControl is not ControlModel control) return;
+        var copy = new ControlModel { ControlId = NextId(), X = control.X + 8, Y = control.Y + 8, Width = control.Width, Height = control.Height, Style = control.Style, Exstyle = control.Exstyle, Class = control.Class, Title = control.Title, CreationDataHex = control.CreationDataHex, HelpId = control.HelpId };
+        _model.Controls.Add(copy);
+        RefreshEditor();
+        ControlsList.SelectedItem = copy;
     }
 
     private int NextId() => _model.Controls.Count == 0 ? 100 : _model.Controls.Max(item => item.ControlId) + 1;
@@ -284,6 +334,28 @@ public partial class DialogEditorWindow : Window
     }
 
     private void StopCli_Click(object sender, RoutedEventArgs e) => _cliCancellation?.Cancel();
+
+    private static string FormatValue(object value) => value is JsonElement element ? element.ToString() : value?.ToString() ?? "";
+
+    private static int? GetClassNumber(object value)
+    {
+        if (value is int number) return number;
+        if (value is JsonElement element && element.ValueKind == JsonValueKind.Number && element.TryGetInt32(out var parsed)) return parsed;
+        return null;
+    }
+
+    private static object ParseValue(string text)
+    {
+        text = text.Trim();
+        return TryParseInteger(text, out var value) ? value : text;
+    }
+
+    private static bool TryParseInteger(string text, out int value)
+    {
+        text = text.Trim();
+        if (text.StartsWith("0x", StringComparison.OrdinalIgnoreCase)) return int.TryParse(text[2..], System.Globalization.NumberStyles.HexNumber, null, out value);
+        return int.TryParse(text, out value);
+    }
 
     private static void TryDelete(string path) { try { if (File.Exists(path)) File.Delete(path); } catch { } }
 }

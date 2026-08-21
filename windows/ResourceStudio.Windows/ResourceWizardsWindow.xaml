@@ -30,8 +30,20 @@
             <TabItem Header="Menu">
                 <Grid Margin="8">
                     <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
-                    <WrapPanel Margin="0,0,0,8"><TextBlock Text="PE" VerticalAlignment="Center" Margin="0,0,6,0" /><TextBox x:Name="MenuPeBox" Width="390" Margin="0,0,8,0" /><TextBlock Text="ID" VerticalAlignment="Center" Margin="0,0,6,0" /><TextBox x:Name="MenuNameBox" Width="55" Text="1" Margin="0,0,8,0" /><TextBlock Text="Lang" VerticalAlignment="Center" Margin="0,0,6,0" /><TextBox x:Name="MenuLanguageBox" Width="70" Text="1033" /></WrapPanel>
-                    <Grid Grid.Row="1"><Grid.ColumnDefinitions><ColumnDefinition Width="3*" /><ColumnDefinition Width="2*" /></Grid.ColumnDefinitions><TextBox x:Name="MenuJsonBox" FontFamily="Consolas" FontSize="12" AcceptsReturn="True" TextWrapping="NoWrap" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" TextChanged="MenuJsonBox_TextChanged" /><TreeView x:Name="MenuTree" Grid.Column="1" Margin="8,0,0,0" AllowDrop="True" PreviewMouseMove="MenuTree_PreviewMouseMove" Drop="MenuTree_Drop" /></Grid>
+                    <WrapPanel Margin="0,0,0,8"><TextBlock Text="PE" VerticalAlignment="Center" Margin="0,0,6,0" /><TextBox x:Name="MenuPeBox" Width="360" Margin="0,0,8,0" /><TextBlock Text="ID" VerticalAlignment="Center" Margin="0,0,6,0" /><TextBox x:Name="MenuNameBox" Width="55" Text="1" Margin="0,0,8,0" /><TextBlock Text="Lang" VerticalAlignment="Center" Margin="0,0,6,0" /><TextBox x:Name="MenuLanguageBox" Width="70" Text="1033" /></WrapPanel>
+                    <Grid Grid.Row="1"><Grid.ColumnDefinitions><ColumnDefinition Width="2*" /><ColumnDefinition Width="3*" /><ColumnDefinition Width="2*" /></Grid.ColumnDefinitions>
+                        <TreeView x:Name="MenuTree" Margin="0,0,8,0" AllowDrop="True" SelectedItemChanged="MenuTree_SelectedItemChanged" PreviewMouseMove="MenuTree_PreviewMouseMove" Drop="MenuTree_Drop" />
+                        <TextBox x:Name="MenuJsonBox" Grid.Column="1" FontFamily="Consolas" FontSize="11" AcceptsReturn="True" TextWrapping="NoWrap" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" TextChanged="MenuJsonBox_TextChanged" />
+                        <ScrollViewer Grid.Column="2" Margin="8,0,0,0" VerticalScrollBarVisibility="Auto"><StackPanel>
+                            <TextBlock Text="Selected item" FontWeight="Bold" Margin="0,0,0,6" />
+                            <TextBlock Text="ID" /><TextBox x:Name="MenuItemIdBox" Margin="0,2" LostFocus="MenuItemProperty_LostFocus" />
+                            <TextBlock Text="Text" /><TextBox x:Name="MenuItemTextBox" Margin="0,2" LostFocus="MenuItemProperty_LostFocus" />
+                            <TextBlock Text="Flags (hex)" /><TextBox x:Name="MenuItemFlagsBox" Margin="0,2" LostFocus="MenuItemProperty_LostFocus" ToolTip="MF_CHECKED, MF_DISABLED, MF_SEPARATOR and other Win32 flags" />
+                            <TextBlock x:Name="MenuItemKindText" Text="No item selected" Margin="0,4,0,8" Foreground="Gray" />
+                            <WrapPanel><Button Content="Add root" Click="MenuAddRoot_Click" Margin="0,0,4,4" /><Button Content="Add child" Click="MenuAddChild_Click" Margin="0,0,4,4" /><Button Content="Add separator" Click="MenuAddSeparator_Click" Margin="0,0,4,4" /><Button Content="Delete" Click="MenuDelete_Click" Margin="0,0,4,4" /></WrapPanel>
+                            <WrapPanel><Button Content="Move up" Click="MenuMoveUp_Click" Margin="0,0,4,4" /><Button Content="Move down" Click="MenuMoveDown_Click" Margin="0,0,4,4" /><Button Content="Validate" Click="MenuValidate_Click" /></WrapPanel>
+                        </StackPanel></ScrollViewer>
+                    </Grid>
                     <WrapPanel Grid.Row="2" Margin="0,8,0,0"><Button Content="Load from PE" Click="MenuExport_Click" Margin="0,0,6,0" /><Button Content="Apply Save As" Click="MenuApply_Click" /></WrapPanel>
                 </Grid>
             </TabItem>

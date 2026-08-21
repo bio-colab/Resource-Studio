@@ -70,13 +70,39 @@ public partial class ResourceWizardsWindow : Window
             foreach (var item in items.EnumerateArray()) MenuTree.Items.Add(BuildMenuNode(item));
         }
         catch (JsonException) { }
+        RefreshMenuSelection();
+    }
+
+    private void MenuTree_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e) => RefreshMenuSelection();
+
+    private int? SelectedMenuId => MenuTree.SelectedItem is System.Windows.Controls.TreeViewItem node && node.Tag is int id ? id : null;
+
+    private void RefreshMenuSelection()
+    {
+        if (SelectedMenuId is not int id || !TryGetMenuNode(id, out var node, out _, out _))
+        {
+            MenuItemIdBox.Text = "";
+            MenuItemTextBox.Text = "";
+            MenuItemFlagsBox.Text = "";
+            MenuItemKindText.Text = "No item selected";
+            return;
+        }
+        MenuItemIdBox.Text = node!["id"]?.ToString() ?? "";
+        MenuItemTextBox.Text = node["text"]?.ToString() ?? "";
+        var flags = node["flags"]?.GetValue<int>() ?? 0;
+        MenuItemFlagsBox.Text = $"0x{flags:X}";
+        var children = node["children"] as JsonArray;
+        var kind = (flags & 0x0800) != 0 ? "SEPARATOR" : (flags & 0x0010) != 0 || children is { Count: > 0 } ? "POPUP" : "ITEM";
+        MenuItemKindText.Text = $"{kind} • flags 0x{flags:X} • children {children?.Count ?? 0}";
     }
 
     private static System.Windows.Controls.TreeViewItem BuildMenuNode(JsonElement item)
     {
         var id = item.TryGetProperty("id", out var idValue) ? idValue.ToString() : "?";
         var text = item.TryGetProperty("text", out var textValue) ? textValue.ToString() : "";
-        var node = new System.Windows.Controls.TreeViewItem { Header = $"{id}: {text}", Tag = int.TryParse(id, out var numericId) ? numericId : null };
+        var flags = item.TryGetProperty("flags", out var flagsValue) && flagsValue.TryGetInt32(out var parsedFlags) ? parsedFlags : 0;
+        var kind = (flags & 0x0800) != 0 ? "[SEP]" : (flags & 0x0010) != 0 ? "[POPUP]" : "[ITEM]";
+        var node = new System.Windows.Controls.TreeViewItem { Header = $"{id}: {kind} {text} 0x{flags:X}", Tag = int.TryParse(id, out var numericId) ? numericId : null };
         if (item.TryGetProperty("children", out var children) && children.ValueKind == JsonValueKind.Array)
         {
             foreach (var child in children.EnumerateArray()) node.Items.Add(BuildMenuNode(child));
@@ -151,6 +177,153 @@ public partial class ResourceWizardsWindow : Window
     {
         if (node?["id"]?.GetValue<int>() == id) return true;
         return node?["children"] is JsonArray children && children.Any(child => ContainsMenuId(child, id));
+    }
+
+    private bool TryGetMenuNode(int id, out JsonObject? node, out JsonArray? parent, out int index)
+    {
+        try
+        {
+            var root = JsonNode.Parse(MenuJsonBox.Text)?.AsObject();
+            var items = root?["items"] as JsonArray;
+            node = null;
+            parent = null;
+            index = -1;
+            return items is not null && FindMenuNodeWithParent(items, id, out node, out parent, out index);
+        }
+        catch (JsonException)
+        {
+            node = null;
+            parent = null;
+            index = -1;
+            return false;
+        }
+    }
+
+    private static bool FindMenuNodeWithParent(JsonArray items, int id, out JsonObject? node, out JsonArray? parent, out int index)
+    {
+        for (var i = 0; i < items.Count; i++)
+        {
+            if (items[i] is not JsonObject candidate) continue;
+            if (candidate["id"]?.GetValue<int>() == id) { node = candidate; parent = items; index = i; return true; }
+            if (candidate["children"] is JsonArray children && FindMenuNodeWithParent(children, id, out node, out parent, out index)) return true;
+        }
+        node = null;
+        parent = null;
+        index = -1;
+        return false;
+    }
+
+    private static int NextMenuId(JsonArray items)
+    {
+        var ids = new List<int>();
+        foreach (var item in items)
+        {
+            if (item?["id"]?.GetValue<int>() is int id) ids.Add(id);
+            if (item?["children"] is JsonArray children) ids.Add(NextMenuId(children));
+        }
+        return ids.Count == 0 ? 1 : ids.Max() + 1;
+    }
+
+    private void MenuItemProperty_LostFocus(object sender, RoutedEventArgs e)
+    {
+        if (SelectedMenuId is not int selectedId || !TryGetMenuNode(selectedId, out var node, out _, out _)) return;
+        if (!int.TryParse(MenuItemIdBox.Text, out var newId) || newId < 0) { SetStatus("Menu item ID must be a non-negative integer."); return; }
+        if (!TryParseInteger(MenuItemFlagsBox.Text, out var flags) || flags < 0) { SetStatus("Menu flags must be decimal or hexadecimal."); return; }
+        node!["id"] = newId;
+        node["text"] = MenuItemTextBox.Text;
+        node["flags"] = flags;
+        MenuJsonBox.Text = JsonNode.Parse(MenuJsonBox.Text)!.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
+        SetStatus("Menu item updated; apply Save As to commit it.");
+    }
+
+    private void MenuAddRoot_Click(object sender, RoutedEventArgs e) => AddMenuItem(null, 0, "New Item");
+
+    private void MenuAddChild_Click(object sender, RoutedEventArgs e) => AddMenuItem(SelectedMenuId, 0, "New Item");
+
+    private void MenuAddSeparator_Click(object sender, RoutedEventArgs e) => AddMenuItem(SelectedMenuId, 0x0800, "");
+
+    private void AddMenuItem(int? parentId, int flags, string text)
+    {
+        try
+        {
+            var root = JsonNode.Parse(MenuJsonBox.Text)?.AsObject() ?? throw new InvalidOperationException("invalid menu JSON");
+            var items = root["items"] as JsonArray ?? throw new InvalidOperationException("menu JSON has no items");
+            var item = new JsonObject { ["id"] = NextMenuId(items), ["text"] = text, ["flags"] = flags, ["children"] = new JsonArray() };
+            if (parentId is int parent)
+            {
+                var target = FindMenuNode(items, parent) ?? throw new InvalidOperationException("selected menu parent was not found");
+                target["flags"] = (target["flags"]?.GetValue<int>() ?? 0) | 0x0010;
+                var children = target["children"] as JsonArray ?? new JsonArray();
+                target["children"] = children;
+                children.Add(item);
+            }
+            else items.Add(item);
+            MenuJsonBox.Text = root.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
+            SetStatus("Menu item added; apply Save As to commit it.");
+        }
+        catch (Exception exc) { SetStatus(exc.Message); }
+    }
+
+    private void MenuDelete_Click(object sender, RoutedEventArgs e)
+    {
+        if (SelectedMenuId is not int id) return;
+        try
+        {
+            var root = JsonNode.Parse(MenuJsonBox.Text)?.AsObject() ?? throw new InvalidOperationException("invalid menu JSON");
+            var items = root["items"] as JsonArray ?? throw new InvalidOperationException("menu JSON has no items");
+            if (items.Count == 1 && FindMenuNodeWithParent(items, id, out _, out var parent, out _) && parent == items) { SetStatus("A menu must retain at least one root item."); return; }
+            if (!RemoveMenuNode(items, id, out _)) throw new InvalidOperationException("selected menu item was not found");
+            MenuJsonBox.Text = root.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
+            SetStatus("Menu item deleted; apply Save As to commit it.");
+        }
+        catch (Exception exc) { SetStatus(exc.Message); }
+    }
+
+    private void MenuMoveUp_Click(object sender, RoutedEventArgs e) => MoveMenuItem(-1);
+
+    private void MenuMoveDown_Click(object sender, RoutedEventArgs e) => MoveMenuItem(1);
+
+    private void MoveMenuItem(int delta)
+    {
+        if (SelectedMenuId is not int id || !TryGetMenuNode(id, out var node, out var parent, out var index) || parent is null) return;
+        var target = index + delta;
+        if (target < 0 || target >= parent.Count) return;
+        parent.RemoveAt(index);
+        parent.Insert(target, node);
+        MenuJsonBox.Text = JsonNode.Parse(MenuJsonBox.Text)!.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
+        SetStatus("Menu order updated; apply Save As to commit it.");
+    }
+
+    private void MenuValidate_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var root = JsonNode.Parse(MenuJsonBox.Text)?.AsObject() ?? throw new InvalidOperationException("invalid menu JSON");
+            var items = root["items"] as JsonArray;
+            if (items is null || items.Count == 0) throw new InvalidOperationException("menu must contain at least one root item");
+            var ids = new HashSet<int>();
+            ValidateMenuItems(items, ids);
+            SetStatus($"Menu valid: {ids.Count} unique items.");
+        }
+        catch (Exception exc) { SetStatus($"Menu invalid: {exc.Message}"); }
+    }
+
+    private static void ValidateMenuItems(JsonArray items, HashSet<int> ids)
+    {
+        foreach (var item in items)
+        {
+            var id = item?["id"]?.GetValue<int>() ?? throw new InvalidOperationException("menu item ID is required");
+            var flags = item?["flags"]?.GetValue<int>() ?? 0;
+            if (!(id == 0 && (flags & 0x0800) != 0) && !ids.Add(id)) throw new InvalidOperationException($"duplicate menu item ID {id}");
+            if (item?["children"] is JsonArray children) ValidateMenuItems(children, ids);
+        }
+    }
+
+    private static bool TryParseInteger(string value, out int result)
+    {
+        value = value.Trim();
+        if (value.StartsWith("0x", StringComparison.OrdinalIgnoreCase)) return int.TryParse(value[2..], System.Globalization.NumberStyles.HexNumber, null, out result);
+        return int.TryParse(value, out result);
     }
 
     private async void MenuApply_Click(object sender, RoutedEventArgs e)

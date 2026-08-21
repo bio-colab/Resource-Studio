@@ -50,15 +50,24 @@
                     <Separator Margin="0,10" />
                     <TextBlock Text="Selected control" FontWeight="Bold" Margin="0,0,0,6" />
                     <ListBox x:Name="ControlsList" Height="120" SelectionChanged="ControlsList_SelectionChanged" DisplayMemberPath="Display" />
+                    <WrapPanel Margin="0,6,0,0"><Button Content="Add Edit" Click="AddEdit_Click" Margin="0,0,4,4" /><Button Content="Add List" Click="AddList_Click" Margin="0,0,4,4" /><Button Content="Add Combo" Click="AddCombo_Click" Margin="0,0,4,4" /><Button Content="Delete" Click="DeleteControl_Click" Margin="0,0,4,4" /><Button Content="Duplicate" Click="DuplicateControl_Click" /></WrapPanel>
                     <Grid Margin="0,8,0,0">
-                        <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                        <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                         <Grid.ColumnDefinitions><ColumnDefinition Width="110" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                        <TextBlock Text="Text" Grid.Row="0" Grid.Column="0" Margin="0,4" />
-                        <TextBox x:Name="ControlTextBox" Grid.Row="0" Grid.Column="1" Margin="0,2" LostFocus="ControlProperty_LostFocus" />
-                        <TextBlock Text="X / Y" Grid.Row="1" Grid.Column="0" Margin="0,4" />
-                        <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal"><TextBox x:Name="ControlXBox" Width="65" Margin="0,2" LostFocus="ControlProperty_LostFocus" /><TextBox x:Name="ControlYBox" Width="65" Margin="8,2,0,2" LostFocus="ControlProperty_LostFocus" /></StackPanel>
-                        <TextBlock Text="Width / Height" Grid.Row="2" Grid.Column="0" Margin="0,4" />
-                        <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal"><TextBox x:Name="ControlWidthBox" Width="65" Margin="0,2" LostFocus="ControlProperty_LostFocus" /><TextBox x:Name="ControlHeightBox" Width="65" Margin="8,2,0,2" LostFocus="ControlProperty_LostFocus" /></StackPanel>
+                        <TextBlock Text="ID / Help ID" Grid.Row="0" Grid.Column="0" Margin="0,4" />
+                        <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal"><TextBox x:Name="ControlIdBox" Width="65" Margin="0,2" LostFocus="ControlProperty_LostFocus" /><TextBox x:Name="ControlHelpIdBox" Width="75" Margin="8,2,0,2" LostFocus="ControlProperty_LostFocus" /></StackPanel>
+                        <TextBlock Text="Class" Grid.Row="1" Grid.Column="0" Margin="0,4" />
+                        <TextBox x:Name="ControlClassBox" Grid.Row="1" Grid.Column="1" Margin="0,2" LostFocus="ControlProperty_LostFocus" ToolTip="Ordinal 0x0080..0x0085 or custom class name" />
+                        <TextBlock Text="Text" Grid.Row="2" Grid.Column="0" Margin="0,4" />
+                        <TextBox x:Name="ControlTextBox" Grid.Row="2" Grid.Column="1" Margin="0,2" LostFocus="ControlProperty_LostFocus" />
+                        <TextBlock Text="X / Y" Grid.Row="3" Grid.Column="0" Margin="0,4" />
+                        <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal"><TextBox x:Name="ControlXBox" Width="65" Margin="0,2" LostFocus="ControlProperty_LostFocus" /><TextBox x:Name="ControlYBox" Width="65" Margin="8,2,0,2" LostFocus="ControlProperty_LostFocus" /></StackPanel>
+                        <TextBlock Text="Width / Height" Grid.Row="4" Grid.Column="0" Margin="0,4" />
+                        <StackPanel Grid.Row="4" Grid.Column="1" Orientation="Horizontal"><TextBox x:Name="ControlWidthBox" Width="65" Margin="0,2" LostFocus="ControlProperty_LostFocus" /><TextBox x:Name="ControlHeightBox" Width="65" Margin="8,2,0,2" LostFocus="ControlProperty_LostFocus" /></StackPanel>
+                        <TextBlock Text="Style" Grid.Row="5" Grid.Column="0" Margin="0,4" />
+                        <TextBox x:Name="ControlStyleBox" Grid.Row="5" Grid.Column="1" Margin="0,2" LostFocus="ControlProperty_LostFocus" />
+                        <TextBlock Text="Exstyle" Grid.Row="6" Grid.Column="0" Margin="0,4" />
+                        <TextBox x:Name="ControlExstyleBox" Grid.Row="6" Grid.Column="1" Margin="0,2" LostFocus="ControlProperty_LostFocus" />
                     </Grid>
                 </StackPanel>
             </ScrollViewer>

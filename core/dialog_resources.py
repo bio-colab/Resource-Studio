@@ -12,6 +12,15 @@ class DialogResourceError(ValueError):
 DS_SETFONT = 0x00000040
 DIALOGEX_SIGNATURE = 0xFFFF
 
+STANDARD_CONTROL_CLASSES = {
+    0x0080: "BUTTON",
+    0x0081: "EDIT",
+    0x0082: "STATIC",
+    0x0083: "LISTBOX",
+    0x0084: "SCROLLBAR",
+    0x0085: "COMBOBOX",
+}
+
 
 @dataclass
 class DialogControl:
@@ -26,6 +35,12 @@ class DialogControl:
     title: int | str = ""
     creation_data: bytes = b""
     help_id: int = 0
+
+    @property
+    def class_label(self) -> str:
+        if isinstance(self.class_name, int):
+            return STANDARD_CONTROL_CLASSES.get(self.class_name, f"ORDINAL(0x{self.class_name:04X})")
+        return str(self.class_name) or "CUSTOM"
 
     def to_dict(self) -> dict[str, Any]:
         return {"controlId": self.control_id, "x": self.x, "y": self.y, "width": self.width, "height": self.height, "style": self.style, "exstyle": self.exstyle, "class": self.class_name, "title": self.title, "creationDataHex": self.creation_data.hex(), "helpId": self.help_id}
@@ -123,7 +138,36 @@ class DialogResource:
             raise DialogResourceError("trailing bytes after dialog resource")
         return cls(x, y, width, height, style, exstyle, title, menu, window_class, font_size, font_name, font_weight, font_italic, font_charset, controls, extended, help_id, version)
 
+    def validate(self) -> dict[str, object]:
+        errors: list[str] = []
+        warnings: list[str] = []
+        for value, name in ((self.x, "x"), (self.y, "y"), (self.width, "width"), (self.height, "height")):
+            if not -32768 <= value <= 32767:
+                errors.append(f"{name} must fit signed WORD")
+        if len(self.controls) > 0xFFFF:
+            errors.append("too many dialog controls")
+        if self.style & DS_SETFONT and (self.font_size is None or self.font_name is None):
+            errors.append("DS_SETFONT requires font_size and font_name")
+        seen_ids: set[int] = set()
+        for index, control in enumerate(self.controls):
+            if not 0 <= control.control_id <= 0xFFFF or not 0 <= control.help_id <= 0xFFFFFFFF:
+                errors.append(f"control {index}: invalid identifier")
+            if control.control_id in seen_ids:
+                warnings.append(f"control {index}: duplicate control ID {control.control_id}")
+            seen_ids.add(control.control_id)
+            if not isinstance(control.class_name, (int, str)) or not isinstance(control.title, (int, str)):
+                errors.append(f"control {index}: class and title must be ordinal or string")
+            for value, name in ((control.x, "x"), (control.y, "y"), (control.width, "width"), (control.height, "height")):
+                if not -32768 <= value <= 32767:
+                    errors.append(f"control {index} {name} must fit signed WORD")
+            if control.class_name == 0x0080 and not control.title:
+                warnings.append(f"control {index}: button has an empty caption")
+        return {"valid": not errors, "errors": errors, "warnings": warnings, "controlCount": len(self.controls), "extended": self.extended}
+
     def to_bytes(self) -> bytes:
+        report = self.validate()
+        if report["errors"]:
+            raise DialogResourceError("invalid dialog: " + "; ".join(report["errors"]))
         self._validate()
         out = bytearray()
         if self.extended:

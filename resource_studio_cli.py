@@ -350,6 +350,11 @@ def command_manifest_resource(args: argparse.Namespace) -> int:
 
 
 def command_menu_resource(args: argparse.Namespace) -> int:
+    if args.action == "validate":
+        entry = _resource_match(args.input, "MENU", args.name, args.language)
+        report = MenuResource.parse(entry.data).validate()
+        _print({"type": "MENU", "name": args.name, "language": entry.language, **report}, args.json)
+        return 0 if report["valid"] else 1
     if args.action == "export":
         entry = _resource_match(args.input, "MENU", args.name, args.language)
         menu = MenuResource.parse(entry.data)
@@ -435,6 +440,15 @@ def command_signature(args: argparse.Namespace) -> int:
 
 
 def command_dialog(args: argparse.Namespace) -> int:
+    if args.action == "validate":
+        matches = [entry for entry in _entries(args.input) if entry.resource_type == "DIALOG" and entry.name == args.name and (args.language is None or entry.language == args.language)]
+        if not matches:
+            raise ValueError("DIALOG resource was not found")
+        if len(matches) > 1:
+            raise ValueError("DIALOG resource has multiple languages; pass --language")
+        report = DialogResource.parse(matches[0].data).validate()
+        _print({"type": "DIALOG", "name": args.name, "language": matches[0].language, **report}, args.json)
+        return 0 if report["valid"] else 1
     if args.action == "export":
         matches = [entry for entry in _entries(args.input) if entry.resource_type == "DIALOG" and entry.name == args.name and (args.language is None or entry.language == args.language)]
         if not matches:
@@ -819,7 +833,7 @@ def parser() -> argparse.ArgumentParser:
     image_parser.add_argument("--json", action="store_true")
     image_parser.set_defaults(handler=command_image_resource)
 
-    for command_name, handler, help_text in (("version-resource", command_version_resource, "export or apply a typed VERSION resource"), ("manifest-resource", command_manifest_resource, "export or apply a typed MANIFEST resource"), ("menu-resource", command_menu_resource, "export or apply a typed MENU resource")):
+    for command_name, handler, help_text in (("version-resource", command_version_resource, "export or apply a typed VERSION resource"), ("manifest-resource", command_manifest_resource, "export or apply a typed MANIFEST resource")):
         resource_parser = subparsers.add_parser(command_name, help=help_text)
         resource_parser.add_argument("action", choices=("export", "apply"))
         resource_parser.add_argument("input", type=Path)
@@ -829,6 +843,15 @@ def parser() -> argparse.ArgumentParser:
         resource_parser.add_argument("--model", type=Path)
         resource_parser.add_argument("--json", action="store_true")
         resource_parser.set_defaults(handler=handler)
+    menu_parser = subparsers.add_parser("menu-resource", help="export, validate, or apply a typed MENU resource")
+    menu_parser.add_argument("action", choices=("export", "apply", "validate"))
+    menu_parser.add_argument("input", type=Path)
+    menu_parser.add_argument("--name", default="1")
+    menu_parser.add_argument("--language", type=int, required=True)
+    menu_parser.add_argument("--output", type=Path)
+    menu_parser.add_argument("--model", type=Path)
+    menu_parser.add_argument("--json", action="store_true")
+    menu_parser.set_defaults(handler=command_menu_resource)
 
     string_table_parser = subparsers.add_parser("string-table", help="export or apply a typed STRINGTABLE block")
     string_table_parser.add_argument("action", choices=("export", "apply"))
@@ -863,12 +886,12 @@ def parser() -> argparse.ArgumentParser:
     signature_parser.add_argument("--json", action="store_true")
     signature_parser.set_defaults(handler=command_signature)
 
-    dialog_parser = subparsers.add_parser("dialog", help="export or apply a binary Win32 Dialog resource")
-    dialog_parser.add_argument("action", choices=("export", "apply"))
+    dialog_parser = subparsers.add_parser("dialog", help="export, validate, or apply a binary Win32 Dialog resource")
+    dialog_parser.add_argument("action", choices=("export", "apply", "validate"))
     dialog_parser.add_argument("input", type=Path)
     dialog_parser.add_argument("--name", required=True)
     dialog_parser.add_argument("--language", type=int)
-    dialog_parser.add_argument("--output", required=True, type=Path)
+    dialog_parser.add_argument("--output", type=Path)
     dialog_parser.add_argument("--model", type=Path)
     dialog_parser.add_argument("--json", action="store_true")
     dialog_parser.set_defaults(handler=command_dialog)

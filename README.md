@@ -242,6 +242,8 @@ PYTHONPATH=. python3 tools/p0_baseline.py
 
 بعد مراجعة أنماط Wireshark وOxygen Forensic Detective، أضيفت annotations append-only إلى case مع `artifactSha256` و`graphHash` وactor وUTC timestamp، وأضيف `case annotate` و`case select` لتصدير `evidence_selection.v1` انتقائيًا. تعرض Security Center controls الأساسية لذلك دون تعديل PE؛ الدراسة والمقارنة في [`docs/FORENSIC-ANALYTICS-RESEARCH.md`](docs/FORENSIC-ANALYTICS-RESEARCH.md).
 
+أصبحت DIALOG وMENU محررين typed فعليًا: Dialog Editor يعرض BUTTON وEDIT وSTATIC وLISTBOX وCOMBOBOX، ويتيح تعديل IDs والـclass والـstyle والـexstyle والهندسة والنص وإضافة/حذف/نسخ controls. ويتيح Menu Editor تعديل IDs والنصوص وflags، وإضافة root/child/separator، والحذف وإعادة الترتيب والتحقق من duplicate IDs. يدعم CLI أيضًا `dialog validate` و`menu-resource validate` قبل Apply Save As؛ التفاصيل في [`docs/DIALOG-MENU-EDITOR.md`](docs/DIALOG-MENU-EDITOR.md).
+
 ## حدود مقصودة
 
 لا يهدف Forensic-goal إلى بناء malware scanner أو IOC engine أو YARA أو PEiD أو entropy maps أو timeline عام أو hex forensic viewer جديد. أصبح Security-goal مسارًا مستقلًا للتحليل الساكن الدفاعي؛ لا يشغّل الملفات ولا يفك payloadات ولا يعلن أن heuristic واحدة تعني malware. أما Defender وYARA فهما موفّران خارجيان اختياريان على staged copies، وليسَا جزءًا من writer أو verdict داخلي. كما أن MCP مؤجل في هذه الدورة.
