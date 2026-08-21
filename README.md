@@ -219,3 +219,5 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tests\windows\Invoke-Resourc
 - [License](LICENSE)
 - [Security policy](SECURITY.md)
 - [Code of Conduct](CODE_OF_CONDUCT.md)
+- [GitHub foundation](docs/GITHUB-FOUNDATION.md)
+- [Community starter issue #1](https://github.com/bio-colab/Resource-Studio/issues/1)
