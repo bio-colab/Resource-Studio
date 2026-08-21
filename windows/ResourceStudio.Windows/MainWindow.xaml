@@ -18,7 +18,7 @@
                         <TextBlock Text="PE Resource Workbench" FontSize="10" Foreground="{DynamicResource MistBrush}" />
                     </StackPanel>
                 </StackPanel>
-                <ToolBarTray AutomationProperties.Name="Primary actions">
+                <ToolBarTray AutomationProperties.Name="Primary actions" DockPanel.Dock="Left">
 
             <ToolBar Header="Workspace">
                 <Button AutomationProperties.AutomationId="OpenPeButton" AutomationProperties.AcceleratorKey="Ctrl+O" AutomationProperties.HelpText="Open a PE file without modifying it; shortcut Ctrl+O" AutomationProperties.Name="Open PE" ToolTip="Open a PE file without modifying it" Click="OpenPe_Click"><StackPanel Orientation="Horizontal"><TextBlock Text="↥" FontSize="15" Margin="0,0,6,0" /><TextBlock Text="Open PE" /></StackPanel></Button>
@@ -35,9 +35,9 @@
             <ToolBar Header="Tools">
                 <Button AutomationProperties.AutomationId="AuthenticodeToolsButton" AutomationProperties.Name="Authenticode Tools" ToolTip="Inspect or change signature state using Save As" Click="AuthenticodeTools_Click"><StackPanel Orientation="Horizontal"><TextBlock Text="◈" FontSize="14" Margin="0,0,6,0" /><TextBlock Text="Authenticode Tools" /></StackPanel></Button>
                 <Button AutomationProperties.AutomationId="PythonGuiButton" AutomationProperties.Name="Open Python GUI" ToolTip="Open the legacy Python interface" Click="OpenPythonGui_Click"><StackPanel Orientation="Horizontal"><TextBlock Text="›_" FontSize="13" Margin="0,0,6,0" /><TextBlock Text="Open Python GUI" /></StackPanel></Button>
-                <Button AutomationProperties.AutomationId="ThemeButton" AutomationProperties.Name="Toggle dark mode" ToolTip="Toggle light and dark appearance" Click="Theme_Click"><StackPanel Orientation="Horizontal"><TextBlock Text="◐" FontSize="14" Margin="0,0,6,0" /><TextBlock Text="Toggle dark mode" /></StackPanel></Button>
             </ToolBar>
                 </ToolBarTray>
+                <Button AutomationProperties.AutomationId="ThemeButton" AutomationProperties.Name="Toggle dark mode" DockPanel.Dock="Right" ToolTip="Toggle light and dark appearance" Click="Theme_Click"><StackPanel Orientation="Horizontal"><TextBlock Text="◐" FontSize="14" Margin="0,0,6,0" /><TextBlock Text="Theme" /></StackPanel></Button>
             </DockPanel>
         </Border>
         <DockPanel Grid.Row="1" Margin="4,0,4,8" AutomationProperties.Name="Workspace context">
