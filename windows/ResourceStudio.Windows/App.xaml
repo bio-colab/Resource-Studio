@@ -92,7 +92,7 @@
                             <ContentPresenter ContentSource="Header"
                                               HorizontalAlignment="Center"
                                               VerticalAlignment="Center"
-                                              Foreground="{TemplateBinding Foreground}"
+                                              TextElement.Foreground="{TemplateBinding Foreground}"
                                               FontWeight="{TemplateBinding FontWeight}" />
                         </Border>
                         <ControlTemplate.Triggers>
