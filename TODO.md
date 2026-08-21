@@ -128,7 +128,7 @@
 |---|---|---|---|---|
 | [x] | UI-01 | اختيار shell Windows: WPF أولًا، WinUI 3 لاحقًا إن ثبتت الحاجة | CORE-07 | `windows/ResourceStudio.Windows` مبني بـ .NET 8 WPF ويشغل shell مستقلًا فوق CLI؛ UI التفصيلية لاحقة |
 | [~] | UI-02 | Tree/Tabs/Properties/Preview/Search/Diff | UI-01, DIFF-01 | WPF الآن يوفر Tabs للموارد وInspect/Diff/Localization، DataGrid للفهرس والخصائص والبحث، Preview خام عبر CLI `hex` وDiff Tree مبني من `diff`؛ UI automation وعمليات التحرير المرئية المتخصصة لاحقة |
-| [~] | UI-03 | Command palette/keyboard/dark mode/high contrast | UI-02 | مفاتيح `Ctrl+O/Ctrl+F/Ctrl+I/F5`، زر Dark mode، واكتشاف Windows High Contrast أضيفت؛ command palette وaccessibility automation وpersisted theme لاحقة |
+| [~] | UI-03 | Command palette/keyboard/dark mode/high contrast | UI-02 | مفاتيح `Ctrl+O/Ctrl+F/Ctrl+I/F5`، زر Dark mode، واكتشاف Windows High Contrast، وهوية WPF palette/icon/header أضيفت؛ command palette وaccessibility automation وpersisted theme لاحقة |
 | [~] | UI-04 | Localization dashboard | LOC-01, UI-02 | تبويب WPF للمقارنة وpseudo-localization، وCLI `localization compare/pseudo` فوق `LocalizationCatalog`؛ ربط التعديل مباشرة بموارد STRINGTABLE وCSV/XLIFF workflow المتقدم لاحق |
 | [~] | PE-01 | PE inspector sections/imports/exports/relocs/TLS/debug | CORE-05 | `PEInspector` وCLI `inspect` وchecksum fields منجزة؛ توسعة exports/TLS حسب توفر LIEF لاحقة |
 | [~] | PE-02 | MUI support | PE-01, LOC-01 | كشف `.mui` وlanguage hint وsatellite hint قراءة فقط منجز؛ فتح/ربط/مقارنة فعلية لاحقة |
@@ -175,6 +175,7 @@
 | [x] | QA-16 | Individual Icon/Cursor payload round-trip | `image-payload export/apply` بصيغ raw وBMP، تحويل DIB↔BMP، PNG اختياري عبر Pillow، Save As و`verified=true`؛ اختبار نجح على Manus وWindows |
 | [x] | QA-17 | PE corpus matrix round-trip | `tests/qa/test_pe_corpus_matrix.py` ينفذ سلسلة Save As حتمية تغطي RCDATA وBITMAP وICON وGROUP_ICON وSTRING وVERSION وتغيير اللغة والحذف، مع PEHealth وPEInspector وProject verification؛ نجح محليًا وعلى Windows |
 | [x] | QA-18 | Existing-output rollback | إجبار validation failure مع output موجود و`backup_existing_output=False` يثبت بقاء bytes الأصلية وعدم ترك rollback temporary files؛ `test_pe_writer.py` نجح |
+| [x] | QA-19 | Branding asset/WPF contract | وجود PNG/ICO/banner، ربط `ApplicationIcon` و`Window.Icon` وأصول header، وتحقق palette عبر `tests/qa/test_branding_contract.py` |
 | [ ] | QA-05 | UI automation وAccessibility keyboard/screen reader |
 | [~] | QA-06 | مقارنة SHA-256 للأصل قبل وبعد كل اختبار | SHA guards تشمل Project/writer/editors/inspector؛ تعميم helper على كل اختبار قديم لاحق |
 | [x] | QA-07 | لا تشغيل MCP أو نقل بعيد في هذه الدورة | MCP بقي مؤجلًا ولم تُضف وظائف جديدة أثناء الدورة |

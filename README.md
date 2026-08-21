@@ -2,6 +2,10 @@
 
 **Resource Studio** هو مشروع مستقل لتحليل وتحرير موارد ملفات Windows PE مع أولوية واضحة للصحة القابلة للإثبات، وسلامة `Save As`، وقابلية إعادة الإنتاج.
 
+![Resource Studio](assets/branding/resource-studio-github-banner.png)
+
+> **هوية بصرية جديدة:** العلامة والألوان وأصول WPF/Windows موثقة في [`docs/BRAND-IDENTITY.md`](docs/BRAND-IDENTITY.md)، وتُستخدم كإشارة إلى الدقة والتحليل لا كبديل عن نتائج التحقق.
+
 > **قاعدة السلامة الأساسية:** لا يُكتب إلى ملف الإدخال. كل تعديل يمر إلى output جديد، ثم يعاد فتحه ويُفحص قبل commit، مع rollback وaudit عند الحاجة.
 
 ## هوية المشروع
@@ -14,6 +18,10 @@
 | **Verification-goal** | جعل Save pipeline قابلًا للتدقيق: `PLAN → MUTATE → SERIALIZE → REOPEN → VALIDATE → DIFF → PRESERVE → WINDOWS → SIGNATURE → COMMIT → AUDIT` |
 | **UI/UX-goal** | جعل تجربة الهاوي والمطور مفهومة: Workspace context، Preview، Verification summary، حالة تشغيل واضحة، Save As، accessibility surfaces، وasync Stop |
 | **Forensic-goal** | بناء baseline/result evidence، forensic diff، mutation attribution، independent corroboration، وevidence report فوق اللبنات الموجودة، لا كـmodule موازٍ |
+
+### لغة الواجهة
+
+تعتمد WPF shell على لوحة داكنة هادئة مع **Signal Cyan** للإجراءات القابلة للتنفيذ، و**Analysis Blue** للتحليل، و**Triage Amber** للتنبيه، و**Evidence Red** للإشارة البصرية إلى ما يحتاج مراجعة. هذه الألوان لا تصدر verdict أمنيًا؛ بل تساعد المستخدم على فهم الحالة قبل فتح التفاصيل التقنية.
 
 ## لقطة من الواجهة
 

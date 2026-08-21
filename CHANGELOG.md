@@ -10,6 +10,10 @@
 
 ### أُضيف
 
+- إضافة هوية بصرية متكاملة: علامة Resource Studio وGitHub banner وPNG بأحجام Windows وICO متعدد الأحجام، مع `docs/BRAND-IDENTITY.md` وأداة إعادة تجهيز قابلة للتكرار في `tools/prepare_brand_assets.py`.
+- تطبيق العلامة على WPF عبر `ApplicationIcon` و`Window.Icon` وواجهة رأس تحمل اسم المنتج، مع لوحة ألوان موحدة وإبقاء دلالات triage منفصلة عن verdict الأمني.
+- إضافة `tests/qa/test_branding_contract.py` لإثبات وجود الأصول وربطها بعقود XAML وMSBuild.
+
 - إضافة `resource_studio.static_code_analysis.v1`: bounded Capstone disassembly وbasic CFG من PE entrypoint مع RVA/file offsets وقيود صريحة، إضافة إلى unpacking indicators ساكنة مثل section expansion وhigh entropy وexecutable+writable sections وoverlay.
 - إضافة `resource_studio.hex_template.v1` لقوالب BITMAPINFOHEADER وVS_VERSIONINFO وDIALOG/MENU headers، مع field offsets وlengths وvalues وhex ranges قابلة للتحديد في WPF Preview.
 - إضافة `resource_studio.evidence_triage.v1` لتلوين Resource Grid بصريًا بحسب corruption وlow confidence وobfuscation/packing indicators، مع banner وtooltip وعبارة صريحة بأن اللون visual cue وليس verdict.

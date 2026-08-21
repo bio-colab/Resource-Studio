@@ -7,5 +7,12 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>ResourceStudio.Windows</AssemblyName>
     <RootNamespace>ResourceStudio.Windows</RootNamespace>
+    <ApplicationIcon>Assets\resource-studio.ico</ApplicationIcon>
   </PropertyGroup>
+  <ItemGroup>
+    <Resource Include="Assets\resource-studio.ico" />
+    <Resource Include="Assets\resource-studio-icon-16.png" />
+    <Resource Include="Assets\resource-studio-icon-32.png" />
+    <Resource Include="Assets\resource-studio-icon-64.png" />
+  </ItemGroup>
 </Project>

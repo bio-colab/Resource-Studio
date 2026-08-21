@@ -1,7 +1,7 @@
 <Window x:Class="ResourceStudio.Windows.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Resource Studio" Height="780" Width="1280" MinHeight="600" MinWidth="940" PreviewKeyDown="Window_PreviewKeyDown">
+        Title="Resource Studio — PE Resource Workbench" Icon="Assets/resource-studio.ico" Height="780" Width="1280" MinHeight="600" MinWidth="940" Background="{DynamicResource DeepSlateBrush}" PreviewKeyDown="Window_PreviewKeyDown">
     <Grid x:Name="RootGrid" Margin="12">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -9,7 +9,17 @@
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
-        <ToolBarTray Grid.Row="0" AutomationProperties.Name="Primary actions" Margin="0,0,0,6">
+        <Border Grid.Row="0" Background="{DynamicResource SlatePanelBrush}" BorderBrush="{DynamicResource SignalCyanBrush}" BorderThickness="0,0,0,1" Padding="6" CornerRadius="6" Margin="0,0,0,8">
+            <DockPanel>
+                <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" VerticalAlignment="Center" Margin="4,0,14,0">
+                    <Image Source="Assets/resource-studio-icon-32.png" Width="28" Height="28" Margin="0,0,8,0" />
+                    <StackPanel>
+                        <TextBlock Text="Resource Studio" FontSize="16" FontWeight="SemiBold" />
+                        <TextBlock Text="PE Resource Workbench" FontSize="10" Foreground="{DynamicResource MistBrush}" />
+                    </StackPanel>
+                </StackPanel>
+                <ToolBarTray AutomationProperties.Name="Primary actions">
+
             <ToolBar Header="Workspace">
                 <Button AutomationProperties.AutomationId="OpenPeButton" AutomationProperties.AcceleratorKey="Ctrl+O" AutomationProperties.HelpText="Open a PE file without modifying it; shortcut Ctrl+O" ToolTip="Open a PE file without modifying it" Content="Open PE" Click="OpenPe_Click" />
                 <Button AutomationProperties.AutomationId="ListResourcesButton" ToolTip="Explore the resources in the current PE" Content="Explore resources" Click="List_Click" />
@@ -27,7 +37,9 @@
                 <Button AutomationProperties.AutomationId="PythonGuiButton" ToolTip="Open the legacy Python interface" Content="Open Python GUI" Click="OpenPythonGui_Click" />
                 <Button AutomationProperties.AutomationId="ThemeButton" ToolTip="Toggle light and dark appearance" Content="Toggle dark mode" Click="Theme_Click" />
             </ToolBar>
-        </ToolBarTray>
+                </ToolBarTray>
+            </DockPanel>
+        </Border>
         <DockPanel Grid.Row="1" Margin="4,0,4,8" AutomationProperties.Name="Workspace context">
             <TextBlock Text="Current PE" VerticalAlignment="Center" Margin="0,0,8,0" />
             <TextBox AutomationProperties.AutomationId="PathBox" AutomationProperties.Name="Current PE path" x:Name="PathBox" Padding="6" IsReadOnly="True" ToolTip="The input PE is never overwritten; edits use Save As" />
