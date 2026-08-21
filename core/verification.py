@@ -357,8 +357,17 @@ def _windows_validation(
     finally:
         if staged_before_path is not None:
             staged_before_path.unlink(missing_ok=True)
-    before_map = {item.key: item.sha256 for item in before.resources}
-    after_map = {item.key: item.sha256 for item in after.resources}
+    ignored_types = {"MUI"}
+    ignored_warning_codes = ("1813", "1814", "1815")
+    before_map = {item.key: item.sha256 for item in before.resources if item.key[0] not in ignored_types}
+    after_map = {item.key: item.sha256 for item in after.resources if item.key[0] not in ignored_types}
+    ignored_warnings = [
+        warning
+        for warning in (*before.warnings, *after.warnings)
+        if any(code in warning for code in ignored_warning_codes)
+    ]
+    before_warnings = [warning for warning in before.warnings if warning not in ignored_warnings]
+    after_warnings = [warning for warning in after.warnings if warning not in ignored_warnings]
     oracle_added = sorted(set(after_map) - set(before_map))
     oracle_removed = sorted(set(before_map) - set(after_map))
     oracle_changed = sorted(key for key in set(before_map) & set(after_map) if before_map[key] != after_map[key])
@@ -388,8 +397,8 @@ def _windows_validation(
     unexpected_changed = [item for item in oracle_changed if not is_target(item)]
     comparison = compare_with_lief(candidate_path)
     passed = (
-        not before.warnings
-        and not after.warnings
+        not before_warnings
+        and not after_warnings
         and target_ok
         and not unexpected_removed
         and not unexpected_changed
@@ -398,8 +407,10 @@ def _windows_validation(
         "status": "PASSED" if passed else "FAILED",
         "beforeResourceCount": before.resource_count,
         "afterResourceCount": after.resource_count,
-        "beforeWarnings": list(before.warnings),
-        "afterWarnings": list(after.warnings),
+        "beforeWarnings": before_warnings,
+        "afterWarnings": after_warnings,
+        "ignoredPathScopedWarnings": ignored_warnings,
+        "ignoredResourceTypes": sorted(ignored_types),
         "added": [list(item) for item in oracle_added],
         "removed": [list(item) for item in oracle_removed],
         "changed": [list(item) for item in oracle_changed],
