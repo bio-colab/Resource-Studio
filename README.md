@@ -126,7 +126,7 @@ evidence = verify_transformation(
 ).to_dict()
 ```
 
-ينتج الدليل `resource_studio.forensic_evidence.v1` ويتضمن baseline وresult وtargeted diff وresource-tree unintended changes وPE preservation وintegrity وsignature وWindows status وpure-loader corroboration وVerificationReport. يرتبط evidence report الآن بـWriteResult وProject/Audit وBatch operation payload، ويُحفظ baseline مستقلًا قبل mutation في artifact ذري يمكن إنشاؤه أيضًا عبر `forensic-baseline`. يميز التقرير بين `passed` لنجاح pipeline و`verified` للتحقق المستقل الكامل، ويعلن `platformLimited` عندما تُتخطى Windows أو Authenticode. تعرض نوافذ WPF طبقة `Technical evidence` من التقرير دون إعادة الحساب داخل الواجهة.
+ينتج الدليل `resource_studio.forensic_evidence.v1` ويتضمن baseline وresult وtargeted diff وresource-tree unintended changes وPE preservation وbyte-range preservation map وintegrity وRich Header state وsignature وWindows status وpure-loader وraw-parser corroboration وVerificationReport. يحمل الدليل أيضًا chain metadata تشمل `prevSha256` وenvironment fingerprint وcommand line وsha256 قابلًا لإعادة البناء. يرتبط evidence report الآن بـWriteResult وProject/Audit وBatch operation payload، ويُحفظ baseline مستقلًا قبل mutation في artifact ذري يمكن إنشاؤه أيضًا عبر `forensic-baseline`. يميز التقرير بين `passed` لنجاح pipeline و`verified` للتحقق المستقل الكامل، ويعلن `platformLimited` عندما تُتخطى Windows أو Authenticode. تعرض نوافذ WPF طبقة `Technical evidence` من التقرير دون إعادة الحساب داخل الواجهة.
 
 لإنشاء baseline مستقل قبل أي تعديل:
 
@@ -141,7 +141,7 @@ python3 resource_studio_cli.py evidence-ledger append --ledger evidence.jsonl --
 python3 resource_studio_cli.py evidence-ledger verify --ledger evidence.jsonl --json
 ```
 
-ينفذ `durable_commit` أيضًا post-commit readback ويعيد `verifiedSha256` للbytes المقروءة من الهدف بعد الاستبدال.
+ينفذ `durable_commit` أيضًا post-commit readback ويعيد `verifiedSha256` للbytes المقروءة من الهدف بعد الاستبدال. ويثبت Writer determinism regression أن نفس mutation ينتج نفس SHA-256، مع تثبيت COFF timestamp الأصلي بدل تركه يتغير عشوائيًا.
 
 ## الاختبارات
 
@@ -177,7 +177,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tests\windows\Invoke-Resourc
 
 لا يهدف Forensic-goal إلى بناء malware scanner أو IOC engine أو YARA أو PEiD أو entropy maps أو timeline عام أو hex forensic viewer جديد. كما أن MCP مؤجل في هذه الدورة. تُنفذ تغييرات UX فقط عندما تجعل الدليل أو حالة العملية أو accessibility أو reliability أوضح.
 
-تبقى بعض الطبقات قيد التطوير: baseline artifact provenance المرتبط بدورة Project طويلة المدى، تقرير forensic متعدد الصيغ، forensic viewer تفاعلي كامل، Windows corroboration المسمى خارج pure resolver، coverage-guided fuzzing طويل التشغيل مع corpus دائم، similarity hashing بعقد قبول واضح، واختبار Stop أثناء عملية طويلة فعلية وF6/TabIndex/screen-reader وfailure/resize matrix الأوسع.
+تبقى بعض الطبقات قيد التطوير: provenance طويل المدى يربط كل mutation تلقائيًا بledger واحد، تقرير forensic متعدد الصيغ، forensic viewer تفاعلي كامل، raw parser coverage لكل امتدادات PE غير القياسية، coverage-guided fuzzing طويل التشغيل مع corpus دائم، similarity hashing، وF6/TabIndex/screen-reader وfailure/resize matrix الأوسع. لا تُضاف entropy أوssdeep أوTLSH أوrecursive payload analysis لأن ذلك يخرج Forensic-goal إلى malware/steganography analytics خارج النطاق.
 
 ## المساهمة والتوثيق
 

@@ -19,6 +19,10 @@
 - إضافة `CommitResult.verified_sha256` مع post-commit readback بعد الاستبدال.
 - إضافة `core/pure_loader_oracle.py` لاختبار اختيار اللغة على canonical ResourceGraph دون الادعاء بأنه بديل Win32.
 - إضافة `EvidenceLedger` اختياريًا كسجل JSONL append-only مع hash-chain وتوقيع Ed25519 عند توفر `cryptography`، دون ادعاء chain of custody قانونية.
+- إضافة evidence chain metadata القابل لإعادة البناء: `prevSha256` وenvironment fingerprint وcommand line وevidence sha256.
+- إضافة `PreservationMap` بخريطة byte ranges وتصنيف `EXPECTED_TARGET_RESOURCE` و`EXPECTED_RESOURCE_CONTAINER` و`EXPECTED_HEADER_RECALC` و`UNEXPECTED`، مع ميزانية unexpected تساوي صفرًا.
+- إضافة raw resource parser مستقل محدود يقارن موارد `IMAGE_RESOURCE_DIRECTORY` مع canonical ResourceGraph.
+- إضافة Rich Header hash/preservation signal وتثبيت COFF timestamp الأصلي وdeterminism regression لنفس mutation.
 - forensic difference أولي يميز target وresource tree unintended changes وPE preservation وintegrity وsignature وWindows status.
 - اختبار `tests/core/test_forensics.py` الذي يثبت baseline contract وno-op attribution وغياب unintended changes.
 - `FORENSIC-GOAL.md` الذي يحدد الهوية والحدود ومعايير FR-00 إلى FR-09.
@@ -34,10 +38,11 @@
 
 ### ما يزال قيد التنفيذ
 
-- provenance طويل المدى يربط ledger وbaseline بدورة Project كاملة.
+- provenance طويل المدى يربط كل mutation تلقائيًا بledger واحد داخل Project.
 - تقرير forensic متعدد الصيغ وviewer تفاعلي كامل للأدلة.
 - operation ID persistence عبر كل مسارات mutation غير Writer/Project/Batch الحالية.
-- coverage-guided fuzzing دائم عبر Atheris مع corpus وcrash minimization، وsimilarity hashing بعد تعريف contract وfalse-positive tests.
+- raw parser coverage للامتدادات غير القياسية، coverage-guided fuzzing دائم عبر Atheris مع corpus وcrash minimization، وsimilarity hashing بعد تعريف contract وfalse-positive tests.
+- التحليل السلوكي وentropy وssdeep وTLSH وrecursive payload/steganography خارج نطاق Forensic-goal عمدًا.
 - اختبار Stop أثناء عملية طويلة فعلية، ومصفوفة keyboard/accessibility/failure/resize الأوسع.
 
 ## [2026-08-20] — Verification and UI/UX foundation

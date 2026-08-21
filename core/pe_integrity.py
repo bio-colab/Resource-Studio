@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import ctypes
+import hashlib
 import os
+import struct
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -22,6 +24,7 @@ class PEIntegrityReport:
     signature_verification: str
     certificate_table: dict[str, int]
     warnings: tuple[str, ...]
+    rich_header_sha256: str | None = None
 
     @property
     def checksum_valid_lief(self) -> bool:
@@ -46,6 +49,7 @@ class PEIntegrityReport:
             "signatureVerification": self.signature_verification,
             "certificateTable": dict(self.certificate_table),
             "warnings": list(self.warnings),
+            "richHeaderSha256": self.rich_header_sha256,
         }
 
 
@@ -57,6 +61,7 @@ def inspect_integrity(path: Path) -> PEIntegrityReport:
     if binary is None or not isinstance(binary, lief.PE.Binary):
         raise ValueError(f"not a supported PE: {path}")
     signature = inspect_signature(path)
+    rich_header_sha256 = _rich_header_sha256(path.read_bytes())
     stored = int(binary.optional_header.checksum)
     lief_checksum = int(binary.compute_checksum())
     windows_checksum, windows_status = _windows_checksum(path)
@@ -79,7 +84,25 @@ def inspect_integrity(path: Path) -> PEIntegrityReport:
         signature_verification=signature.verification,
         certificate_table=signature.certificate_table,
         warnings=tuple(warnings),
+        rich_header_sha256=rich_header_sha256,
     )
+
+
+def _rich_header_sha256(data: bytes) -> str | None:
+    if len(data) < 0x40 or data[:2] != b"MZ":
+        return None
+    pe_offset = struct.unpack_from("<I", data, 0x3C)[0]
+    if pe_offset <= 0 or pe_offset > len(data):
+        return None
+    rich_end = data.rfind(b"Rich", 0, pe_offset)
+    if rich_end < 0 or rich_end + 8 > pe_offset:
+        return None
+    key = struct.unpack_from("<I", data, rich_end + 4)[0]
+    encoded_dans = struct.pack("<I", 0x536E6144 ^ key)
+    rich_start = data.rfind(encoded_dans, 0, rich_end)
+    if rich_start < 0:
+        return None
+    return hashlib.sha256(data[rich_start : rich_end + 8]).hexdigest()
 
 
 def _windows_checksum(path: Path) -> tuple[int | None, int | None]:

@@ -27,6 +27,8 @@ from .pe_inspector import PEInspector, PEInspectorReport
 from .pe_integrity import PEIntegrityReport, inspect_integrity
 from .pe_metadata import PEMetadataInspector, PEMetadataReport
 from .pe_writer import LiefPEWriter, PEWriterError, WriteResult
+from .preservation import ByteChange, PreservationMap, build_preservation_map
+from .raw_resource_parser import RawResourceComparison, RawResourceLeaf, RawResourceParserError, RawResourceReport, compare_with_graph, parse_raw_resources
 from .plugin_host import PluginHost, PluginHostError, PluginLimits, PluginResult
 from .plugins import PluginContext, PluginManifest, PluginRegistry, ResourceTypeDefinition
 from .preview import PreviewEngine, PreviewResult
@@ -160,4 +162,13 @@ __all__ = [
     "diff_resources",
     "diff_texts",
     "WriteResult",
+    "ByteChange",
+    "PreservationMap",
+    "build_preservation_map",
+    "RawResourceComparison",
+    "RawResourceLeaf",
+    "RawResourceParserError",
+    "RawResourceReport",
+    "compare_with_graph",
+    "parse_raw_resources",
 ]

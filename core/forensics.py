@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import sys
 import tempfile
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -12,6 +13,7 @@ from typing import Any
 from .deep_invariants import inspect_deep
 from .invariants import snapshot
 from .pe_integrity import inspect_integrity
+from .provenance import canonical_json, environment_fingerprint
 from .verification import ResourceGraph, VerificationReport, verify_candidate
 
 
@@ -109,9 +111,12 @@ class ForensicEvidence:
     baseline: ForensicBaseline
     result: ForensicBaseline
     verification: VerificationReport
+    previous_evidence_sha256: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
+        from .preservation import build_preservation_map
         from .pure_loader_oracle import select_from_graph
+        from .raw_resource_parser import compare_with_graph, parse_raw_resources
 
         diff = dict(self.verification.semantic_diff)
         pure_loader = select_from_graph(
@@ -120,12 +125,24 @@ class ForensicEvidence:
             self.target.get("name"),
             self.target.get("language"),
         )
+        preservation_map = build_preservation_map(
+            self.baseline.source_path,
+            self.result.source_path,
+            resource_type=self.target.get("type"),
+            resource_name=self.target.get("name"),
+            language=self.target.get("language"),
+        )
+        raw_report = parse_raw_resources(self.result.source_path)
+        raw_comparison = compare_with_graph(raw_report, self.result.resource_graph)
+        before_rich = self.baseline.integrity.get("richHeaderSha256")
+        after_rich = self.result.integrity.get("richHeaderSha256")
+        rich_changed = before_rich != after_rich if before_rich or after_rich else False
         changed = [list(item) for item in diff.get("changed", [])]
         added = [list(item) for item in diff.get("added", [])]
         removed = [list(item) for item in diff.get("removed", [])]
         target_key = [self.target.get("type"), str(self.target.get("name")), self.target.get("language")]
         unintended = [item for item in changed + added + removed if item != target_key]
-        return {
+        payload = {
             "schema": "resource_studio.forensic_evidence.v1",
             "operationId": self.operation_id,
             "operation": self.operation,
@@ -153,13 +170,23 @@ class ForensicEvidence:
                 "integrity": dict(self.verification.integrity),
                 "signature": dict(self.verification.signature),
                 "windows": dict(self.verification.windows),
-                "passed": self.verification.passed,
-                "verified": self.verification.verified,
                 "platformLimited": self.verification.platform_limited,
                 "pureLoader": pure_loader.to_dict(),
+                "bytePreservation": preservation_map.to_dict(),
+                "rawResource": {"report": raw_report.to_dict(), "comparison": raw_comparison.to_dict()},
+                "richHeader": {"beforeSha256": before_rich, "afterSha256": after_rich, "changed": rich_changed},
+                "passed": self.verification.passed and preservation_map.passed and raw_comparison.matches and not rich_changed,
+                "verified": self.verification.verified and preservation_map.passed and raw_comparison.matches and not rich_changed,
             },
             "verification": self.verification.to_dict(),
+            "chain": {
+                "prevSha256": self.previous_evidence_sha256,
+                "envFingerprint": environment_fingerprint(),
+                "commandLine": list(sys.argv),
+            },
         }
+        payload["sha256"] = hashlib.sha256(canonical_json(payload)).hexdigest()
+        return json.loads(json.dumps(payload, ensure_ascii=False))
 
     @staticmethod
     def _resource_hash(baseline: ForensicBaseline, key: list[Any]) -> str | None:
@@ -181,6 +208,7 @@ def verify_transformation(
     expected_data: bytes | None = None,
     committed: bool = False,
     baseline: ForensicBaseline | None = None,
+    previous_evidence_sha256: str | None = None,
 ) -> ForensicEvidence:
     """Build evidence after independent reopen; Writer is not the evidence source."""
 
@@ -203,4 +231,5 @@ def verify_transformation(
         baseline=before,
         result=result,
         verification=verification,
+        previous_evidence_sha256=previous_evidence_sha256,
     )

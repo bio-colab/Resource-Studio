@@ -1,9 +1,11 @@
+import hashlib
 import os
 from pathlib import Path
 import shutil
 import tempfile
 
 from core.forensics import ForensicBaseline, verify_transformation
+from core.provenance import canonical_json
 
 
 def main() -> None:
@@ -47,6 +49,12 @@ def main() -> None:
         assert diff["pureLoader"]["selectedLanguage"] == leaf["language"]
         assert evidence["verification"]["verified"] is (os.name == "nt")
         assert evidence["verification"]["platformLimited"] is (os.name != "nt")
+        assert evidence["chain"]["prevSha256"] is None
+        assert evidence["chain"]["envFingerprint"]["sha256"]
+        assert isinstance(evidence["chain"]["commandLine"], list)
+        unsigned = dict(evidence)
+        unsigned.pop("sha256")
+        assert evidence["sha256"] == hashlib.sha256(canonical_json(unsigned)).hexdigest()
     print("forensic-baseline-tests: passed")
 
 

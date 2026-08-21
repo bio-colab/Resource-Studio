@@ -63,6 +63,7 @@ def main() -> None:
         result2 = writer.replace_resource(source, payload_output, "MANIFEST", 1, 1033, payload)
         assert result2.verified is True
         assert payload_output.is_file()
+        assert hashlib.sha256(output.read_bytes()).hexdigest() == hashlib.sha256(payload_output.read_bytes()).hexdigest()
 
         added_output = Path(temporary) / "added.dll"
         result3 = writer.add_resource(source, added_output, "RCDATA", 999, 1033, b"new-resource")

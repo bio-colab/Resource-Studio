@@ -84,6 +84,21 @@ internal static class VerificationSummary
             var failed = preservation.EnumerateObject().Where(item => item.Value.ValueKind == JsonValueKind.False).Select(item => item.Name).ToArray();
             lines.Add(failed.Length == 0 ? "PASS PE preservation: all reported structures preserved" : $"FAIL PE preservation: {string.Join(", ", failed)}");
         }
+        if (difference.TryGetProperty("bytePreservation", out var bytePreservation) && bytePreservation.ValueKind == JsonValueKind.Object)
+        {
+            var bytePassed = bytePreservation.TryGetProperty("passed", out var bytePassedValue) && bytePassedValue.ValueKind == JsonValueKind.True;
+            lines.Add($"{Mark(bytePassed)} Byte preservation: {ReadString(bytePreservation, "changedBytes")} changed bytes; unexpected={Count(bytePreservation, "unexpected")}");
+        }
+        if (difference.TryGetProperty("rawResource", out var rawResource) && rawResource.ValueKind == JsonValueKind.Object && rawResource.TryGetProperty("comparison", out var comparison) && comparison.ValueKind == JsonValueKind.Object)
+        {
+            var rawMatches = comparison.TryGetProperty("matches", out var matches) && matches.ValueKind == JsonValueKind.True;
+            lines.Add($"{Mark(rawMatches)} Raw resource corroboration: {(rawMatches ? "matches canonical graph" : "mismatch")}");
+        }
+        if (difference.TryGetProperty("richHeader", out var richHeader) && richHeader.ValueKind == JsonValueKind.Object)
+        {
+            var richChanged = richHeader.TryGetProperty("changed", out var changed) && changed.ValueKind == JsonValueKind.True;
+            lines.Add($"{Mark(!richChanged)} Rich Header: {(richChanged ? "changed" : "preserved or unavailable")}");
+        }
         if (evidence.TryGetProperty("baseline", out var baseline) && baseline.ValueKind == JsonValueKind.Object)
         {
             lines.Add($"INFO Baseline SHA-256: {ReadString(baseline, "sha256")}");
@@ -91,6 +106,15 @@ internal static class VerificationSummary
         if (evidence.TryGetProperty("result", out var result) && result.ValueKind == JsonValueKind.Object)
         {
             lines.Add($"INFO Result SHA-256: {ReadString(result, "sha256")}");
+        }
+        if (evidence.TryGetProperty("chain", out var chain) && chain.ValueKind == JsonValueKind.Object)
+        {
+            lines.Add($"INFO Evidence SHA-256: {ReadString(evidence, "sha256")}");
+            lines.Add($"INFO Previous evidence SHA-256: {ReadString(chain, "prevSha256")}");
+            if (chain.TryGetProperty("envFingerprint", out var environment) && environment.ValueKind == JsonValueKind.Object)
+            {
+                lines.Add($"INFO Environment fingerprint: {ReadString(environment, "sha256")}");
+            }
         }
     }
 

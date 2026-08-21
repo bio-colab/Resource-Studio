@@ -419,6 +419,7 @@ class LiefPEWriter:
         operation_id = f"writer-{uuid.uuid4().hex}"
         forensic_baseline_path: Path | None = None
         forensic_baseline = None
+        original_timestamp = int(getattr(binary.header, "time_date_stamps", 0))
         temporary: Path | None = None
         post_verification = None
         forensic_evidence = None
@@ -430,6 +431,7 @@ class LiefPEWriter:
             forensic_baseline = ForensicBaseline.from_path(input_path)
             forensic_baseline_path = output_path.with_suffix(output_path.suffix + f".{operation_id}.forensic-baseline.json")
             forensic_baseline.save(forensic_baseline_path)
+            binary.header.time_date_stamps = original_timestamp
             binary.write(str(temporary))
             self.validate_output(temporary)
             from .verification import verify_candidate
