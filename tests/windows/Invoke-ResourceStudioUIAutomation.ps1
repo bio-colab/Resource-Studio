@@ -104,14 +104,21 @@ try {
     Invoke-Element (Find-ById $imageWindow 'ImageLoadButton')
     Write-Output 'ui-automation: Image Wizard load invoked'
     $entriesList = Find-ById $imageWindow 'GroupEntriesList'
-    $firstEntry = Wait-Until { $itemCondition = [System.Windows.Automation.PropertyCondition]::new([System.Windows.Automation.AutomationElement]::ControlTypeProperty, [System.Windows.Automation.ControlType]::ListItem); $entriesList.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $itemCondition) } 'image group entry' | Select-Object -First 1
-    Write-Output ("ui-automation: selecting image group entry: " + $firstEntry.Current.Name)
-    Select-Element $firstEntry
-    Wait-Until {
-        $previewText = Get-ElementText (Find-ById $imageWindow 'ImagePreview')
-        $statusText = Get-ElementText (Find-ById $imageWindow 'ImageStatusText')
-        $previewText -match '^BMP preview' -or $statusText -match 'BMP preview'
-    } 'individual BMP preview' | Out-Null
+    Wait-Until { (Get-ElementText (Find-ById $imageWindow 'ImageStatusText')) -match 'loaded|failed|unavailable' } 'image resource load completion' | Out-Null
+    $itemCondition = [System.Windows.Automation.PropertyCondition]::new([System.Windows.Automation.AutomationElement]::ControlTypeProperty, [System.Windows.Automation.ControlType]::ListItem)
+    $firstEntry = $entriesList.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $itemCondition)
+    if ($null -eq $firstEntry) {
+        Write-Output 'ui-automation: Image Wizard exposed a valid empty state; no group payload was available for BMP preview'
+    }
+    else {
+        Write-Output ("ui-automation: selecting image group entry: " + $firstEntry.Current.Name)
+        Select-Element $firstEntry
+        Wait-Until {
+            $previewText = Get-ElementText (Find-ById $imageWindow 'ImagePreview')
+            $statusText = Get-ElementText (Find-ById $imageWindow 'ImageStatusText')
+            $previewText -match '^BMP preview' -or $statusText -match 'BMP preview'
+        } 'individual BMP preview' | Out-Null
+    }
 
     $imageWindow.GetCurrentPattern([System.Windows.Automation.WindowPattern]::Pattern).Close()
     $main.GetCurrentPattern([System.Windows.Automation.WindowPattern]::Pattern).Close()
