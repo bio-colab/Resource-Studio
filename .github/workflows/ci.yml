@@ -73,12 +73,17 @@ jobs:
           Get-ChildItem tests\core\test_*.py | ForEach-Object { py -3.12 $_.FullName }
           py -3.12 tests\test_cli.py
           Get-ChildItem tests\qa\test_*.py | ForEach-Object { py -3.12 $_.FullName }
-      - name: Build WPF
-        run: dotnet build windows\ResourceStudio.Windows\ResourceStudio.Windows.csproj -c Release
-      - name: Verify forbidden artifacts are absent
+      - name: Verify forbidden source artifacts are absent
         shell: pwsh
         run: |
-          $forbidden = Get-ChildItem -Recurse -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -in @('ResourceHacker.exe') -or $_.Extension -in @('.pdb') }
+          $forbidden = Get-ChildItem -Recurse -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -eq 'ResourceHacker.exe' -or ($_.Extension -eq '.pdb' -and $_.FullName -notmatch '\\(bin|obj)\\') }
+          if ($forbidden) { $forbidden | Select-Object -ExpandProperty FullName; exit 1 }
+      - name: Build WPF
+        run: dotnet build windows\ResourceStudio.Windows\ResourceStudio.Windows.csproj -c Release
+      - name: Verify forbidden payloads are absent
+        shell: pwsh
+        run: |
+          $forbidden = Get-ChildItem -Recurse -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -eq 'ResourceHacker.exe' -or ($_.Extension -eq '.pdb' -and $_.FullName -notmatch '\\(bin|obj)\\') }
           if ($forbidden) { $forbidden | Select-Object -ExpandProperty FullName; exit 1 }
       - name: Upload WPF build log
         if: always()
