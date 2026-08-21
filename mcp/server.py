@@ -8,6 +8,7 @@ import os
 import shutil
 import struct
 import sys
+import threading
 import time
 import uuid
 from pathlib import Path
@@ -20,11 +21,14 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from core.health import PEHealth
 from core.pe_writer import LiefPEWriter
+from core.plugins import PluginRegistry
 from mcp.server import MCPServer
 
 LOGGER = logging.getLogger("resource_studio.mcp")
 ROOT = Path(os.environ.get("RESOURCE_STUDIO_ROOT", Path.cwd())).expanduser().resolve()
-WORKSPACE_ROOT = ROOT / ".resource-studio" / "workspaces"
+STATE_ROOT = ROOT / ".resource-studio"
+WORKSPACE_ROOT = STATE_ROOT / "workspaces"
+STATE_PATH = STATE_ROOT / "mcp-state.json"
 MAX_FILE_BYTES = 256 * 1024 * 1024
 MAX_RESOURCE_NODES = 100_000
 FILES: dict[str, dict[str, Any]] = {}
@@ -33,6 +37,9 @@ PLANS: dict[str, dict[str, Any]] = {}
 AUDIT: dict[str, dict[str, Any]] = {}
 MAX_RESOURCE_RAW_BYTES = 4 * 1024 * 1024
 CONFIRMATION_TTL_SECONDS = 10 * 60
+PLUGIN_ROOT = STATE_ROOT / "plugins"
+PLUGIN_REGISTRY = PluginRegistry(audit_path=STATE_ROOT / "plugin-audit.jsonl")
+PLUGIN_DISCOVERY: list[dict[str, Any]] = []
 
 TYPE_NAMES = {
     1: "CURSOR",
@@ -88,6 +95,81 @@ def _safe_path(path: str) -> Path:
     return resolved
 
 
+STATE_LOCK = threading.RLock()
+
+
+def _state_payload() -> dict[str, Any]:
+    return {
+        "schemaVersion": "resource_studio.mcp_state.v1",
+        "files": FILES,
+        "workspaces": WORKSPACES,
+        "plans": PLANS,
+        "audit": AUDIT,
+    }
+
+
+def _persist_state() -> None:
+    STATE_ROOT.mkdir(parents=True, exist_ok=True)
+    temporary = STATE_PATH.with_suffix(".tmp")
+    with STATE_LOCK:
+        temporary.write_text(json.dumps(_state_payload(), ensure_ascii=False, indent=2), encoding="utf-8")
+        temporary.replace(STATE_PATH)
+
+
+def _load_state() -> None:
+    if not STATE_PATH.is_file():
+        return
+    try:
+        payload = json.loads(STATE_PATH.read_text(encoding="utf-8"))
+        if payload.get("schemaVersion") != "resource_studio.mcp_state.v1":
+            return
+        FILES.update({str(key): value for key, value in payload.get("files", {}).items() if isinstance(value, dict)})
+        WORKSPACES.update({str(key): value for key, value in payload.get("workspaces", {}).items() if isinstance(value, dict)})
+        PLANS.update({str(key): value for key, value in payload.get("plans", {}).items() if isinstance(value, dict)})
+        AUDIT.update({str(key): value for key, value in payload.get("audit", {}).items() if isinstance(value, dict)})
+        for plan in PLANS.values():
+            if plan.get("status") == "planned":
+                plan["status"] = "stale_after_restart"
+            plan["confirmationToken"] = None
+            plan["exportConfirmationToken"] = None
+    except (OSError, ValueError, TypeError) as exc:
+        LOGGER.warning("could not restore MCP state: %s", exc)
+
+
+def _discover_plugins() -> list[dict[str, Any]]:
+    global PLUGIN_REGISTRY
+    PLUGIN_ROOT.mkdir(parents=True, exist_ok=True)
+    PLUGIN_REGISTRY = PluginRegistry(audit_path=STATE_ROOT / "plugin-audit.jsonl")
+    discovered: list[dict[str, Any]] = []
+    for manifest_path in sorted(PLUGIN_ROOT.glob("*/plugin.json")):
+        relative_path = manifest_path.relative_to(ROOT).as_posix()
+        try:
+            manifest = PLUGIN_REGISTRY.register_file(manifest_path)
+            compatible, reason = PLUGIN_REGISTRY.compatibility(manifest)
+            discovered.append({
+                "pluginId": manifest.plugin_id,
+                "name": manifest.name,
+                "version": manifest.version,
+                "api": manifest.api,
+                "kind": manifest.kind,
+                "permissions": sorted(manifest.permissions),
+                "entry": manifest.entry,
+                "manifestPath": relative_path,
+                "status": "discovered" if compatible else "incompatible",
+                "reason": reason,
+                "executesCode": False,
+            })
+        except Exception as exc:
+            discovered.append({
+                "manifestPath": relative_path,
+                "status": "rejected",
+                "reason": str(exc),
+                "executesCode": False,
+            })
+    PLUGIN_DISCOVERY[:] = discovered
+    return list(discovered)
+
+
 def _read_file(path: Path) -> bytes:
     with path.open("rb") as stream:
         return stream.read(MAX_FILE_BYTES + 1)
@@ -105,6 +187,7 @@ def _register_file(path: Path, *, role: str = "source") -> dict[str, Any]:
         "role": role,
     }
     FILES[file_id] = record
+    _persist_state()
     return record
 
 
@@ -400,6 +483,17 @@ def register_file(path: str) -> dict[str, Any]:
 
 
 @server.resource(
+    "resource://plugins",
+    name="plugins",
+    title="Discovered Resource Studio plugins",
+    description="Read-only validated plugin manifests; discovery never executes plugin entrypoints.",
+    mime_type="application/json",
+)
+def plugins_resource() -> str:
+    return json.dumps({"schemaVersion": "resource_studio.plugins.v1", "plugins": _discover_plugins(), "readOnly": True}, ensure_ascii=False)
+
+
+@server.resource(
     "resource://workspace/{workspace_id}",
     name="workspace",
     title="Resource Studio isolated workspace",
@@ -537,6 +631,7 @@ def create_workspace(path: str | None = None, file_id: str | None = None) -> dic
         "workspace_path": str(workspace_path),
         "workspace_sha256": _sha256(workspace_data),
     }
+    _persist_state()
     return {
         "schemaVersion": "resource_studio.workspace.v1",
         "workspaceId": workspace_id,
@@ -607,10 +702,13 @@ def plan_resource_change(
     resource_name: str,
     language: int | None = None,
     payload_path: str | None = None,
+    target_language: int | None = None,
 ) -> dict[str, Any]:
     """Create a non-writing resource plan against an isolated workspace."""
-    if operation not in {"add", "replace", "delete"}:
-        raise ValueError("operation must be add, replace, or delete")
+    if operation not in {"add", "replace", "delete", "change-language"}:
+        raise ValueError("operation must be add, replace, delete, or change-language")
+    if operation == "change-language" and target_language is None:
+        raise ValueError("target_language is required for change-language")
     workspace = _workspace(workspace_id)
     inspected = _inspect(workspace["workspace_path"])
     candidates = [
@@ -618,7 +716,7 @@ def plan_resource_change(
         for item in inspected["resources"]
         if str(item.get("type")) == resource_type and str(item.get("name")) == resource_name
     ]
-    if language is None and operation in {"replace", "delete"}:
+    if language is None and operation in {"replace", "delete", "change-language"}:
         if len(candidates) != 1:
             raise ValueError("language is required when the resource has multiple language variants")
         current = candidates[0]
@@ -627,8 +725,14 @@ def plan_resource_change(
         planned_language = 1033 if language is None else language
         target_key = (resource_type, resource_name, str(planned_language))
         current = _resource_lookup(inspected["resources"]).get(target_key)
-    if operation in {"replace", "delete"} and current is None:
+    if operation in {"replace", "delete", "change-language"} and current is None:
         raise ValueError("the requested resource does not exist in the workspace")
+    if operation == "change-language" and planned_language is None:
+        planned_language = 1033
+    if operation == "change-language" and target_language == planned_language:
+        raise ValueError("target_language must differ from the source language")
+    if operation == "change-language" and _resource_lookup(inspected["resources"]).get((resource_type, resource_name, str(target_language))) is not None:
+        raise ValueError("target language resource already exists")
     if operation == "add" and current is not None:
         raise ValueError("the requested resource already exists; use replace instead")
 
@@ -656,6 +760,7 @@ def plan_resource_change(
             "type": resource_type,
             "name": resource_name,
             "language": planned_language,
+            "targetLanguage": target_language,
         },
         "before": current,
         "payload": payload,
@@ -666,6 +771,7 @@ def plan_resource_change(
         "status": "planned",
     }
     PLANS[plan_id] = plan
+    _persist_state()
     return plan
 
 
@@ -676,15 +782,13 @@ def plan_resource_change(
     structured_output=True,
 )
 def apply_plan(plan_id: str, confirmation_token: str, confirmed: bool = False) -> dict[str, Any]:
-    """Apply a confirmed replacement through the shared PE writer and verifier."""
+    """Apply a confirmed resource operation through the shared PE writer and verifier."""
     plan = PLANS.get(plan_id)
     if plan is None:
         raise ValueError(f"unknown plan: {plan_id}")
     if plan.get("status") != "planned":
         raise ValueError("plan is not pending")
     _require_confirmation(plan, confirmation_token, confirmed)
-    if plan["operation"] != "replace":
-        raise ValueError("this milestone applies replace plans; add/delete use the shared writer in the next mutation slice")
 
     workspace = _workspace(plan["workspaceId"])
     workspace_path = Path(workspace["workspace_path"])
@@ -692,49 +796,88 @@ def apply_plan(plan_id: str, confirmation_token: str, confirmed: bool = False) -
     if current_workspace_sha != plan["workspaceSha256"]:
         raise ValueError("workspace changed after the plan was created; rebuild the plan")
 
-    before = plan.get("before") or {}
-    payload_path = (plan.get("payload") or {}).get("path")
-    if not payload_path:
-        raise ValueError("plan does not contain a writable resource payload")
-    payload = _read_file(_safe_path(payload_path))
     resource = plan["resource"]
+    operation = plan["operation"]
     resource_name: str | int = resource["name"]
     if isinstance(resource_name, str) and resource_name.isdecimal():
         resource_name = int(resource_name)
-    output_path = workspace_path.with_name(f"{workspace_path.stem}.applied{workspace_path.suffix}")
-    result = LiefPEWriter().replace_resource(
-        workspace_path,
-        output_path,
-        resource["type"],
-        resource_name,
-        resource.get("language"),
-        payload,
-        backup_existing_output=False,
-    )
+    language = resource.get("language")
+    if language is not None:
+        language = int(language)
+    if operation == "change-language" and language is None:
+        language = 1033
+    target_language = resource.get("targetLanguage")
+    if target_language is not None:
+        target_language = int(target_language)
+    payload = None
+    if operation in {"add", "replace"}:
+        payload_path = (plan.get("payload") or {}).get("path")
+        if not payload_path:
+            raise ValueError("plan does not contain a writable resource payload")
+        payload = _read_file(_safe_path(payload_path))
+
+    output_path = workspace_path.with_name(f"{workspace_path.stem}.{operation}.applied{workspace_path.suffix}")
+    writer = LiefPEWriter()
+    if operation == "replace":
+        result = writer.replace_typed_resource(workspace_path, output_path, resource["type"], resource_name, language, payload, backup_existing_output=False)
+    elif operation == "add":
+        if not isinstance(resource_name, int) or language is None:
+            raise ValueError("add requires a numeric resource name and language")
+        result = writer.add_typed_resource(workspace_path, output_path, resource["type"], resource_name, language, payload, backup_existing_output=False)
+    elif operation == "delete":
+        result = writer.delete_resource(workspace_path, output_path, resource["type"], resource_name, language, backup_existing_output=False)
+    elif operation == "change-language":
+        if language is None or target_language is None:
+            raise ValueError("change-language requires source and target languages")
+        result = writer.change_language(workspace_path, output_path, resource["type"], resource_name, language, target_language, backup_existing_output=False)
+    else:
+        raise ValueError(f"unsupported plan operation: {operation}")
+
     output = _inspect(str(output_path))
     output_record = _register_file(output_path, role="verified_output")
-    key = (str(resource["type"]), str(resource["name"]), str(resource.get("language")))
-    after = _resource_lookup(output["resources"]).get(key)
-    if after is None or after.get("sha256") != _sha256(payload):
+    source_key = (str(resource["type"]), str(resource["name"]), str(language))
+    target_key = (str(resource["type"]), str(resource["name"]), str(target_language))
+    before = plan.get("before") or {}
+    output_lookup = _resource_lookup(output["resources"])
+    after = output_lookup.get(target_key if operation == "change-language" else source_key)
+    if after is None and operation in {"add", "replace"}:
+        candidates = [item for item in output["resources"] if str(item.get("type")) == str(resource["type"]) and str(item.get("name")) == str(resource["name"])]
+        if len(candidates) == 1:
+            after = candidates[0]
+    if operation == "delete":
+        verified_change = result.verified and after is None
+    elif operation == "change-language":
+        verified_change = result.verified
+    else:
+        verified_change = result.verified and after is not None and after.get("sha256") == _sha256(payload or b"")
+    if not verified_change:
         output_path.unlink(missing_ok=True)
-        raise ValueError("shared writer verification did not expose the requested resource")
+        raise ValueError("shared writer verification did not expose the requested round-trip change")
 
     operation_id = f"op_{uuid.uuid4().hex[:16]}"
+    change = {
+        "type": str(resource["type"]),
+        "name": str(resource["name"]),
+        "language": str(language),
+        "action": operation,
+        "beforeSha256": before.get("sha256"),
+        "afterSha256": (_sha256(payload) if operation in {"add", "replace"} else (before.get("sha256") if operation == "change-language" else None)),
+    }
+    if operation == "change-language":
+        change["targetLanguage"] = str(target_language)
     audit = {
         "schemaVersion": "resource_studio.audit.v1",
         "operationId": operation_id,
         "planId": plan_id,
         "workspaceId": plan["workspaceId"],
-        "operation": "replace",
+        "operation": operation,
         "sourceWorkspaceSha256": current_workspace_sha,
         "sourceFile": _file_ref(FILES[workspace["source_file_id"]]),
         "outputPath": str(output_path),
         "outputFile": _file_ref(output_record),
         "outputSha256": result.after_sha256,
-        "resource": {"type": key[0], "name": key[1], "language": key[2]},
-        "beforeSha256": before.get("sha256"),
-        "afterSha256": after.get("sha256"),
-        "verified": result.verified,
+        "resource": change,
+        "verified": result.verified and verified_change,
         "verification": result.verification or {},
         "forensicEvidence": result.forensic_evidence or {},
     }
@@ -745,27 +888,21 @@ def apply_plan(plan_id: str, confirmation_token: str, confirmed: bool = False) -
     plan["exportConfirmationToken"] = uuid.uuid4().hex
     plan["exportConfirmationCreatedAt"] = time.time()
     AUDIT[operation_id] = audit
+    _persist_state()
     return {
         "schemaVersion": "resource_studio.result.v1",
         "operationId": operation_id,
         "planId": plan_id,
-        "status": "verified" if result.verified else "failed",
+        "status": "verified" if audit["verified"] else "failed",
         "source": {"workspaceId": plan["workspaceId"], "sha256": current_workspace_sha},
         "output": {"file": _file_ref(output_record), "pathPolicy": "workspace-only"},
         "outputPath": str(output_path),
         "outputSha256": result.after_sha256,
-        "changes": [{
-            "type": key[0],
-            "name": key[1],
-            "language": key[2],
-            "action": "modified",
-            "beforeSha256": before.get("sha256"),
-            "afterSha256": after.get("sha256"),
-        }],
+        "changes": [change],
         "warnings": list((result.verification or {}).get("warnings", [])),
         "verification": {
             "reopened": True,
-            "resourceHashMatchesPayload": True,
+            "resourceRoundTrip": verified_change,
             "writer": result.verification or {},
             "forensic": result.forensic_evidence or {},
             "signatureStatus": "checked_by_writer",
@@ -819,6 +956,7 @@ def export_workspace(plan_id: str, confirmation_token: str, destination_path: st
     AUDIT[operation_id] = audit
     plan["exportedFileId"] = exported["fileId"]
     plan["exportConfirmationUsedAt"] = time.time()
+    _persist_state()
     return {
         "schemaVersion": "resource_studio.result.v1",
         "operationId": operation_id,
@@ -847,6 +985,7 @@ def cancel_plan(plan_id: str) -> dict[str, Any]:
         raise ValueError("only a pending plan can be cancelled")
     plan["status"] = "cancelled"
     plan["confirmationToken"] = None
+    _persist_state()
     return {"schemaVersion": "resource_studio.plan.v1", "planId": plan_id, "status": "cancelled", "writesFiles": False}
 
 
@@ -876,6 +1015,16 @@ def get_plan(plan_id: str) -> dict[str, Any]:
     if plan is None:
         raise ValueError(f"unknown plan: {plan_id}")
     return plan
+
+
+@server.tool(
+    name="resource_studio.list_plugins",
+    title="List discovered plugins",
+    description="Read-only discovery of validated plugin manifests; no plugin entrypoint is executed.",
+    structured_output=True,
+)
+def list_plugins() -> dict[str, Any]:
+    return {"schemaVersion": "resource_studio.plugins.v1", "plugins": _discover_plugins(), "readOnly": True}
 
 
 @server.tool(
@@ -917,6 +1066,10 @@ def index_resources(path: str | None = None, file_id: str | None = None) -> dict
         "warnings": inspected["warnings"],
         "readOnly": True,
     }
+
+
+_load_state()
+_discover_plugins()
 
 
 if __name__ == "__main__":

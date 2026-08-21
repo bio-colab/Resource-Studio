@@ -39,6 +39,10 @@ jobs:
             PYTHONPATH=. python "$test"
           done
           PYTHONPATH=. python tests/test_mcp_stdio.py
+          PYTHONPATH=. python tests/test_mcp_http.py
+          PYTHONPATH=. python tests/test_mcp_persistence.py
+          PYTHONPATH=. python tests/test_mcp_mutations.py
+          PYTHONPATH=. python tests/test_mcp_plugins.py
       - name: Verify forbidden artifacts are absent
         shell: bash
         run: |
@@ -75,6 +79,10 @@ jobs:
           py -3.12 tests\test_cli.py
           Get-ChildItem tests\qa\test_*.py | ForEach-Object { py -3.12 $_.FullName }
           py -3.12 tests\test_mcp_stdio.py
+          py -3.12 tests\test_mcp_http.py
+          py -3.12 tests\test_mcp_persistence.py
+          py -3.12 tests\test_mcp_mutations.py
+          py -3.12 tests\test_mcp_plugins.py
       - name: Verify forbidden source artifacts are absent
         shell: pwsh
         run: |

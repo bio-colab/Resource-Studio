@@ -3,7 +3,9 @@
   "schemaVersion": "resource_studio.tools.v1",
   "protocol": {
     "mcp": "2026-07-28",
-    "transports": ["stdio"]
+    "transports": ["stdio", "streamable-http"],
+    "httpPath": "/mcp",
+    "defaultBind": "127.0.0.1"
   },
   "capabilities": {
     "tools": {"listChanged": false},
@@ -18,7 +20,8 @@
       "resource_studio.inspect_file",
       "resource_studio.index_resources",
       "resource_studio.diff_files",
-      "resource_studio.read_audit"
+      "resource_studio.read_audit",
+      "resource_studio.list_plugins"
     ],
     "planning": [
       "resource_studio.create_workspace",
@@ -32,7 +35,7 @@
     ]
   },
   "resources": {
-    "static": ["resource://workspace/info"],
+    "static": ["resource://workspace/info", "resource://plugins"],
     "templates": [
       "resource://workspace/{workspace_id}",
       "resource://file/{file_id}/manifest",
@@ -51,9 +54,13 @@
     "confirmationTtlSeconds": 600,
     "arbitraryCommandTool": false,
     "arbitraryFileWriteTool": false,
+    "pluginEntrypointsExecutedByMcp": false,
     "defaultMaxInputBytes": 268435456,
     "maxResourceRawBytes": 4194304,
-    "stateScope": "stdio-session-memory"
+    "stateScope": "root-scoped-atomic-json",
+    "httpAuth": "bearer-token",
+    "remoteBindRequiresExplicitOptIn": true,
+    "remoteRequiresTls": true
   },
   "result": {
     "schema": "resource_studio.result.v1",

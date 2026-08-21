@@ -24,6 +24,12 @@
 - إضافة نافذة About أصلية داخل WPF مرتبطة بهوية Resource Studio، تشرح وظيفة المشروع، وتعرض اسم المطور Elias Sharar والبريد `aliasbio95@gmail.com` ورابط المستودع، مع دعم كامل لموارد الثيم الديناميكية وعقد UI automation.
 - استكمال MCP Phase 1 المحلي عبر `stdio`: تثبيت `mcp==2.0.0` في dependencies وCI، وإضافة fileId محدود الجلسة، Resources وResource Templates وPrompts، ودورة plan/confirm/apply/export/cancel مع TTL للتأكيد.
 - ربط MCP بمسار `LiefPEWriter` و`PEHealth` المشترك، وإضافة `resource_studio.result.v1` وaudit references واختبار stdio على Python وWindows. النقل البعيد والمصادقة وحالة الخادم الدائمة تبقى خارج هذه الدفعة.
+- توسيع MCP عبر Streamable HTTP اختياري مع Bearer authentication وTrusted Host وOrigin/HTTPS guards، مع إبقاء الربط المحلي هو الافتراضي ومنع الربط البعيد دون opt-in صريح.
+- إضافة حفظ ذري للحالة في `.resource-studio/mcp-state.json` واستعادتها بين عمليتين منفصلتين، مع TTL للتأكيد وRLock داخل العملية وعزل الملفات تحت الجذر المصرح.
+- إضافة عمليات MCP كاملة لـ`add` و`delete` و`change-language` إلى جانب `replace` عبر المسار المشترك للكاتب وإعادة الفتح والتحقق، مع regression coverage على fixture PE حقيقي.
+- إضافة `resource_studio.list_plugins` و`resource://plugins` لاكتشاف manifests والتحقق من التوافق والصلاحيات والحالة للقراءة فقط؛ لا تُنفذ entrypoints ولا تُمنح الإضافات صلاحية تنفيذ عبر MCP.
+- تحديث عقد MCP ووثيقة التشغيل وCI لتغطية HTTP وpersistence وmutations وplugin discovery على Python وWindows.
+- إصلاح Windows oracle وForensic attribution لعملية `change-language` كي تُسجل إزالة لغة المصدر وإضافة لغة الهدف كتغيير مقصود، مع تمرير `sourceLanguage` إلى طبقات التحقق؛ وأثبتت بوابة Windows الواقعية operations الثلاث بنجاح.
 
 - إضافة `resource_studio.static_code_analysis.v1`: bounded Capstone disassembly وbasic CFG من PE entrypoint مع RVA/file offsets وقيود صريحة، إضافة إلى unpacking indicators ساكنة مثل section expansion وhigh entropy وexecutable+writable sections وoverlay.
 - إضافة `resource_studio.hex_template.v1` لقوالب BITMAPINFOHEADER وVS_VERSIONINFO وDIALOG/MENU headers، مع field offsets وlengths وvalues وhex ranges قابلة للتحديد في WPF Preview.

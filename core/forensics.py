@@ -155,10 +155,16 @@ class ForensicEvidence:
         added = [list(item) for item in diff.get("added", [])]
         removed = [list(item) for item in diff.get("removed", [])]
         target_key = [self.target.get("type"), str(self.target.get("name")), self.target.get("language")]
-        unintended = [item for item in changed + added + removed if not self._target_key_matches(item, target_key)]
+        source_key = [self.target.get("type"), str(self.target.get("name")), self.target.get("sourceLanguage")]
+        intended_keys = [target_key]
+        if self.operation == "change-language" and self.target.get("sourceLanguage") is not None:
+            intended_keys.append(source_key)
+        matches_intended = lambda item: any(self._target_key_matches(item, key) for key in intended_keys)
+        unintended = [item for item in changed + added + removed if not matches_intended(item)]
         targeted_changed = any(self._target_key_matches(item, target_key) for item in changed)
         targeted_added = any(self._target_key_matches(item, target_key) for item in added)
         targeted_removed = any(self._target_key_matches(item, target_key) for item in removed)
+        source_removed = any(self._target_key_matches(item, source_key) for item in removed) if self.operation == "change-language" else False
         payload = {
             "schema": "resource_studio.forensic_evidence.v1",
             "operationId": self.operation_id,
@@ -172,7 +178,9 @@ class ForensicEvidence:
                     "changed": targeted_changed,
                     "added": targeted_added,
                     "removed": targeted_removed,
-                    "beforeSha256": self._resource_hash(self.baseline, target_key),
+                    "sourceRemoved": source_removed,
+                    "sourceKey": source_key if self.operation == "change-language" else None,
+                    "beforeSha256": self._resource_hash(self.baseline, source_key if self.operation == "change-language" else target_key),
                     "afterSha256": self._resource_hash(self.result, target_key),
                 },
                 "resourceTree": {
@@ -236,6 +244,7 @@ def verify_transformation(
     language: int | None,
     operation: str,
     operation_id: str,
+    source_language: int | None = None,
     expected_data: bytes | None = None,
     committed: bool = False,
     baseline: ForensicBaseline | None = None,
@@ -254,15 +263,19 @@ def verify_transformation(
         resource_name=resource_name,
         language=language,
         operation=operation,
+        source_language=source_language,
         expected_data=expected_data,
         committed=committed,
         before_context=before_context,
         candidate_context=candidate_context,
     )
+    target_payload = {"type": str(resource_type), "name": str(resource_name), "language": language}
+    if source_language is not None:
+        target_payload["sourceLanguage"] = source_language
     return ForensicEvidence(
         operation_id=operation_id,
         operation=operation,
-        target={"type": str(resource_type), "name": str(resource_name), "language": language},
+        target=target_payload,
         baseline=before,
         result=result,
         verification=verification,

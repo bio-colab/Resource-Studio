@@ -319,7 +319,18 @@ class LiefPEWriter:
         assert nodes is not None
         type_node, name_node, leaf = nodes
         name_node.delete_child(leaf)
-        result = self._write(binary, input_path, output_path, resource_type, resource_name, target_language, backup_existing_output, expected_data=source_data, operation="change-language")
+        result = self._write(
+            binary,
+            input_path,
+            output_path,
+            resource_type,
+            resource_name,
+            target_language,
+            backup_existing_output,
+            expected_data=source_data,
+            operation="change-language",
+            source_language=source_language,
+        )
         reopened = self._parse(Path(result.output_path))
         target = self._find_resource(reopened, resource_type, resource_name, target_language)
         old = self._find_resource(reopened, resource_type, resource_name, source_language)
@@ -394,6 +405,7 @@ class LiefPEWriter:
         backup_existing_output: bool,
         expected_data: bytes | None = None,
         operation: str = "replace",
+        source_language: int | None = None,
     ) -> WriteResult:
         input_path = Path(input_path).expanduser().resolve()
         output_path = Path(output_path).expanduser().resolve()
@@ -451,6 +463,7 @@ class LiefPEWriter:
                 resource_name=resource_name,
                 language=language,
                 operation=operation,
+                source_language=source_language,
                 expected_data=expected_data,
                 committed=False,
                 before_context=before_context,
@@ -470,6 +483,7 @@ class LiefPEWriter:
                 resource_name=resource_name,
                 language=language,
                 operation=operation,
+                source_language=source_language,
                 expected_data=expected_data,
                 committed=True,
                 before_context=before_context,
@@ -497,6 +511,7 @@ class LiefPEWriter:
                 language=language,
                 operation=operation,
                 operation_id=operation_id,
+                source_language=source_language,
                 expected_data=expected_data,
                 committed=True,
                 baseline=forensic_baseline,

@@ -156,6 +156,7 @@ def verify_candidate(
     resource_name: str | int,
     language: int | None,
     operation: str,
+    source_language: int | None = None,
     expected_data: bytes | None = None,
     committed: bool = False,
     before_context: VerificationContext | None = None,
@@ -211,6 +212,7 @@ def verify_candidate(
         resource_name=resource_name,
         language=language,
         operation=operation,
+        source_language=source_language,
     )
     windows_ok = windows.get("status") in {"PASSED", "SKIPPED"}
     _phase(phases, "WINDOWS_VALIDATION", windows_ok, str(windows.get("status")))
@@ -338,6 +340,7 @@ def _windows_validation(
     resource_name: str | int,
     language: int | None,
     operation: str,
+    source_language: int | None = None,
 ) -> dict[str, Any]:
     if os.name != "nt":
         return {"status": "SKIPPED", "reason": "Windows-only oracle"}
@@ -377,6 +380,15 @@ def _windows_validation(
     def is_target(item: tuple[str, str, int]) -> bool:
         return item[0] == target_type and item[1] == target_name and (language is None or item[2] == int(language))
 
+    def is_source(item: tuple[str, str, int]) -> bool:
+        return (
+            operation == "change-language"
+            and source_language is not None
+            and item[0] == target_type
+            and item[1] == target_name
+            and item[2] == int(source_language)
+        )
+
     target_candidates = sorted(item for item in (*oracle_added, *oracle_removed, *oracle_changed) if is_target(item))
     target = list(target_candidates[0]) if target_candidates else [target_type, target_name, int(language or 0)]
     target_added = any(is_target(item) for item in oracle_added)
@@ -389,8 +401,8 @@ def _windows_validation(
         target_ok = target_removed
         unexpected_removed = [item for item in oracle_removed if not is_target(item)]
     elif operation == "change-language":
-        target_ok = target_added or target_removed
-        unexpected_removed = [item for item in oracle_removed if not is_target(item)]
+        target_ok = target_added or target_changed
+        unexpected_removed = [item for item in oracle_removed if not (is_target(item) or is_source(item))]
     else:
         target_ok = target_changed
         unexpected_removed = [item for item in oracle_removed if not is_target(item)]
@@ -418,6 +430,8 @@ def _windows_validation(
         "targetChanged": target_changed,
         "targetAdded": target_added,
         "targetRemoved": target_removed,
+        "sourceLanguage": source_language,
+        "sourceRemoved": any(is_source(item) for item in oracle_removed),
         "unexpectedRemoved": [list(item) for item in unexpected_removed],
         "unexpectedChanged": [list(item) for item in unexpected_changed],
         "liefComparison": comparison.to_dict(),
