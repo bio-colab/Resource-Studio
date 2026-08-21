@@ -276,7 +276,7 @@
 | الحالة | المعرّف | المهمة | معيار الإنجاز |
 |---|---|---|---|
 | [x] | SEC-01 | تعريف النطاق الدفاعي والحدود | `docs/SECURITY-GOAL.md` يفرّق بين المؤشر والإثبات ويمنع التشغيل وunpacking وruntime verdict داخل النواة |
-| [x] | SEC-02 | Static Security Report v1 | `core/security_analysis.py` وأمر CLI `security` و`report security` يعيدان access/parse state وPEHealth وdeep invariants وsignature/integrity وResource Graph/raw corroboration وstatic indicators وEvidence Summary |
+| [x] | SEC-02 | Static Security Report v1 | `core/security_analysis.py` وأمر CLI `security` و`report security` يعيدان access/parse state وPEHealth وdeep invariants وsignature/integrity وResource Graph/raw corroboration وstatic indicators وEvidence Summary؛ CI run `32444514351` نجح على Python 3.12 وWindows/WPF |
 | [~] | SEC-03 | Read-only access and lock probe | read/access classification منجزة، وWindows sharing probe مضافة؛ remediation UI وmatrix العملية للقفل لاحقان |
 | [ ] | SEC-04 | Safe malformed/corrupt classification | parse ladder وbounded reads وcorpus أوسع للملفات التالفة والامتدادات غير المدعومة |
 | [ ] | SEC-05 | Static injection/tamper indicators | توسيع مؤشرات sections/overlay/entrypoint/import/resource مع references وfalse-positive corpus |

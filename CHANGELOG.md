@@ -34,6 +34,7 @@
 - `CONTRIBUTING.md` الذي يشرح السلامة والاختبارات والتوثيق وقواعد المساهمات.
 - إنشاء `docs/SECURITY-GOAL.md` كخطة دفاعية للتحليل الساكن، وفصل المؤشرات عن verdicts، وتحديد حدود Defender/YARA وruntime telemetry.
 - إضافة `core/security_analysis.py` وأوامر CLI `security` و`report security` لإنتاج `resource_studio.security_report.v1` مع access/parse state وPEHealth وdeep invariants وsignature/integrity وResource Graph/raw corroboration وstatic indicators وEvidence Summary؛ لا يشغّل الملف ولا يفك payloadات.
+- نجاح GitHub Actions run `32444514351` على commit `3dc383b`، مع اجتياز Python 3.12 وWindows/WPF وفحص الملفات المحظورة.
 - `core/evidence_model.py` بصيغة `resource_studio.evidence_summary.v1` لتطبيع observations وraw ranges وstatistics وprovenance وExpert Findings.
 - إضافة `evidence` و`evidenceHash` و`rawResourceComparison` إلى CLI `inspect --json`، وإضافة Evidence Summary إلى `ForensicEvidence`.
 - وثيقة `docs/PE-EVIDENCE-MODEL.md` التي تحدد المصادر والـconfidence والحدود وعدم تحويل entropy إلى verdict.
