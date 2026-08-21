@@ -219,6 +219,17 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tests\windows\Invoke-Resourc
 
 لا تُعد المهمة مكتملة لمجرد نجاح build؛ يجب أن يكون الاختبار قابلاً لإعادة التشغيل وأن تُذكر حدود البيئة، خصوصًا Windows-only oracle وMUI/LN وسياسات التوقيع.
 
+## قياس الأداء P0
+
+يحتوي المشروع على telemetry اختيارية لمسارات القراءة والكتابة وWPF runner. لا تعمل هذه الطبقة افتراضيًا ولا تغير المخرجات أو قرارات التحقق؛ لتفعيلها استخدم متغير البيئة `RESOURCE_STUDIO_P0_TELEMETRY_PATH`، ثم شغّل baseline:
+
+```bash
+P0_BASELINE_OUTPUT=/tmp/resource-studio-p0-baseline.json \\
+PYTHONPATH=. python3 tools/p0_baseline.py
+```
+
+يعرض التقرير زمن العملية الخارجية، وزمن داخل CLI، وعدد LIEF parses والقراءات الكاملة والملفات والمجلدات المؤقتة والعمليات الفرعية. النتائج الموثقة للعينة الحالية موجودة في [`docs/P0-PERFORMANCE-BASELINE.md`](docs/P0-PERFORMANCE-BASELINE.md)، مع التنبيه إلى أن زمن process startup في بيئة القياس ليس latency التطبيق الفعلية على Windows.
+
 ## حدود مقصودة
 
 لا يهدف Forensic-goal إلى بناء malware scanner أو IOC engine أو YARA أو PEiD أو entropy maps أو timeline عام أو hex forensic viewer جديد. أصبح Security-goal مسارًا مستقلًا للتحليل الساكن الدفاعي؛ لا يشغّل الملفات ولا يفك payloadات ولا يعلن أن heuristic واحدة تعني malware. أما Defender وYARA فهما موفّران خارجيان اختياريان على staged copies، وليسَا جزءًا من writer أو verdict داخلي. كما أن MCP مؤجل في هذه الدورة.

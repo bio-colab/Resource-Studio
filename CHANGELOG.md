@@ -10,6 +10,8 @@
 
 ### أُضيف
 
+- تنفيذ P0 من خطة إصلاح الأداء: telemetry اختياري لمسارات CLI وWriter وWPF runner، مع قياس الزمن وLIEF parses والقراءات الكاملة وtemporary I/O وprocess-per-action، دون تغيير السلوك الافتراضي. وثقت النتائج في `docs/P0-PERFORMANCE-BASELINE.md`.
+
 - Apache-2.0 في `LICENSE` مع توضيح الفصل القانوني بين Resource Studio وResource Hacker واعتماديات الطرف الثالث.
 - GitHub Actions CI لـPython وWindows/WPF، وRelease workflow لإنتاج source bundle عند tags دون `ResourceHacker.exe` أو ملفات الأسرار والبناء.
 - community files: `CODE_OF_CONDUCT.md` و`SUPPORT.md` و`SECURITY.md` وIssue templates.

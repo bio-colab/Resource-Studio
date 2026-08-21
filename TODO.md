@@ -271,6 +271,17 @@
 | 2026-08-20 | تنفيذ SYS-09 Job Object Containment Proof | مكتمل ومختبر | child/grandchild probe داخل `WindowsJob`، و`JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE` أنهى الشجرة؛ اختبار Windows نجح |
 | 2026-08-20 | تنفيذ SYS-10 WPF Process-State baseline | مكتمل جزئيًا ومختبر | `CliStateText` وAutomationId وحالات Idle/Running/Completed/Failed؛ build WPF بـ0 أخطاء و0 تحذيرات وUI automation مع fixture ICON نجح |
 
+## Performance repair track
+
+| الحالة | المعرّف | المهمة | النتيجة |
+|---|---|---|---|
+| [x] | PERF-00 | P0 baseline telemetry | إضافة `resource_studio.p0_telemetry.v1` و`tools/p0_baseline.py`؛ القياس اختياري ولا يغير السلوك، وbaseline محفوظ في `docs/P0-PERFORMANCE-BASELINE.md` |
+| [ ] | PERF-01 | P1 read-only ResourceReader | فصل `list/extract/search` عن `Project.open_pe` وإلغاء workspace/audit لمسارات القراءة |
+| [ ] | PERF-02 | P2 VerificationContext | إعادة استخدام snapshots/graphs/integrity داخل Save دون تخفيف الحواجز |
+| [ ] | PERF-03 | P3 WPF long-lived host | host stdio/JSONL وجلسة PE مستمرة لمسارات القراءة |
+| [ ] | PERF-04 | P4 WPF session/cache | إلغاء stale results وإدارة cancellation/session identity |
+| [ ] | PERF-05 | P5 raw-surgical writer study | يبدأ فقط إذا أثبتت القياسات أن P1–P4 لا تكفي وبعد corpus وWindows oracle |
+
 ## Advanced Evidence layers
 
 | الحالة | المعرّف | المهمة | معيار الإنجاز |

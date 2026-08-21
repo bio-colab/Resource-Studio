@@ -21,6 +21,7 @@ from core.evidence_model import build_evidence_summary, evidence_summary_hash
 from core.evidence_graph import EvidenceGraph
 from core.evidence_query import query_summary
 from core.case_lifecycle import CaseFile
+from core.p0_telemetry import measure
 from core.forensics import ForensicBaseline
 from core.deep_invariants import inspect_deep
 from core.dialog_resources import DialogResource
@@ -930,7 +931,10 @@ def main(argv: list[str] | None = None) -> int:
         if arguments.action == "create-test-cert" and arguments.output is None:
             parser().error("signature create-test-cert requires --output")
     try:
-        return int(arguments.handler(arguments))
+        with measure(arguments.command, argv=list(argv) if argv is not None else sys.argv[1:]) as telemetry:
+            result = int(arguments.handler(arguments))
+            telemetry.set("exitCode", result)
+            return result
     except (OSError, ValueError, KeyError, RuntimeError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2
