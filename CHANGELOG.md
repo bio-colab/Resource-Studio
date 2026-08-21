@@ -28,6 +28,7 @@
 - إضافة Query Engine آمن وأوامر `evidence-query` و`evidence-graph`، مع namespaces محددة وoperators مقارنة و`contains` و`and/or` دون `eval`.
 - إضافة `resource_studio.case.v1` وأوامر `case create/analyze/transition/show` مع lifecycle وtimeline وaudit event hash-chain وتقارير قابلة لإعادة التحميل.
 - إضافة تبويب WPF Security Center يعرض static security report وEvidence Graph ونتائج Query وcase path فوق CLI/Core الحالية، دون إعادة تنفيذ Verification Engine.
+- نجاح GitHub Actions run `32478276207` على commit `f81b2bd`، مع اجتياز Python 3.12 وWindows/WPF وبناء Security Center بنجاح.
 - إضافة evidence chain metadata القابل لإعادة البناء: `prevSha256` وenvironment fingerprint وcommand line وevidence sha256.
 - إضافة `PreservationMap` بخريطة byte ranges وتصنيف `EXPECTED_TARGET_RESOURCE` و`EXPECTED_RESOURCE_CONTAINER` و`EXPECTED_HEADER_RECALC` و`UNEXPECTED`، مع ميزانية unexpected تساوي صفرًا.
 - إضافة raw resource parser مستقل محدود يقارن موارد `IMAGE_RESOURCE_DIRECTORY` مع canonical ResourceGraph.

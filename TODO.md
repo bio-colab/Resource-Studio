@@ -279,7 +279,7 @@
 | [x] | ADV-02 | Query / Filtering Engine | grammar آمنة تدعم namespaces محددة و`== != > >= < <= contains` و`and/or/parentheses` دون `eval` |
 | [x] | ADV-03 | Case lifecycle | `resource_studio.case.v1` مع `OPEN → TRIAGED → ANALYZED → REPORTED → CLOSED` وtimeline وaudit event hash-chain وتقارير قابلة لإعادة التحميل |
 | [x] | ADV-04 | CLI surface | أوامر `evidence-graph` و`evidence-query` و`case create/analyze/transition/show` |
-| [x] | ADV-05 | WPF Security Center | تبويب Security Center يعرض static report وgraph وquery results وcase path فوق CLI الحالي؛ اختبار Windows/WPF النهائي مطلوب بعد الدفع |
+| [x] | ADV-05 | WPF Security Center | تبويب Security Center يعرض static report وgraph وquery results وcase path فوق CLI الحالي؛ CI run `32478276207` بنى WPF ونجح |
 | [ ] | ADV-06 | Graph-aware report export | تصدير graph/query/case إلى Markdown/CSV/HTML مع links قابلة للنقر ومصادر الأدلة |
 
 ## Security-goal: PE security and safe reverse-engineering
