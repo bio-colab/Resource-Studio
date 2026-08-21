@@ -31,6 +31,7 @@
 | Safe writing | Save As، durable commit، rollback، round-trip، resource invariants، preservation checks، ومنع الكتابة إلى input |
 | Verification | Resource Graph، semantic fingerprints، deep PE invariants، differential verification، LIEF comparison، Windows resource oracle، integrity وAuthenticode diagnostics |
 | Forensic core | `ForensicBaseline` و`ForensicEvidence` و`verify_transformation` في `core/forensics.py`؛ baseline/result وoperation attribution وforensic difference موثقة ومختبرة جزئيًا |
+| Security Layer | static PE report، unpacking indicators، bounded Capstone disassembly وCFG، وimport-only behavioral telemetry/memory/API evidence مع target SHA-256 |
 | Windows shell | WPF مستقل فوق CLI، Verification summary، async CLI runner، Stop، Preview، Image Wizard، وUI automation |
 | Testing | اختبارات core/CLI/QA، corpus matrix، bounded وstructure-aware fuzzing، crash consistency، Win32 oracles، Job Object، WPF build وUI automation |
 | الوثائق | `CONTRIBUTING.md`، `CHANGELOG.md`، `TODO.md`، وملفات الأهداف والتقارير في `docs/` |
@@ -68,6 +69,7 @@ Durable commit + audit
 | Python 3.12 | النواة وCLI والاختبارات |
 | `lief==1.0.0` | قراءة وكتابة PE resources |
 | `Pillow>=10.0` | PNG الاختياري في Icon/Cursor payload |
+| `capstone>=5.0,<6` | bounded static disassembly وCFG من PE entrypoint |
 | .NET SDK 8.0 أو أحدث | بناء WPF على Windows |
 | Windows 10/11 | Windows oracle وWinVerifyTrust وWPF automation |
 
@@ -180,6 +182,8 @@ python3 resource_studio_cli.py report diagnostics before.dll after.dll --format 
 python3 resource_studio_cli.py security sample.dll --json
 python3 resource_studio_cli.py security sample.dll --external-result defender-result.json --json
 python3 resource_studio_cli.py security sample.dll --stage-root ./security-staging --ledger ./security-ledger.jsonl --json
+# runtime evidence imported from external tools; Resource Studio never executes the PE
+python3 resource_studio_cli.py security sample.dll --behavioral-telemetry process-trace.json --memory-evidence memory-report.json --api-trace api-trace.json --json
 python3 resource_studio_cli.py evidence-graph sample.dll --json
 python3 resource_studio_cli.py evidence-query sample.dll 'resource.type == "MANIFEST" and resource.size >= 0' --json
 python3 resource_studio_cli.py case create sample.dll --output sample.case.json --json
@@ -187,7 +191,7 @@ python3 resource_studio_cli.py case analyze sample.case.json sample.dll --json
 python3 resource_studio_cli.py report security sample.dll --format markdown --output security.md
 ```
 
-توثّق [`docs/PRODUCTIZATION.md`](docs/PRODUCTIZATION.md) عقود journal/resume وPost-write Diagnostics وحدود المرحلة التالية. وتوثّق [`docs/SECURITY-GOAL.md`](docs/SECURITY-GOAL.md) عقد `external_scan.v1`؛ الخيار `--external-result` يستورد JSON موجودًا ولا يشغّل الموفر، بينما `--stage-root` ينشئ نسخة read-only و`--ledger` يربط التقرير بسجل EvidenceLedger محلي. وتشرح [`docs/ADVANCED-EVIDENCE-DESIGN.md`](docs/ADVANCED-EVIDENCE-DESIGN.md) عقود graph/query/case، وتعرض WPF Security Center هذه الطبقات فوق CLI دون إعادة تنفيذ Verification Engine.
+توثّق [`docs/PRODUCTIZATION.md`](docs/PRODUCTIZATION.md) عقود journal/resume وPost-write Diagnostics وحدود المرحلة التالية. وتوثّق [`docs/SECURITY-GOAL.md`](docs/SECURITY-GOAL.md) عقد `external_scan.v1`؛ الخيار `--external-result` يستورد JSON موجودًا ولا يشغّل الموفر، بينما `--stage-root` ينشئ نسخة read-only و`--ledger` يربط التقرير بسجل EvidenceLedger محلي. وتشرح [`docs/ADVANCED-EVIDENCE-DESIGN.md`](docs/ADVANCED-EVIDENCE-DESIGN.md) عقود graph/query/case، وتشرح [`docs/STATIC-CODE-ANALYSIS.md`](docs/STATIC-CODE-ANALYSIS.md) disassembly وCFG وruntime evidence boundaries. تعرض WPF Security Center هذه الطبقات فوق CLI دون إعادة تنفيذ Verification Engine.
 
 ينفذ `durable_commit` أيضًا post-commit readback ويعيد `verifiedSha256` للbytes المقروءة من الهدف بعد الاستبدال. ويثبت Writer determinism regression أن نفس mutation ينتج نفس SHA-256، مع تثبيت COFF timestamp الأصلي بدل تركه يتغير عشوائيًا.
 

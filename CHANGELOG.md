@@ -10,6 +10,9 @@
 
 ### أُضيف
 
+- إضافة `resource_studio.static_code_analysis.v1`: bounded Capstone disassembly وbasic CFG من PE entrypoint مع RVA/file offsets وقيود صريحة، إضافة إلى unpacking indicators ساكنة مثل section expansion وhigh entropy وexecutable+writable sections وoverlay.
+- إضافة `runtime_evidence.v1` لاستيراد behavioral telemetry وmemory-analysis reports وAPI-call traces الخارجية بعد مطابقة target SHA-256؛ لا ينفذ Resource Studio العينة ولا يقرأ live memory ولا يتصل بعملية.
+
 - استكمال عقد Evidence Query: دعم الأقواس، operators غير الحساسة لحالة الأحرف، وتحويل `external_scan.v1` إلى سجلات قابلة للاستعلام عبر namespace `externalScan`، مع regression coverage وأمثلة موثقة.
 
 - إضافة regression contracts لمطابقة أهداف Forensic عند استخدام لغة wildcard، واستعادة project locks اليتيمة بعد انهيار العملية، والتحقق من أن استيراد CLI الأساسي لا يحمّل وحدات core الثقيلة قبل تنفيذ الأمر.

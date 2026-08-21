@@ -22,3 +22,14 @@ Resource Studio يستخدم LIEF كاعتمادية اختيارية للـ PE 
 - الاستخدام: `Pillow>=10.0` في `requirements-backend.txt`
 
 لا يُستخدم Pillow في مسار DIB/BMP الأساسي، لكن تثبيته مطلوب لدعم PNG بصورة كاملة.
+
+## Capstone
+
+يُستخدم Capstone اختياريًا داخل `core/static_code_analysis.py` لفك تعليمات bounded disassembly وبناء CFG ساكن من نقطة الدخول. لا يشغّل Capstone الملف ولا يتصل بعملية حية.
+
+- المشروع: https://github.com/capstone-engine/capstone
+- التوثيق: https://www.capstone-engine.org/documentation.html
+- الترخيص: BSD 3-Clause License
+- الاستخدام: `capstone>=5.0,<6` في `requirements-backend.txt`
+
+عند توزيع نسخة تحتوي Capstone، يجب تضمين نص BSD 3-Clause والإشعارات المطلوبة ضمن حزمة التوزيع.

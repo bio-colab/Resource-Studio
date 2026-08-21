@@ -621,13 +621,20 @@ def command_case(args: argparse.Namespace) -> int:
 
 def command_security(args: argparse.Namespace) -> int:
     from core.evidence_ledger import EvidenceLedger
+    from core.runtime_evidence import load_runtime_evidence
     from core.security_analysis import analyze_security
     from core.security_providers import load_external_scan
     from core.security_workspace import stage_readonly_copy
 
     external_results = tuple(load_external_scan(path) for path in (args.external_result or []))
+    target_sha256 = _sha256(args.input)
+    runtime_evidence = tuple(
+        load_runtime_evidence(path, kind=kind, target_sha256=target_sha256)
+        for kind, paths in (("behavioralTelemetry", args.behavioral_telemetry or ()), ("memoryAnalysis", args.memory_evidence or ()), ("apiCallTrace", args.api_trace or ()))
+        for path in paths
+    )
     staged = stage_readonly_copy(args.input, args.stage_root) if args.stage_root else None
-    payload = analyze_security(args.input, external_results)
+    payload = analyze_security(args.input, external_results, runtime_evidence)
     if staged:
         payload["stagedArtifact"] = staged.to_dict()
     if args.ledger:
@@ -795,6 +802,9 @@ def parser() -> argparse.ArgumentParser:
     security_parser = subparsers.add_parser("security", help="run a static-only PE security analysis")
     security_parser.add_argument("input", type=Path)
     security_parser.add_argument("--external-result", type=Path, action="append", help="import a precomputed external scan JSON; never runs the provider")
+    security_parser.add_argument("--behavioral-telemetry", type=Path, action="append", help="import captured behavioral telemetry JSON; never executes the target")
+    security_parser.add_argument("--memory-evidence", type=Path, action="append", help="import captured memory-analysis JSON; never reads a live process")
+    security_parser.add_argument("--api-trace", type=Path, action="append", help="import captured API-call trace JSON; never attaches to a process")
     security_parser.add_argument("--stage-root", type=Path, help="create a read-only staged copy and report its hash")
     security_parser.add_argument("--ledger", type=Path, help="append the report to a local tamper-evident EvidenceLedger")
     security_parser.add_argument("--json", action="store_true")

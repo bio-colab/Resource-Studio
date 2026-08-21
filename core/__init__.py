@@ -25,6 +25,8 @@ from .diagnostics import build_post_write_diagnostics
 from .security_analysis import analyze_security
 from .security_providers import ExternalScanResult, external_scan_hash, load_external_scan
 from .security_workspace import StagedArtifact, stage_readonly_copy
+from .runtime_evidence import load_runtime_evidence
+from .static_code_analysis import analyze_static_code
 from .evidence_graph import EvidenceEdge, EvidenceGraph, EvidenceNode
 from .evidence_query import EvidenceQueryError, parse_query, query_summary, records_from_summary
 from .case_lifecycle import CaseFile, CaseLifecycleError, analyze_into_case
@@ -109,6 +111,8 @@ __all__ = [
     "load_external_scan",
     "StagedArtifact",
     "stage_readonly_copy",
+    "load_runtime_evidence",
+    "analyze_static_code",
     "EvidenceEdge",
     "EvidenceGraph",
     "EvidenceNode",

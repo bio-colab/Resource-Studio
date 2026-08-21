@@ -16,8 +16,8 @@
 |---|---|---|
 | **سلامة PE** | فحص headers وsections وdirectories وbounds وoverlaps وchecksum وResource Graph | `VALID`، `INVALID`، أو `UNKNOWN` مع السبب |
 | **العبث والحقن داخل الملف** | مقارنة hashes وsections وoverlay وresources وsignature، ورصد section غير معتادة أو payload خارج البنية المتوقعة | `INDICATOR` وليس verdict malware |
-| **الهندسة العكسية الساكنة** | imports/exports/TLS/debug/CLR/resources/strings/hex وsemantic diff وraw corroboration | observations قابلة للإحالة إلى offset أو resource key |
-| **الضغط والتمويه والتشفير** | مؤشرات entropy/opaque bytes/section layout/encoded strings/embedded archives أو payloads | `OBFUSCATION_INDICATOR` مع limitation؛ لا unpack أو decrypt تلقائي |
+| **الهندسة العكسية الساكنة** | imports/exports/TLS/debug/CLR/resources/strings/hex، bounded disassembly، basic CFG، semantic diff وraw corroboration | observations قابلة للإحالة إلى RVA وfile offset أو resource key |
+| **الضغط والتمويه والتشفير** | مؤشرات entropy/opaque bytes/section layout/encoded strings/embedded archives أو payloads، مع executable section expansion وentrypoint anomalies | `OBFUSCATION_INDICATOR` أو `UNPACKING_INDICATOR` مع limitation؛ لا runtime unpack أو decrypt تلقائي |
 | **التوقيع والثقة** | WinVerifyTrust على Windows، certificate state، Authenticode hash، وسجل قبل/بعد | فصل `SIGNATURE_PRESENT` و`SIGNATURE_VALID` و`TRUST_CHAIN_VALID` |
 | **الفحص المضاد للبرمجيات الخبيثة** | موفر اختياري لـMicrosoft Defender وموفر اختياري لـYARA على نسخة staged | `EXTERNAL_SCAN_RESULT` يحفظ tool/version/ruleset/hash/exit code |
 | **الملفات المقفولة** | اختبار وصول للقراءة، حالة Windows sharing إن أمكن، وسبب الفشل | `READABLE`، `SHARING_VIOLATION`، `ACCESS_DENIED`، `UNKNOWN` |
@@ -30,7 +30,7 @@
 
 كما يشمل النموذج ملفات تستخدم الضغط أو التشفير أو encoding أو تقسيم payload لجعل التحليل أصعب. يصف MITRE ذلك ضمن T1027، لكنه لا يجعل كل ملف packed أو encrypted ملفًا خبيثًا.[3] لذلك لا يستخدم المشروع entropy أو وجود section executable وحده لإطلاق حكم أمني.
 
-لا يشمل النطاق تنفيذ الملف، تحميله كصورة قابلة للتشغيل، إنشاء process، emulation، unpacking تلقائي، memory dumping، DLL injection، أو الاتصال بخدمة سمعة خارجية دون موافقة صريحة. يستطيع Windows loader oracle الحالي تحميل الموارد بصيغة data/image resource دون تشغيل الكود، ويظل هذا هو الحد الأقصى المسموح به في المسار الساكن.
+لا يشمل النطاق تنفيذ الملف، تحميله كصورة قابلة للتشغيل، إنشاء process، emulation، runtime unpacking، memory dumping، DLL injection، أو الاتصال بخدمة سمعة خارجية دون موافقة صريحة. يدعم المسار الحالي disassembly وCFG ساكنين bounded من entrypoint، ويستورد behavioral telemetry وmemory analysis وAPI traces كـartifacts خارجية مطابقة للـSHA-256 فقط. يستطيع Windows loader oracle الحالي تحميل الموارد بصيغة data/image resource دون تشغيل الكود، ويظل هذا هو الحد الأقصى المسموح به في المسار الساكن.
 
 ## دورة الفحص الآمنة
 
@@ -84,17 +84,17 @@ AUDIT LEDGER
 | [x] | `SEC-02` | Static Security Report | `core/security_analysis.py` وأمرا CLI `security` و`report security` يعيدان PEHealth وPEInspector وdeep invariants وEvidence Summary وsignature/integrity وResource Graph/raw corroboration ومؤشرات ساكنة. |
 | [~] | `SEC-03` | Read-only access and lock probe | read/access classification وWindows sharing probe مضافة؛ remediation UI وmatrix أوسع للقفل لاحقان |
 | [ ] | `SEC-04` | Safe malformed/corrupt classification | parse ladder، bounded reads، corpus للتلف والامتدادات غير المدعومة، ورفض الكتابة عند ambiguity |
-| [ ] | `SEC-05` | Static injection/tamper indicators | sections/overlay/entrypoint/import/resource anomalies مع references وfalse-positive limits |
-| [ ] | `SEC-06` | Obfuscation/encryption indicators | مؤشرات typed لا verdict، مع عدم فك أو تشغيل payload |
+| [~] | `SEC-05` | Static injection/tamper indicators | sections/overlay/entrypoint/import/resource anomalies مع references وfalse-positive limits؛ جزء من static indicators وunpacking indicators، مع توسيع corpus لاحقًا |
+| [~] | `SEC-06` | Obfuscation/encryption indicators | entropy وopaque/layout indicators وbounded static-code report؛ لا فك أو تشغيل payload |
 | [~] | `SEC-07` | External scanner providers | عقد `resource_studio.external_scan.v1` وCLI `--external-result` منجزان لاستيراد نتيجة مسبقة مع SHA/provider/status/ruleset/exit code؛ تشغيل Defender/YARA الفعلي وtimeouts وstaged-copy runner لاحقة |
 | [~] | `SEC-08` | Security evidence ledger | أمر `security --ledger` يضيف التقرير إلى EvidenceLedger ويعيد entry/evidence hashes؛ signed ledger وcase lifecycle لاحقان |
 | [~] | `SEC-09` | Safe reverse-engineering workspace | `security --stage-root` ينشئ نسخة staged ذات hash ثابت وقراءة فقط دون استبدال الموجود؛ read-only project mode وartifact policy الأوسع لاحقان |
 | [ ] | `SEC-10` | Windows/WPF Security Center | عرض findings والحدود ومصدر الدليل وطلب المستخدم قبل أي external scan؛ لا تغيير في WPF بهذه الدفعة |
-| [ ] | `SEC-11` | Runtime telemetry adapter | adapter اختياري لنتائج خارجية فقط؛ لا dynamic engine داخل النواة |
+| [~] | `SEC-11` | Runtime telemetry adapter | استيراد behavioral telemetry وmemory analysis وAPI call trace كـruntime evidence خارجي مع target SHA-256؛ لا dynamic engine داخل النواة |
 
 ## ما سيُنفذ أولًا
 
-الدفعة الأولى الآمنة هي `SEC-02` مع جزء صغير من `SEC-03`: أُنشئ تقرير ساكن قابل للآلة، ويظهر access/parse state، ويعاد استخدام Evidence Summary وdeep invariants وsignature الحالية. بعد تثبيت contract والاختبارات، تأتي مؤشرات التلاعب والتمويه. أما Defender وYARA فيأتيان بعد provider contract يمنع الخلط بين `NOT_SCANNED` و`NOT_DETECTED`.
+أصبحت الدفعة الأساسية تشمل `SEC-02` وامتدادات `SEC-05` و`SEC-06` و`SEC-11`: تقرير ساكن قابل للآلة، access/parse state، PE invariants، مؤشرات التلاعب والتمويه، bounded disassembly وCFG، واستيراد runtime evidence خارجي مطابق للـSHA-256. يبقى جمع telemetry الحي، memory dumping، runtime unpacking، Defender/YARA runner، وواجهة WPF الكاملة مراحل منفصلة؛ ويجب أن يمنع provider contract الخلط بين `NOT_SCANNED` و`NOT_DETECTED`.
 
 ## نتائج البحث الدفاعي: الأنماط المشتركة
 
@@ -120,11 +120,13 @@ AUDIT LEDGER
 | **Microsoft Defender provider** | on-demand scan لنسخة staged مع tool path/version/exit code | اختياري، Windows-only، لا يفترض وجوده |
 | **Sysmon/EDR/runtime provider** | استيراد telemetry موجودة مسبقًا عن process/network/file activity | خارج النواة؛ لا تشغيل أو injection من Resource Studio |
 | **Sandbox/dynamic analysis** | لا تُنفذ داخل Resource Studio؛ يقتصر التكامل على استيراد تقرير خارجي موثق | مؤجل، external-only |
-| **Disassembler/unpacker/decryptor** | لا تُشغّل تلقائيًا ولا تُضاف إلى core؛ يمكن لاحقًا adapter يدوي خارج العملية | مؤجل وبموافقة صريحة فقط |
+| **Disassembler/CFG** | bounded Capstone disassembly وCFG ساكن من entrypoint مع RVA/file offsets وحدود صريحة | مطبق في `core/static_code_analysis.py`؛ لا recursive discovery شامل |
+| **Unpacker/decryptor** | مؤشرات unpacking ساكنة فقط؛ runtime unpacking أو decryptor خارج النواة | لا يُنفذ داخل Resource Studio |
+| **Telemetry/memory/API evidence** | استيراد JSON خارجي موثق ومطابق للـSHA-256 | مطبق كـexternal evidence؛ لا live collection داخل النواة |
 
 ### القرار الهندسي
 
-ستُغلق الفجوات الآمنة بالترتيب التالي: أُنجزت static multi-signal indicators وtyped limitations، وأُنجز عقد `external_scan.v1` لاستيراد نتائج YARA/Defender أو telemetry دون تشغيلها. يلي ذلك staged-copy runner اختياري ومقيد، ثم external telemetry import الكامل، وبعدها فقط Security Center في WPF.
+أُنجزت static multi-signal indicators وtyped limitations، ثم أضيف `core/static_code_analysis.py` لـbounded disassembly وCFG ومؤشرات unpacking الساكنة، وأضيف `runtime_evidence.v1` لاستيراد telemetry وmemory/API artifacts المطابقة للـSHA-256. يبقى جمع telemetry الحي وruntime unpacking وmemory dumping خارج النواة، ويأتي عرض هذه النتائج في Security Center لاحقًا.
  لن يضيف المشروع أدوات هجومية أو kits أو samples أو تعليمات تشغيلية لصناعة ransomware/RAT أو حقن process.
 
 ## ضوابط عدم إساءة الاستخدام

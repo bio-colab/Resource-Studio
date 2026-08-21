@@ -39,7 +39,7 @@ _STRING_MARKERS = {
 }
 
 
-def analyze_security(path: Path, external_results: tuple[ExternalScanResult, ...] = ()) -> dict[str, Any]:
+def analyze_security(path: Path, external_results: tuple[ExternalScanResult, ...] = (), runtime_evidence: tuple[dict[str, Any], ...] = ()) -> dict[str, Any]:
     """Produce a static-only security report; never executes or mutates the target."""
 
     source = Path(path).expanduser().resolve()
@@ -53,12 +53,15 @@ def analyze_security(path: Path, external_results: tuple[ExternalScanResult, ...
         "integrity": None,
         "deepInvariants": None,
         "staticIndicators": [],
+        "unpackingIndicators": [],
+        "staticCode": None,
         "externalScans": [result.to_dict() for result in external_results],
-        "runtime": {"status": "RUNTIME_NOT_ASSESSED", "executed": False},
+        "runtimeEvidence": [dict(item) for item in runtime_evidence],
+        "runtime": {"status": "EXTERNAL_EVIDENCE_IMPORTED" if runtime_evidence else "RUNTIME_NOT_ASSESSED", "executed": False, "evidenceCount": len(runtime_evidence)},
         "findings": [],
         "limitations": [
             "Static PE analysis cannot prove that a file is malware or that process injection occurred.",
-            "No target execution, unpacking, emulation, decryption, network access, or memory inspection was performed.",
+            "No target execution, runtime unpacking, emulation, decryption, network access, or live-process memory inspection was performed; unpacking output is static indicators only.",
             "External scanners are not run by this report and therefore remain NOT_SCANNED.",
         ],
     }
@@ -100,6 +103,11 @@ def analyze_security(path: Path, external_results: tuple[ExternalScanResult, ...
         base["rawResource"] = raw
         base["rawResourceComparison"] = raw_comparison
         base["staticIndicators"] = _static_indicators(inspector, deep, invariant, data)
+        from .static_code_analysis import analyze_static_code
+
+        static_code = analyze_static_code(source)
+        base["staticCode"] = static_code
+        base["unpackingIndicators"] = list(static_code.get("unpackingIndicators", []))
         base["findings"].extend(_structural_findings(health, deep, raw_comparison, signature, inspector, integrity))
         for result in external_results:
             if result.status == "DETECTED":
