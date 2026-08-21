@@ -545,6 +545,16 @@
 - Release run `32440078729` نجح في بناء source bundle وSHA-256؛ الفحص أكد غياب `ResourceHacker.exe` وPDB وbin/obj وoutputs/snapshots والملفات الجانبية المحظورة.
 - GH-05 بقي `[~]` عمدًا: Issue #1 موجود، أما Discussion فتحتاج إنشاءً يدويًا أو صلاحية GitHub إضافية.
 
+## PE Evidence strengthening — 2026-08-21
+
+| الحالة | المعرّف | المهمة | معيار الإنجاز |
+|---|---|---|---|
+| [x] | EVID-01 | Evidence Summary موحّد | `core/evidence_model.py` يطبع artifact وobservations وraw ranges وstatistics وprovenance |
+| [x] | EVID-02 | Corroboration مستقل | `inspect` و`ForensicEvidence` يربطان ResourceGraph بـraw resource parser ويعرضان `CORROBORATED` أو `DISCREPANCY` |
+| [x] | EVID-03 | Expert Findings | findings تحتوي severity وconfidence وevidence references وlimitations، دون تحويل entropy إلى verdict |
+| [ ] | EVID-04 | RSQL محدود وآمن | query parser فوق ResourceIndex وEvidence Summary بعد تثبيت grammar وfalse-positive tests |
+| [ ] | EVID-05 | Mutation timeline | timeline مشتق من AuditLog وForensicEvidence بعد تعريف lifecycle للحالات والـcase |
+
 ### ملاحظة الترخيص
 
 اختيار Apache-2.0 هنا قرار هندسي/مجتمعي عملي لتوفير ترخيص permissive مع patent grant؛ يجب مراجعة محامٍ قبل اعتماد النص كقرار قانوني نهائي في منتج أو مؤسسة، خصوصًا عند خلط الكود باعتماديات أو ملفات خارجية.

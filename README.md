@@ -148,6 +148,8 @@ evidence = verify_transformation(
 
 ينتج الدليل `resource_studio.forensic_evidence.v1` ويتضمن baseline وresult وtargeted diff وresource-tree unintended changes وPE preservation وbyte-range preservation map وintegrity وRich Header state وsignature وWindows status وpure-loader وraw-parser corroboration وVerificationReport. يحمل الدليل أيضًا chain metadata تشمل `prevSha256` وenvironment fingerprint وcommand line وsha256 قابلًا لإعادة البناء. يرتبط evidence report الآن بـWriteResult وProject/Audit وBatch operation payload، ويُحفظ baseline مستقلًا قبل mutation في artifact ذري يمكن إنشاؤه أيضًا عبر `forensic-baseline`. يميز التقرير بين `passed` لنجاح pipeline و`verified` للتحقق المستقل الكامل، ويعلن `platformLimited` عندما تُتخطى Windows أو Authenticode. تعرض نوافذ WPF طبقة `Technical evidence` من التقرير دون إعادة الحساب داخل الواجهة.
 
+يضيف `core/evidence_model.py` صيغة `resource_studio.evidence_summary.v1` التي تطبع observations مع المصدر والمحلل وconfidence و`rawRange`، وتعرض إحصاءات الموارد ونتائج corroboration وExpert Findings مع limitations. أمر `inspect --json` يعيد هذه الطبقة في `evidence` ويضيف `evidenceHash` ثابتًا للمقارنة، كما يضمّنها `ForensicEvidence`. التفاصيل والحدود في [`docs/PE-EVIDENCE-MODEL.md`](docs/PE-EVIDENCE-MODEL.md).
+
 لإنشاء baseline مستقل قبل أي تعديل:
 
 ```bash
@@ -213,6 +215,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tests\windows\Invoke-Resourc
 - [Low-Level Systems transition report](docs/LOW_LEVEL_SYSTEMS_TRANSITION_REPORT.md)
 - [UI/UX-goal](docs/UIUX-GOAL.md)
 - [TODO and execution ledger](TODO.md)
+- [PE Evidence model](docs/PE-EVIDENCE-MODEL.md)
 - [Changelog](CHANGELOG.md)
 - [Contributing guide](CONTRIBUTING.md)
 - [GitHub repository](https://github.com/bio-colab/Resource-Studio)

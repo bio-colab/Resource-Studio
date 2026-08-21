@@ -13,6 +13,7 @@ from core.batch import BatchWorkspace
 from core.compatibility import inspect_compatibility
 from core.diff import diff_image_payloads, diff_resources
 from core.evidence_ledger import EvidenceLedger, generate_ed25519_keypair
+from core.evidence_model import build_evidence_summary, evidence_summary_hash
 from core.forensics import ForensicBaseline
 from core.deep_invariants import inspect_deep
 from core.dialog_resources import DialogResource
@@ -26,6 +27,7 @@ from core.preview import PreviewEngine
 from core.project import Project, ResourceEntry
 from core.reports import FORMATS, render_report
 from core.rc_format import compile_rc, decompile_res
+from core.raw_resource_parser import compare_with_graph, parse_raw_resources
 from core.search import search_resources
 from core.string_table import StringTableBlock
 from core.localization import LocalizationCatalog
@@ -200,13 +202,37 @@ def command_forensic_baseline(args: argparse.Namespace) -> int:
 
 
 def command_inspect(args: argparse.Namespace) -> int:
-    payload = PEInspector.inspect(args.input).to_dict()
+    inspector = PEInspector.inspect(args.input).to_dict()
+    signature = inspect_signature(args.input).to_dict()
+    integrity = inspect_integrity(args.input).to_dict()
+    resource_graph = ResourceGraph.from_path(args.input).to_dict()
+    try:
+        raw_report = parse_raw_resources(args.input)
+        raw_resource = raw_report.to_dict()
+        raw_comparison = compare_with_graph(raw_report, resource_graph).to_dict()
+    except Exception as exc:
+        raw_resource = {"path": str(args.input.resolve()), "leafCount": 0, "leaves": [], "issues": [], "parserError": str(exc)}
+        raw_comparison = {}
+    evidence = build_evidence_summary(
+        args.input,
+        inspector=inspector,
+        signature=signature,
+        integrity=integrity,
+        resource_graph=resource_graph,
+        raw_resource=raw_resource,
+        raw_comparison=raw_comparison,
+    )
+    payload = dict(inspector)
     payload["metadata"] = PEMetadataInspector.inspect(args.input).to_dict()
-    payload["signature"] = inspect_signature(args.input).to_dict()
-    payload["integrity"] = inspect_integrity(args.input).to_dict()
+    payload["signature"] = signature
+    payload["integrity"] = integrity
     payload["compatibility"] = inspect_compatibility(args.input).to_dict()
     payload["deepInvariants"] = inspect_deep(args.input).to_dict()
-    payload["resourceGraph"] = ResourceGraph.from_path(args.input).to_dict()
+    payload["resourceGraph"] = resource_graph
+    payload["rawResource"] = raw_resource
+    payload["rawResourceComparison"] = raw_comparison
+    payload["evidence"] = evidence
+    payload["evidenceHash"] = evidence_summary_hash(evidence)
     _print(payload, args.json)
     return 0
 

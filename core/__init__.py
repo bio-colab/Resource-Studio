@@ -3,6 +3,7 @@ from .batch import BatchError, BatchJob, BatchWorkspace
 from .diff import DiffNode, diff_image_payloads, diff_resources, diff_texts, merge_selected_resources
 from .durable_commit import CommitResult, DurableCommitError, commit_temporary
 from .evidence_ledger import EvidenceLedger, EvidenceLedgerError, LedgerVerification, generate_ed25519_keypair
+from .evidence_model import build_evidence_summary, evidence_summary_hash
 from .dialog_resources import DialogControl, DialogResource, DialogResourceError
 from .compatibility import PECompatibilityReport, inspect_compatibility
 from .commands import (
@@ -65,6 +66,8 @@ __all__ = [
     "DurableCommitError",
     "commit_temporary",
     "EvidenceLedger",
+    "build_evidence_summary",
+    "evidence_summary_hash",
     "EvidenceLedgerError",
     "LedgerVerification",
     "generate_ed25519_keypair",

@@ -118,7 +118,11 @@ def main() -> None:
 
         inspected = run_cli("inspect", str(FIXTURE), "--json")
         assert inspected.returncode == 0, inspected.stderr
-        assert json.loads(inspected.stdout)["sections"]
+        inspected_payload = json.loads(inspected.stdout)
+        assert inspected_payload["sections"]
+        assert inspected_payload["evidence"]["schema"] == "resource_studio.evidence_summary.v1"
+        assert inspected_payload["rawResourceComparison"]["matches"] is True
+        assert len(inspected_payload["evidenceHash"]) == 64
 
         image_diff = run_cli("image-diff", str(extracted), str(extracted), "--kind", "bitmap", "--json")
         assert image_diff.returncode == 0, image_diff.stderr

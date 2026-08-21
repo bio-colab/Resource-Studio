@@ -32,6 +32,9 @@
 - اختبار `tests/core/test_forensics.py` الذي يثبت baseline contract وno-op attribution وغياب unintended changes.
 - `FORENSIC-GOAL.md` الذي يحدد الهوية والحدود ومعايير FR-00 إلى FR-09.
 - `CONTRIBUTING.md` الذي يشرح السلامة والاختبارات والتوثيق وقواعد المساهمات.
+- `core/evidence_model.py` بصيغة `resource_studio.evidence_summary.v1` لتطبيع observations وraw ranges وstatistics وprovenance وExpert Findings.
+- إضافة `evidence` و`evidenceHash` و`rawResourceComparison` إلى CLI `inspect --json`، وإضافة Evidence Summary إلى `ForensicEvidence`.
+- وثيقة `docs/PE-EVIDENCE-MODEL.md` التي تحدد المصادر والـconfidence والحدود وعدم تحويل entropy إلى verdict.
 
 ### تحسّن
 
@@ -43,6 +46,7 @@
 - نجاح GitHub Actions run `32439414719` على Python 3.12 وWindows/WPF بعد إصلاح فحص PDB الناتج الطبيعي داخل `bin/obj` في commit `506ee11`.
 - نجاح أحدث CI run `32440079226` على commit `1ab87bc`، ونجاح release workflow run `32440078729` في إنشاء source bundle وSHA-256 مع اجتياز فحص الملفات المحظورة.
 - نشر screenshot حقيقي لنافذة WPF في `assets/screenshots/resource-studio-main.png`، وإنشاء Issue المجتمع الأول [#1](https://github.com/bio-colab/Resource-Studio/issues/1). Discussion بقيت اختيارية بسبب رفض صلاحية `createDiscussion` من GitHub integration.
+- إضافة regression لنموذج Evidence وCLI inspect وForensicEvidence، مع إبقاء RSQL وMutation Timeline مخططين لا منفذين في هذه الدفعة.
 
 ### ما يزال قيد التنفيذ
 

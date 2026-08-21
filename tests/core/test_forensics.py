@@ -47,6 +47,8 @@ def main() -> None:
         assert diff["passed"] is True
         assert diff["pureLoader"]["status"] == "FOUND"
         assert diff["pureLoader"]["selectedLanguage"] == leaf["language"]
+        assert evidence["evidenceSummary"]["schema"] == "resource_studio.evidence_summary.v1"
+        assert evidence["evidenceSummary"]["corroboration"]["resourceGraphVsRaw"] == "CORROBORATED"
         assert evidence["verification"]["verified"] is (os.name == "nt")
         assert evidence["verification"]["platformLimited"] is (os.name != "nt")
         assert evidence["chain"]["prevSha256"] is None

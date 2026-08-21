@@ -114,6 +114,7 @@ class ForensicEvidence:
     previous_evidence_sha256: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
+        from .evidence_model import build_evidence_summary
         from .preservation import build_preservation_map
         from .pure_loader_oracle import select_from_graph
         from .raw_resource_parser import compare_with_graph, parse_raw_resources
@@ -134,6 +135,15 @@ class ForensicEvidence:
         )
         raw_report = parse_raw_resources(self.result.source_path)
         raw_comparison = compare_with_graph(raw_report, self.result.resource_graph)
+        evidence_summary = build_evidence_summary(
+            self.result.source_path,
+            signature=self.verification.signature,
+            integrity=self.result.integrity,
+            resource_graph=self.result.resource_graph,
+            raw_resource=raw_report.to_dict(),
+            raw_comparison=raw_comparison.to_dict(),
+            verification=self.verification.to_dict(),
+        )
         before_rich = self.baseline.integrity.get("richHeaderSha256")
         after_rich = self.result.integrity.get("richHeaderSha256")
         rich_changed = before_rich != after_rich if before_rich or after_rich else False
@@ -179,6 +189,7 @@ class ForensicEvidence:
                 "verified": self.verification.verified and preservation_map.passed and raw_comparison.matches and not rich_changed,
             },
             "verification": self.verification.to_dict(),
+            "evidenceSummary": evidence_summary,
             "chain": {
                 "prevSha256": self.previous_evidence_sha256,
                 "envFingerprint": environment_fingerprint(),
