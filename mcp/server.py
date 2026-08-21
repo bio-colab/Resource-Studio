@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import hmac
 import json
 import logging
 import os
@@ -19,8 +20,11 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from core.external_integrations import IntegrationError, IntegrationGateway, IntegrationRegistry
+from core.msix import MSIXError, apply_package_change, inspect_package
 from core.health import PEHealth
 from core.pe_writer import LiefPEWriter
+from core.plugin_host import ADMIN_RUNTIME_PERMISSIONS, SUPPORTED_RUNTIME_PERMISSIONS, PluginHost, PluginHostError
 from core.plugins import PluginRegistry
 from mcp.server import MCPServer
 
@@ -35,11 +39,17 @@ FILES: dict[str, dict[str, Any]] = {}
 WORKSPACES: dict[str, dict[str, Any]] = {}
 PLANS: dict[str, dict[str, Any]] = {}
 AUDIT: dict[str, dict[str, Any]] = {}
+PLUGIN_RUNTIME_PLANS: dict[str, dict[str, Any]] = {}
+PLUGIN_DISABLED: dict[str, str] = {}
 MAX_RESOURCE_RAW_BYTES = 4 * 1024 * 1024
 CONFIRMATION_TTL_SECONDS = 10 * 60
 PLUGIN_ROOT = STATE_ROOT / "plugins"
 PLUGIN_REGISTRY = PluginRegistry(audit_path=STATE_ROOT / "plugin-audit.jsonl")
 PLUGIN_DISCOVERY: list[dict[str, Any]] = []
+INTEGRATION_PLANS: dict[str, dict[str, Any]] = {}
+INTEGRATION_REGISTRY = IntegrationRegistry(STATE_ROOT / "integrations.json")
+INTEGRATION_GATEWAY = IntegrationGateway(INTEGRATION_REGISTRY)
+PACKAGE_PLANS: dict[str, dict[str, Any]] = {}
 
 TYPE_NAMES = {
     1: "CURSOR",
@@ -105,6 +115,9 @@ def _state_payload() -> dict[str, Any]:
         "workspaces": WORKSPACES,
         "plans": PLANS,
         "audit": AUDIT,
+        "pluginRuntimePlans": PLUGIN_RUNTIME_PLANS,
+        "pluginDisabled": PLUGIN_DISABLED,
+        "packagePlans": PACKAGE_PLANS,
     }
 
 
@@ -127,11 +140,23 @@ def _load_state() -> None:
         WORKSPACES.update({str(key): value for key, value in payload.get("workspaces", {}).items() if isinstance(value, dict)})
         PLANS.update({str(key): value for key, value in payload.get("plans", {}).items() if isinstance(value, dict)})
         AUDIT.update({str(key): value for key, value in payload.get("audit", {}).items() if isinstance(value, dict)})
+        PLUGIN_RUNTIME_PLANS.update({str(key): value for key, value in payload.get("pluginRuntimePlans", {}).items() if isinstance(value, dict)})
+        PLUGIN_DISABLED.update({str(key): str(value) for key, value in payload.get("pluginDisabled", {}).items()})
+        PACKAGE_PLANS.update({str(key): value for key, value in payload.get("packagePlans", {}).items() if isinstance(value, dict)})
         for plan in PLANS.values():
             if plan.get("status") == "planned":
                 plan["status"] = "stale_after_restart"
             plan["confirmationToken"] = None
             plan["exportConfirmationToken"] = None
+        for package_plan in PACKAGE_PLANS.values():
+            if package_plan.get("status") == "planned":
+                package_plan["status"] = "stale_after_restart"
+            package_plan["confirmationToken"] = None
+        for runtime_plan in PLUGIN_RUNTIME_PLANS.values():
+            if runtime_plan.get("status") == "planned":
+                runtime_plan["status"] = "stale_after_restart"
+            runtime_plan["confirmationToken"] = None
+
     except (OSError, ValueError, TypeError) as exc:
         LOGGER.warning("could not restore MCP state: %s", exc)
 
@@ -145,9 +170,13 @@ def _discover_plugins() -> list[dict[str, Any]]:
         relative_path = manifest_path.relative_to(ROOT).as_posix()
         try:
             manifest = PLUGIN_REGISTRY.register_file(manifest_path)
+            if manifest.plugin_id in PLUGIN_DISABLED:
+                PLUGIN_REGISTRY.disable(manifest.plugin_id, PLUGIN_DISABLED[manifest.plugin_id])
             compatible, reason = PLUGIN_REGISTRY.compatibility(manifest)
             discovered.append({
                 "pluginId": manifest.plugin_id,
+                "enabled": PLUGIN_REGISTRY.is_enabled(manifest.plugin_id),
+                "disabledReason": PLUGIN_REGISTRY.disabled_reason(manifest.plugin_id),
                 "name": manifest.name,
                 "version": manifest.version,
                 "api": manifest.api,
@@ -1015,6 +1044,422 @@ def get_plan(plan_id: str) -> dict[str, Any]:
     if plan is None:
         raise ValueError(f"unknown plan: {plan_id}")
     return plan
+
+
+def _plugin_record(plugin_id: str) -> dict[str, Any]:
+    records = {item.get("pluginId"): item for item in _discover_plugins()}
+    record = records.get(plugin_id)
+    if record is None:
+        raise ValueError(f"unknown or rejected plugin: {plugin_id}")
+    return record
+
+
+def _plugin_directory(plugin_id: str) -> Path:
+    candidate = (PLUGIN_ROOT / plugin_id).resolve()
+    if candidate != PLUGIN_ROOT and PLUGIN_ROOT not in candidate.parents:
+        raise ValueError("plugin directory is outside the configured plugin root")
+    if not candidate.is_dir():
+        raise ValueError("plugin directory is not available")
+    return candidate
+
+
+def _admin_token_matches(token: str | None) -> bool:
+    configured = os.environ.get("RESOURCE_STUDIO_MCP_ADMIN_TOKEN", "")
+    return bool(configured) and bool(token) and hmac.compare_digest(token, configured)
+
+
+def _runtime_grants(manifest_id: str, permissions: list[str] | None) -> frozenset[str]:
+    manifest = PLUGIN_REGISTRY.get(manifest_id)
+    grants = frozenset(str(permission) for permission in (permissions or []))
+    if not grants.issubset(manifest.permissions):
+        raise ValueError("requested runtime permission is not declared by the plugin manifest")
+    return grants
+
+
+def _require_runtime_confirmation(plan: dict[str, Any], confirmation_token: str, confirmed: bool) -> None:
+    if not confirmed:
+        raise ValueError("explicit human confirmation is required for plugin execution")
+    if not hmac.compare_digest(str(plan.get("confirmationToken", "")), confirmation_token):
+        raise ValueError("invalid plugin execution confirmation token")
+    created = float(plan.get("createdAt", 0))
+    if created <= 0 or time.time() - created > CONFIRMATION_TTL_SECONDS:
+        raise ValueError("plugin execution confirmation expired; rebuild the plan")
+
+
+@server.tool(
+    name="resource_studio.inspect_package",
+    title="Inspect an MSIX or AppX package",
+    description="Read-only bounded inspection of package entries, AppxManifest.xml, AppxBlockMap.xml, and PRI metadata.",
+    structured_output=True,
+)
+def inspect_package_tool(path: str | None = None, file_id: str | None = None) -> dict[str, Any]:
+    record = _resolve_file(file_id=file_id, path=path)
+    try:
+        report = inspect_package(Path(record["path"]))
+    except MSIXError as exc:
+        raise ValueError(str(exc)) from exc
+    return {**report, "file": _file_ref(record), "readOnly": True}
+
+
+@server.tool(
+    name="resource_studio.plan_package_change",
+    title="Plan an MSIX package change",
+    description="Create a non-writing package mutation plan. The source remains read-only and output is staged separately.",
+    structured_output=True,
+)
+def plan_package_change(
+    path: str | None = None,
+    file_id: str | None = None,
+    action: str = "replace",
+    member_name: str = "",
+    payload_path: str | None = None,
+) -> dict[str, Any]:
+    record = _resolve_file(file_id=file_id, path=path)
+    try:
+        before = inspect_package(Path(record["path"]))
+    except MSIXError as exc:
+        raise ValueError(str(exc)) from exc
+    if action not in {"add", "replace", "delete"}:
+        raise ValueError("package action must be add, replace, or delete")
+    if not member_name or ".." in member_name.replace("\\", "/").split("/"):
+        raise ValueError("member_name must be a non-empty safe package path")
+    payload = None
+    if payload_path is not None:
+        if action == "delete":
+            raise ValueError("delete does not accept payload_path")
+        payload = _read_file(_safe_path(payload_path))
+        if len(payload) > 256 * 1024 * 1024:
+            raise ValueError("package payload exceeds the configured limit")
+    if action in {"add", "replace"} and payload is None:
+        raise ValueError("payload_path is required for add and replace")
+    plan_id = f"package_plan_{uuid.uuid4().hex[:16]}"
+    output_dir = STATE_ROOT / "package-workspaces" / plan_id
+    output_dir.mkdir(parents=True, exist_ok=True)
+    payload_file = output_dir / "payload.bin"
+    if payload is not None:
+        payload_file.write_bytes(payload)
+    plan = {
+        "schemaVersion": "resource_studio.msix_plan.v1",
+        "planId": plan_id,
+        "file": _file_ref(record),
+        "sourcePath": record["path"],
+        "action": action,
+        "memberName": member_name,
+        "payloadSha256": _sha256(payload) if payload is not None else None,
+        "payloadPath": str(payload_file) if payload is not None else None,
+        "beforeSha256": before["sha256"],
+        "outputDir": str(output_dir),
+        "confirmationToken": uuid.uuid4().hex,
+        "createdAt": time.time(),
+        "status": "planned",
+        "requiresHumanConfirmation": True,
+        "engine": "MakeAppx.exe",
+        "writesSource": False,
+    }
+    PACKAGE_PLANS[plan_id] = plan
+    _persist_state()
+    return plan
+
+
+@server.tool(
+    name="resource_studio.apply_package_change",
+    title="Apply a confirmed MSIX package change",
+    description="Rebuild a staged MSIX package with MakeAppx.exe on Windows, reopen it, and return bounded verification metadata.",
+    structured_output=True,
+)
+def apply_package_change_tool(plan_id: str, confirmation_token: str, confirmed: bool) -> dict[str, Any]:
+    plan = PACKAGE_PLANS.get(plan_id)
+    if plan is None:
+        raise ValueError(f"unknown package plan: {plan_id}")
+    if plan.get("status") != "planned":
+        raise ValueError("only a pending package plan can be applied")
+    _require_runtime_confirmation(plan, confirmation_token, confirmed)
+    source = Path(plan["sourcePath"]).resolve()
+    output_dir = Path(plan["outputDir"]).resolve()
+    output_dir.mkdir(parents=True, exist_ok=True)
+    output = output_dir / (source.stem + ".applied" + source.suffix)
+    payload = None
+    if plan.get("payloadPath"):
+        payload_path = Path(str(plan["payloadPath"])).resolve()
+        if output_dir not in payload_path.parents or not payload_path.is_file():
+            raise ValueError("package payload staging path is invalid")
+        payload = payload_path.read_bytes()
+        if _sha256(payload) != plan.get("payloadSha256"):
+            raise ValueError("staged package payload hash does not match the plan")
+    try:
+        result = apply_package_change(
+            source,
+            output,
+            action=str(plan["action"]),
+            member_name=str(plan["memberName"]),
+            payload=payload,
+        )
+    except MSIXError as exc:
+        plan["status"] = "failed"
+        plan["error"] = str(exc)
+        plan["confirmationToken"] = None
+        _persist_state()
+        raise ValueError(str(exc)) from exc
+    plan["status"] = "completed"
+    plan["confirmationToken"] = None
+    plan["result"] = result
+    _persist_state()
+    return result
+
+
+@server.tool(
+    name="resource_studio.list_integrations",
+    title="List configured external integrations",
+    description="Read-only list of explicitly configured HTTPS integrations and their fixed operations; secrets are never returned.",
+    structured_output=True,
+)
+def list_integrations() -> dict[str, Any]:
+    INTEGRATION_REGISTRY.reload()
+    return {
+        "schemaVersion": "resource_studio.integrations.v1",
+        "integrations": INTEGRATION_REGISTRY.list(),
+        "errors": INTEGRATION_REGISTRY.errors(),
+        "readOnly": True,
+    }
+
+
+@server.tool(
+    name="resource_studio.plan_integration_request",
+    title="Plan an external integration request",
+    description="Create an in-memory, non-executing request plan for one allowlisted integration operation.",
+    structured_output=True,
+)
+def plan_integration_request(
+    integration_id: str,
+    operation: str,
+    request: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    INTEGRATION_REGISTRY.reload()
+    spec = INTEGRATION_REGISTRY.get(integration_id)
+    spec.operation(operation)
+    payload = request or {}
+    try:
+        serialized = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+    except (TypeError, ValueError) as exc:
+        raise ValueError("integration request must be JSON serializable") from exc
+    if len(serialized.encode("utf-8")) > 1_048_576:
+        raise ValueError("integration request exceeds the configured size limit")
+    plan_id = f"integration_plan_{uuid.uuid4().hex[:16]}"
+    plan = {
+        "schemaVersion": "resource_studio.integration_plan.v1",
+        "planId": plan_id,
+        "integrationId": integration_id,
+        "operation": operation,
+        "request": payload,
+        "requestSha256": _sha256(serialized.encode("utf-8")),
+        "configSha256": INTEGRATION_REGISTRY.config_sha256,
+        "confirmationToken": uuid.uuid4().hex,
+        "createdAt": time.time(),
+        "status": "planned",
+        "requiresHumanConfirmation": True,
+        "requiresAdminAuthorization": True,
+        "executesNetwork": False,
+    }
+    INTEGRATION_PLANS[plan_id] = plan
+    return {key: value for key, value in plan.items() if key != "request"} | {"request": payload}
+
+
+@server.tool(
+    name="resource_studio.apply_integration_request",
+    title="Execute a confirmed external integration request",
+    description="Execute only the fixed HTTPS operation from an approved in-memory plan; arbitrary URLs and headers are forbidden.",
+    structured_output=True,
+)
+def apply_integration_request(
+    plan_id: str,
+    confirmation_token: str,
+    confirmed: bool,
+    admin_confirmation_token: str | None = None,
+) -> dict[str, Any]:
+    plan = INTEGRATION_PLANS.get(plan_id)
+    if plan is None:
+        raise ValueError(f"unknown integration plan: {plan_id}")
+    if plan.get("status") != "planned":
+        raise ValueError("only a pending integration plan can be applied")
+    _require_runtime_confirmation(plan, confirmation_token, confirmed)
+    INTEGRATION_REGISTRY.reload()
+    if plan.get("configSha256") != INTEGRATION_REGISTRY.config_sha256:
+        raise ValueError("integration configuration changed after planning; rebuild the request")
+    if not _admin_token_matches(admin_confirmation_token):
+        raise ValueError("valid admin authorization is required before external data transfer")
+    try:
+        result = INTEGRATION_GATEWAY.request_json(
+            str(plan["integrationId"]),
+            str(plan["operation"]),
+            dict(plan["request"]),
+        )
+    except IntegrationError as exc:
+        plan["status"] = "failed"
+        plan["error"] = str(exc)
+        plan["confirmationToken"] = None
+        raise ValueError(str(exc)) from exc
+    operation_id = f"integration_{uuid.uuid4().hex[:16]}"
+    plan["status"] = "completed"
+    plan["confirmationToken"] = None
+    AUDIT[operation_id] = {
+        "schemaVersion": "resource_studio.integration_audit.v1",
+        "operationId": operation_id,
+        "integrationId": plan["integrationId"],
+        "operation": plan["operation"],
+        "requestSha256": plan["requestSha256"],
+        "status": "completed",
+        "secretsIncluded": False,
+    }
+    return {
+        "schemaVersion": "resource_studio.integration_result.v1",
+        "operationId": operation_id,
+        "status": "completed",
+        "integrationId": result["integrationId"],
+        "operation": result["operation"],
+        "response": result["data"],
+        "auditUri": f"resource://operation/{operation_id}/audit",
+    }
+
+
+@server.tool(
+    name="resource_studio.inspect_plugin",
+    title="Inspect a plugin runtime contract",
+    description="Read-only plugin manifest, permission declaration, quarantine state, and runtime policy.",
+    structured_output=True,
+)
+def inspect_plugin(plugin_id: str) -> dict[str, Any]:
+    record = _plugin_record(plugin_id)
+    return {
+        "schemaVersion": "resource_studio.plugin_runtime.v1",
+        "plugin": record,
+        "runtimePolicy": {
+            "outOfProcess": True,
+            "requiresPlan": True,
+            "requiresHumanConfirmation": True,
+            "adminTokenRequiredFor": sorted(ADMIN_RUNTIME_PERMISSIONS),
+            "entrypointExecution": True,
+        },
+        "readOnly": True,
+    }
+
+
+@server.tool(
+    name="resource_studio.plan_plugin_execution",
+    title="Plan a plugin execution",
+    description="Create a non-executing plugin runtime plan with a bounded JSON request and explicit permission grants.",
+    structured_output=True,
+)
+def plan_plugin_execution(
+    plugin_id: str,
+    request: dict[str, Any],
+    granted_permissions: list[str] | None = None,
+) -> dict[str, Any]:
+    _plugin_record(plugin_id)
+    _runtime_grants(plugin_id, granted_permissions)
+    try:
+        serialized = json.dumps(request, ensure_ascii=False, separators=(",", ":"))
+    except (TypeError, ValueError) as exc:
+        raise ValueError("plugin request must be JSON serializable") from exc
+    if len(serialized.encode("utf-8")) > 1_048_576:
+        raise ValueError("plugin request exceeds the configured size limit")
+    grants = _runtime_grants(plugin_id, granted_permissions)
+    unsupported = grants - SUPPORTED_RUNTIME_PERMISSIONS
+    if unsupported:
+        raise ValueError("plugin runtime capability is not enabled for: " + ", ".join(sorted(unsupported)))
+    plan_id = f"plugin_plan_{uuid.uuid4().hex[:16]}"
+    plan = {
+        "schemaVersion": "resource_studio.plugin_execution_plan.v1",
+        "planId": plan_id,
+        "pluginId": plugin_id,
+        "request": request,
+        "grantedPermissions": sorted(grants),
+        "adminRequired": bool(grants & {"project.modify", "files.write.project-output", "network", "process.execute", "clipboard.read", "clipboard.write"}),
+        "confirmationToken": uuid.uuid4().hex,
+        "createdAt": time.time(),
+        "status": "planned",
+        "executesCode": False,
+    }
+    PLUGIN_RUNTIME_PLANS[plan_id] = plan
+    _persist_state()
+    return plan
+
+
+@server.tool(
+    name="resource_studio.apply_plugin_execution",
+    title="Execute a confirmed plugin plan",
+    description="Execute one approved plugin plan out of process with bounded resources and optional admin authorization.",
+    structured_output=True,
+)
+def apply_plugin_execution(
+    plan_id: str,
+    confirmation_token: str,
+    confirmed: bool,
+    admin_confirmation_token: str | None = None,
+    timeout_seconds: float = 5.0,
+) -> dict[str, Any]:
+    plan = PLUGIN_RUNTIME_PLANS.get(plan_id)
+    if plan is None:
+        raise ValueError(f"unknown plugin execution plan: {plan_id}")
+    if plan.get("status") != "planned":
+        raise ValueError("only a pending plugin execution plan can be applied")
+    _require_runtime_confirmation(plan, confirmation_token, confirmed)
+    if timeout_seconds <= 0 or timeout_seconds > 30:
+        raise ValueError("timeout_seconds must be between 0 and 30")
+    if os.environ.get("RESOURCE_STUDIO_MCP_ALLOW_PLUGIN_EXECUTION", "false").lower() != "true":
+        raise ValueError("plugin execution is disabled by default; set RESOURCE_STUDIO_MCP_ALLOW_PLUGIN_EXECUTION=true after review")
+    admin_authorized = _admin_token_matches(admin_confirmation_token)
+    if not admin_authorized:
+        raise ValueError("valid admin authorization is required before executing plugin code")
+    plugin_id = str(plan["pluginId"])
+    _plugin_record(plugin_id)
+    plugin_dir = _plugin_directory(plugin_id)
+    try:
+        result = PluginHost().run_registered(
+            PLUGIN_REGISTRY,
+            plugin_id,
+            plugin_dir,
+            dict(plan["request"]),
+            granted_permissions=plan["grantedPermissions"],
+            admin_authorized=admin_authorized,
+            timeout_seconds=timeout_seconds,
+        )
+    except PluginHostError as exc:
+        PLUGIN_DISABLED[plugin_id] = str(exc)
+        plan["status"] = "failed"
+        plan["error"] = str(exc)
+        plan["confirmationToken"] = None
+        _persist_state()
+        raise ValueError(str(exc)) from exc
+    plan["status"] = "completed"
+    plan["confirmationToken"] = None
+    plan["result"] = {"pluginId": result.plugin_id, "response": result.response, "stderr": result.stderr}
+    _persist_state()
+    return {
+        "schemaVersion": "resource_studio.plugin_execution_result.v1",
+        "planId": plan_id,
+        "status": "completed",
+        "pluginId": result.plugin_id,
+        "response": result.response,
+        "stderr": result.stderr,
+        "outOfProcess": True,
+        "audit": "plugin.runtime.execute",
+    }
+
+
+@server.tool(
+    name="resource_studio.enable_plugin",
+    title="Re-enable a quarantined plugin",
+    description="Administrative action to re-enable a disabled plugin after review.",
+    structured_output=True,
+)
+def enable_plugin(plugin_id: str, admin_confirmation_token: str) -> dict[str, Any]:
+    if not _admin_token_matches(admin_confirmation_token):
+        raise ValueError("valid admin authorization is required")
+    _plugin_record(plugin_id)
+    PLUGIN_REGISTRY.enable(plugin_id)
+    PLUGIN_DISABLED.pop(plugin_id, None)
+    _persist_state()
+    return {"schemaVersion": "resource_studio.plugin_admin.v1", "pluginId": plugin_id, "status": "enabled", "adminAction": True}
 
 
 @server.tool(

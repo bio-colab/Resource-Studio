@@ -43,6 +43,8 @@ jobs:
           PYTHONPATH=. python tests/test_mcp_persistence.py
           PYTHONPATH=. python tests/test_mcp_mutations.py
           PYTHONPATH=. python tests/test_mcp_plugins.py
+          PYTHONPATH=. python tests/test_mcp_plugin_runtime.py
+          PYTHONPATH=. python tests/test_mcp_package_integrations.py
       - name: Verify forbidden artifacts are absent
         shell: bash
         run: |
@@ -83,6 +85,8 @@ jobs:
           py -3.12 tests\test_mcp_persistence.py
           py -3.12 tests\test_mcp_mutations.py
           py -3.12 tests\test_mcp_plugins.py
+          py -3.12 tests\test_mcp_plugin_runtime.py
+          py -3.12 tests\test_mcp_package_integrations.py
       - name: Verify forbidden source artifacts are absent
         shell: pwsh
         run: |

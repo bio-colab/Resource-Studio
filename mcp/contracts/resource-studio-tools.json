@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "schemaVersion": "resource_studio.tools.v1",
+  "schemaVersion": "resource_studio.tools.v2",
   "protocol": {
     "mcp": "2026-07-28",
     "transports": ["stdio", "streamable-http"],
@@ -13,26 +13,34 @@
     "prompts": {"listChanged": false}
   },
   "tools": {
-    "bootstrap": [
-      "resource_studio.register_file"
-    ],
+    "bootstrap": ["resource_studio.register_file"],
     "readOnly": [
       "resource_studio.inspect_file",
       "resource_studio.index_resources",
       "resource_studio.diff_files",
       "resource_studio.read_audit",
-      "resource_studio.list_plugins"
+      "resource_studio.list_plugins",
+      "resource_studio.inspect_plugin",
+      "resource_studio.list_integrations",
+      "resource_studio.inspect_package"
     ],
     "planning": [
       "resource_studio.create_workspace",
       "resource_studio.plan_resource_change",
-      "resource_studio.get_plan"
+      "resource_studio.get_plan",
+      "resource_studio.plan_plugin_execution",
+      "resource_studio.plan_integration_request",
+      "resource_studio.plan_package_change"
     ],
     "mutating": [
       "resource_studio.apply_plan",
       "resource_studio.export_workspace",
-      "resource_studio.cancel_plan"
-    ]
+      "resource_studio.cancel_plan",
+      "resource_studio.apply_plugin_execution",
+      "resource_studio.apply_integration_request",
+      "resource_studio.apply_package_change"
+    ],
+    "administration": ["resource_studio.enable_plugin"]
   },
   "resources": {
     "static": ["resource://workspace/info", "resource://plugins"],
@@ -54,7 +62,25 @@
     "confirmationTtlSeconds": 600,
     "arbitraryCommandTool": false,
     "arbitraryFileWriteTool": false,
-    "pluginEntrypointsExecutedByMcp": false,
+    "pluginEntrypointsExecutedByMcp": true,
+    "pluginExecutionOutOfProcess": true,
+    "pluginExecutionDefault": "disabled",
+    "pluginExecutionOptInEnv": "RESOURCE_STUDIO_MCP_ALLOW_PLUGIN_EXECUTION=true",
+    "pluginExecutionRequiresAdmin": true,
+    "pluginRuntimeSupportedPermissions": ["project.read"],
+    "pluginHighRiskPermissionsRequireAdmin": [
+      "project.modify",
+      "files.write.project-output",
+      "network",
+      "process.execute",
+      "clipboard.read",
+      "clipboard.write"
+    ],
+    "externalIntegrationRequiresAllowlistedHttps": true,
+    "externalIntegrationRequiresAdmin": true,
+    "msixSeparateEngine": true,
+    "msixMutationEngine": "MakeAppx.exe",
+    "msixSigningInCore": false,
     "defaultMaxInputBytes": 268435456,
     "maxResourceRawBytes": 4194304,
     "stateScope": "root-scoped-atomic-json",

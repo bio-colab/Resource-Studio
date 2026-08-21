@@ -84,3 +84,19 @@ inspect -> diff -> plan -> confirm -> apply_to_workspace -> verify -> export
 [3]: [MCP Security Best Practices](https://modelcontextprotocol.io/docs/2026-07-28/tutorials/security/security_best_practices) — تقليل الصلاحيات وSSRF وconfused deputy وأمان الخوادم المحلية.
 
 [4]: [MCP Versioning](https://modelcontextprotocol.io/docs/2026-07-28/learn/versioning) — التفاوض وإدارة الإصدارات.
+
+## 8. Plugin runtime
+
+أصبح تشغيل الإضافات مسارًا منفصلًا عن عملية MCP نفسها. يقرأ الخادم manifest، ينشئ خطة تنفيذ، يطلب تأكيدًا بشريًا، ثم يمرر request إلى `PluginHost` خارج العملية. يستخدم host staging مؤقتًا ويرفض symlinks، ويطبق Python isolated mode وJSON-lines contract وحدود CPU/ذاكرة/زمن/حجم، مع Windows Job Object على Windows. لا تُعتبر الصلاحية المعلنة في manifest grant تلقائيًا؛ الإصدار الحالي يدعم `project.read` فقط، بينما تبقى network وprocess execution وfilesystem mutation وclipboard مرفوضة حتى يتوفر adapter sandbox متخصص.
+
+أخطاء plugin، timeout، أو خرق response contract تؤدي إلى quarantine محفوظ في `.resource-studio/mcp-state.json`. إعادة التمكين عملية إدارية منفصلة تحتاج `RESOURCE_STUDIO_MCP_ADMIN_TOKEN`، ولا يكفي إعادة discovery.
+
+## 9. External integration gateway
+
+لا يمرر MCP URL أو headers من طلب النموذج إلى الشبكة. التكاملات تُعرّف محليًا في `.resource-studio/integrations.json` عبر `baseUrl` HTTPS عام وعمليات ثابتة. يتحقق registry من hostname وDNS ويرفض loopback/private/link-local/reserved addresses، ويستخدم opener لا يتبع redirects. الأسرار تأتي من environment باسم معلن في `authEnv` ولا تدخل في audit أو result.
+
+كل نداء خارجي يمر بـ`list -> plan -> human confirmation -> admin authorization -> apply`، وتُربط الخطة ببصمة config حتى يفشل التطبيق الآمن إذا تغيّر endpoint أو operation allowlist بعد التخطيط.
+
+## 10. MSIX/PRI boundary
+
+MSIX/AppX/PRI ليست امتدادًا لمسار PE. وحدة `core.msix` تقرأ ZIP entries و`AppxManifest.xml` و`AppxBlockMap.xml` وPRI metadata بحدود حجم وعدد entries ورفض member traversal وXML DTD/entity. إعادة البناء، عند توفر Windows SDK، تستخدم MakeAppx.exe في output جديد ثم تعيد الفتح والتحقق. لا يفسر هذا parser بنية PRI الداخلية كبديل عن MRT Core، ولا يوقع الحزمة أو يحتفظ بمفاتيح خاصة. التوقيع مرحلة مستقلة بعد rebuild وبسياسة شهادة يختارها المستخدم.

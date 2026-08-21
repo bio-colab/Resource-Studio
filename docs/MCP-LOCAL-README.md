@@ -2,82 +2,97 @@
 
 ## الحالة الحالية
 
-يوفّر Resource Studio خادم MCP محليًا عبر **stdio**، كما يوفّر طبقة **Streamable HTTP** اختيارية. الخادم ليس واجهة أوامر عامة؛ فهو يقرأ الملفات الواقعة تحت `RESOURCE_STUDIO_ROOT`، ويعزل التعديلات داخل workspace، ولا يكتب فوق المصدر الأصلي. كل تغيير يمر بمسار الخطة والتأكيد والكتابة المشتركة وإعادة الفتح والتحقق.
+يوفّر Resource Studio خادم MCP محليًا عبر **stdio**، كما يوفّر طبقة **Streamable HTTP** اختيارية. الخادم يقرأ الملفات الواقعة تحت `RESOURCE_STUDIO_ROOT`، ويعزل تعديلات PE وMSIX داخل مساحات عمل، ولا يكتب فوق المصدر الأصلي. كل عملية تغيير تمر بخطة وتأكيد وإعادة فتح وتحقيق.
 
-تدعم الدفعة الحالية تسجيل الملفات إلى `fileId` محدود الجلسة، القراءة والفهرسة، موارد MCP ثابتة وديناميكية، Prompts للمراجعة والفرز، خطط التغيير، `replace` و`add` و`delete` و`change-language`، الحالة الدائمة المحدودة، التصدير إلى ملف جديد، وقراءة سجل التدقيق. كما تضيف **plugin discovery للقراءة فقط**؛ حيث تُقرأ ملفات manifests وتُفحص صلاحيتها، ولا تُشغّل entrypoints أو تمنح الإضافات صلاحية تنفيذ عبر MCP.
+تدعم الدفعة الحالية تسجيل الملفات إلى `fileId`، القراءة والفهرسة، Resources وPrompts، خطط PE وMSIX، عمليات PE الأساسية، plugin discovery، تشغيل plugin منخفض الصلاحية خارج العملية، external integration gateway محدودًا، والحالة الدائمة المحدودة. لا تُمنح الصلاحيات الحساسة لمجرد إعلانها في manifest؛ `network` و`process.execute` و`files.write.project-output` وclipboard تبقى مرفوضة حتى إضافة sandbox adapter متخصص لها.
 
-## التشغيل عبر stdio
-
-من جذر المشروع:
+## التشغيل عبر stdio وHTTP
 
 ```bash
 RESOURCE_STUDIO_ROOT=/home/ubuntu/resource-studio python3 mcp/server.py
 ```
 
-يحدد `RESOURCE_STUDIO_ROOT` الجذر المسموح. يرفض الخادم المسارات الخارجة عنه، ويكتب السجلات إلى stderr حتى يبقى stdout مخصصًا لـ JSON-RPC. لا تُلمس ملفات المصدر؛ الناتج المرحلي والتصدير يظلان تحت الجذر وبمسار جديد.
-
-## التشغيل عبر Streamable HTTP
-
-يتطلب تشغيل HTTP رمزًا صريحًا، ويستمع افتراضيًا على `127.0.0.1:8765` وبمسار MCP هو `/mcp`:
+ولـStreamable HTTP:
 
 ```bash
 RESOURCE_STUDIO_ROOT=/home/ubuntu/resource-studio \
-RESOURCE_STUDIO_MCP_TOKEN='ضع-رمزًا-محليًا-طويلًا' \
+RESOURCE_STUDIO_MCP_TOKEN='رمز-محلي-طويل' \
 python3 mcp/http_server.py
 ```
 
-تتوفر نقطة فحص بسيطة على `/healthz`. كل طلب MCP يحتاج `Authorization: Bearer ...`. تُرفض Origins غير المدرجة، ويُتحقق من Host عبر `TrustedHostMiddleware`. الإعداد الافتراضي محلي؛ لا يُسمح بالربط البعيد إلا عند ضبط `RESOURCE_STUDIO_MCP_ALLOW_REMOTE=true`. عند تفعيل الربط البعيد يجب أن يكون الرمز بطول 32 محرفًا على الأقل، ويُفرض HTTPS عبر `X-Forwarded-Proto: https`.
+يستمع HTTP افتراضيًا على `127.0.0.1:8765` وبمسار `/mcp`. يتطلب Bearer token، ويفحص Host وOrigin، ويمنع الربط البعيد إلا مع `RESOURCE_STUDIO_MCP_ALLOW_REMOTE=true`. عند الربط البعيد يلزم رمز بطول 32 محرفًا على الأقل ويُفرض HTTPS. توجد نقطة `/healthz` للفحص فقط.
 
-يمكن تخصيص الإعدادات عبر `RESOURCE_STUDIO_MCP_HOST` و`RESOURCE_STUDIO_MCP_PORT` و`RESOURCE_STUDIO_MCP_PATH` و`RESOURCE_STUDIO_MCP_ALLOWED_HOSTS` و`RESOURCE_STUDIO_MCP_ALLOWED_ORIGINS`. لا تُفتح socket عند استدعاء `create_app()`؛ وهذا يتيح اختبار ASGI دون تشغيل خدمة فعلية.
-
-## تدفق الاستخدام والتعديلات
-
-يبدأ العميل باستدعاء `resource_studio.register_file` للحصول على `fileId` وSHA-256. بعد ذلك يُنشئ workspace ويخطط لتغيير مورد. كل عملية كتابة تتطلب `confirmationToken` صالحًا وتأكيدًا صريحًا؛ مدة الرمز عشر دقائق.
+## أدوات PE والتعديلات
 
 | المجال | الأدوات |
 |---|---|
-| التسجيل | `resource_studio.register_file` |
-| القراءة | `resource_studio.inspect_file`، `resource_studio.index_resources`، `resource_studio.diff_files`، `resource_studio.read_audit` |
-| الإضافات | `resource_studio.list_plugins` |
-| التخطيط | `resource_studio.create_workspace`، `resource_studio.plan_resource_change`، `resource_studio.get_plan` |
-| التعديل والتصدير | `resource_studio.apply_plan`، `resource_studio.export_workspace`، `resource_studio.cancel_plan` |
+| القراءة | `resource_studio.register_file`، `inspect_file`، `index_resources`، `diff_files`، `read_audit` |
+| التخطيط | `create_workspace`، `plan_resource_change`، `get_plan` |
+| التعديل | `apply_plan`، `export_workspace`، `cancel_plan` |
 
-تقبل `plan_resource_change` العمليات التالية فوق writer المشترك:
+تدعم خطة PE عمليات `replace` و`add` و`delete` و`change-language`. يمر الناتج عبر `LiefPEWriter` والتحقق المشترك وإعادة الفتح، ولا يُستخدم هذا المسار لتعديل PRI أو MSIX.
 
-| العملية | المعنى | المتطلبات |
-|---|---|---|
-| `replace` | استبدال payload لمورد موجود | `resource_key` و`payloadBase64` |
-| `add` | إضافة مورد جديد | `resource_type` و`resource_name` و`target_language` و`payloadBase64` |
-| `delete` | حذف مورد موجود | `resource_key` |
-| `change-language` | نقل payload إلى لغة أخرى مع حذف النسخة القديمة | `resource_key` و`target_language` |
+## Plugin runtime
 
-تُكتب كل نتيجة إلى ملف جديد داخل workspace، ثم يُعاد فتح الناتج ويُتحقق من PE والموارد والتغيير المستهدف. التصدير يحتاج تأكيدًا مستقلًا ومسار Save As جديدًا تحت الجذر.
+تقرأ manifests من `.resource-studio/plugins/<plugin-id>/plugin.json`. تعرض الأدوات `resource_studio.list_plugins` و`resource_studio.inspect_plugin` الاسم والإصدار وAPI والصلاحيات وحالة quarantine، للقراءة فقط.
+
+يبدأ تشغيل plugin عبر `resource_studio.plan_plugin_execution` ثم `resource_studio.apply_plugin_execution`. التنفيذ يحدث خارج عملية الخادم، داخل staging مؤقت، مع رفض symlinks، Python isolated mode، JSON-lines response واحد، حدود request/output/time/memory، وWindows Job Object عند توفر Windows. يحتاج كل تشغيل إلى تأكيد بشري قصير العمر وadmin authorization. وهو **معطل افتراضيًا**؛ لا يُفعّل إلا بعد مراجعة المستخدم مع `RESOURCE_STUDIO_MCP_ALLOW_PLUGIN_EXECUTION=true` و`RESOURCE_STUDIO_MCP_ADMIN_TOKEN`. الصلاحيات الممنوحة في الخطة يجب أن تكون معلنة في manifest، ولا تُعتبر permission env بديلًا عن sandbox OS.
+
+النسخة الحالية تسمح فعليًا بـ`project.read` فقط. الصلاحيات الحساسة التالية تُرفض حتى مع admin token إلى أن يتوفر adapter عزل فعلي لها:
+
+| الصلاحية | الحالة الحالية |
+|---|---|
+| `project.read` | مدعومة في runtime المحدود |
+| `project.modify` | تحتاج admin وcontext mutation مستقل؛ غير مفعلة |
+| `files.write.project-output` | غير مفعلة |
+| `network` | غير مفعلة؛ استخدم integration gateway المقيد |
+| `process.execute` | غير مفعلة |
+| clipboard | غير مفعلة |
+
+تحتاج إعادة تفعيل plugin معزول إلى `resource_studio.enable_plugin` و`RESOURCE_STUDIO_MCP_ADMIN_TOKEN`. التعطل أو timeout أو خرق عقد JSON يؤدي إلى quarantine محفوظ، ولا يختفي عند إعادة discovery أو إعادة تشغيل الخادم.
+
+## External integration gateway
+
+يقرأ الخادم تكاملات صريحة من `.resource-studio/integrations.json`. لا يقبل gateway عنوان URL من الطلب ولا headers مخصصة؛ كل تكامل يعلن `baseUrl` HTTPS عامًا وعمليات ثابتة بأسماء ومسارات allowlisted. تُحظر عناوين localhost والشبكات الخاصة وredirects غير المعتمدة، وتُقرأ credentials من environment عبر `authEnv` ولا تُعاد في النتائج أو audit.
+
+```json
+{
+  "integrations": [
+    {
+      "id": "example.api",
+      "name": "Example API",
+      "baseUrl": "https://api.example.com",
+      "authEnv": "EXAMPLE_API_TOKEN",
+      "operations": {
+        "health": {"method": "GET", "path": "/health"},
+        "submit": {"method": "POST", "path": "/v1/resource-studio/events"}
+      }
+    }
+  ]
+}
+```
+
+تُستخدم الأدوات `resource_studio.list_integrations` و`resource_studio.plan_integration_request` و`resource_studio.apply_integration_request`. كل نداء شبكة يحتاج خطة، تأكيدًا بشريًا، وadmin authorization. لا تُحفظ خطط التكامل في الحالة الدائمة، ولا يُسمح بإرسال payload خارجيًا دون هذه البوابات.
+
+## MSIX/PRI
+
+تُعامل MSIX وAppX وPRI كوحدة package مستقلة، وليست أنواعًا داخل `.rsrc`. يستخدم `resource_studio.inspect_package` ZIP inspection محدودًا لعرض `AppxManifest.xml` و`AppxBlockMap.xml` و`resources.pri` والـentries والهاشات. هذا لا يدّعي تفسير بنية PRI الداخلية؛ فقراءة MRT Core العميقة تحتاج Windows App SDK أو أدوات Microsoft المناسبة.
+
+تدعم `resource_studio.plan_package_change` و`resource_studio.apply_package_change` عمليات `add` و`replace` و`delete` على member عادي. تُنسخ البيانات إلى workspace، ويُعاد بناء الحزمة عبر `MakeAppx.exe` على Windows فقط، ثم تُفتح وتُفحص من جديد. تُرفض الحزم الموقعة للتعديل العام، ويظل signing خطوة منفصلة تتطلب سياسة وشهادة يختارها المستخدم؛ لا يحتفظ Resource Studio بمفاتيح الإنتاج.
+
+| مرحلة | السلوك |
+|---|---|
+| inspect | قراءة bounded للـZIP والmanifest/block map/PRI metadata |
+| plan | لا يغيّر المصدر؛ يخزن payload في workspace مع SHA-256 |
+| apply | MakeAppx على Windows، output جديد، ثم reopen وvalidation |
+| signing | منفصل وغير تلقائي؛ الشهادة والمفتاح خارج الحالة الدائمة |
+| Store/install validation | ليست بديلًا عن semantic validation في MakeAppx |
 
 ## الحالة الدائمة
 
-يحفظ الخادم حالة MCP محدودة في `.resource-studio/mcp-state.json` داخل الجذر، باستخدام كتابة ذرية وقفل داخل العملية. تشمل الحالة file registrations وworkspaces وplans وaudit records اللازمة لاستكمال جلسة محلية بعد إعادة تشغيل العملية. لا تُحفظ payloads خارج الملفات الناتجة، ولا يتحول هذا الملف إلى قاعدة بيانات أو قناة تنفيذ.
-
-## Resources وPrompts
-
-| URI | المحتوى |
-|---|---|
-| `resource://workspace/info` | حدود الجذر وإعدادات الخادم |
-| `resource://plugins` | manifests المكتشفة وحالة validation، للقراءة فقط |
-| `resource://workspace/{workspace_id}` | بيانات workspace المعزولة |
-| `resource://file/{file_id}/manifest` | PE health وresource manifest وwarnings |
-| `resource://file/{file_id}/resource/{resource_key}` | مورد محدد مع payload base64 محدود الحجم عند الإمكان |
-| `resource://plan/{plan_id}` | الخطة وحالة التأكيد |
-| `resource://operation/{operation_id}/audit` | سجل العملية والتحقق |
-
-الـPrompts المنفذة هما `review_change` و`pe_triage`. لا يمنح أي Prompt صلاحية كتابة.
-
-## Plugin discovery
-
-يقرأ الخادم manifests من `.resource-studio/plugins/<plugin-id>/plugin.json`. يعرض `resource_studio.list_plugins` و`resource://plugins` الاسم والإصدار وAPI والـkind والصلاحيات وentrypoint وحالة التوافق. هذه مرحلة discovery فقط: لا تُستورد ملفات Python ولا تُنفذ entrypoints ولا تُمنح الإضافة صلاحيات عبر MCP. يفشل manifest غير الصالح بحالة `rejected` مع سبب قابل للتشخيص، بينما يبقى الخادم مستمرًا في خدمة بقية الأدوات.
+يحفظ الخادم حالة MCP المحدودة في `.resource-studio/mcp-state.json` بكتابة ذرية. تُبطل confirmation tokens عند إعادة التشغيل. خطط plugin runtime وMSIX المعلقة تصبح `stale_after_restart`، بينما payloadات خطط MSIX تبقى داخل workspace تحت الجذر المصرح وبهاش قابل للتحقق.
 
 ## الاختبارات
-
-تشغّل اختبارات MCP الخادم كعمليات مستقلة أو كـASGI app حسب الحالة:
 
 ```bash
 PYTHONPATH=. python3 tests/test_mcp_stdio.py
@@ -85,10 +100,16 @@ PYTHONPATH=. python3 tests/test_mcp_http.py
 PYTHONPATH=. python3 tests/test_mcp_persistence.py
 PYTHONPATH=. python3 tests/test_mcp_mutations.py
 PYTHONPATH=. python3 tests/test_mcp_plugins.py
+PYTHONPATH=. python3 tests/test_mcp_plugin_runtime.py
+PYTHONPATH=. python3 tests/test_mcp_package_integrations.py
+PYTHONPATH=. python3 tests/core/test_plugin_host.py
+PYTHONPATH=. python3 tests/core/test_plugin_quarantine.py
+PYTHONPATH=. python3 tests/core/test_external_integrations.py
+PYTHONPATH=. python3 tests/core/test_msix.py
 ```
 
-يثبت الاختبار الأساسي التسجيل والقراءة والفهرسة وResources وPrompts والخطة والتأكيد والتصدير. ويثبت اختبار HTTP رفض bearer token المفقود وOrigin الخاطئ وHost الخاطئ، بينما يثبت اختبار persistence الاستعادة بين عمليتين منفصلتين. ويغطي اختبار mutations الإضافة والحذف وتغيير اللغة، ويثبت اختبار plugins اكتشاف manifest صالح ورفض manifest غير صالح وعدم تنفيذ entrypoint.
+تثبت الاختبارات التنفيذ خارج العملية، grant enforcement، quarantine، رفض SSRF، allowlisted integrations، package inspection، ومنع تعديل MSIX على Manus دون MakeAppx. أما rebuild الفعلي فيُختبر على Windows عندما تكون أدوات Windows SDK متاحة.
 
 ## المراجع
 
-يعتمد الخادم على [Python SDK الرسمي لـ MCP](https://modelcontextprotocol.io/docs/2026-07-28/sdk) وعلى [دليل بناء خادم MCP](https://modelcontextprotocol.io/docs/2026-07-28/develop/build-server).
+يعتمد الخادم على [Python SDK الرسمي لـ MCP](https://modelcontextprotocol.io/docs/2026-07-28/sdk)، وعلى [مرجع Microsoft PRI](https://learn.microsoft.com/en-us/windows/win32/menurc/pri-indexing-reference)، وعلى [MRT Core](https://learn.microsoft.com/en-us/windows/apps/windows-app-sdk/mrtcore/mrtcore-overview)، وعلى [MakeAppx](https://learn.microsoft.com/en-us/windows/msix/package/create-app-package-with-makeappx-tool)، وعلى [SignTool لتوقيع MSIX](https://learn.microsoft.com/en-us/windows/msix/package/sign-app-package-using-signtool).

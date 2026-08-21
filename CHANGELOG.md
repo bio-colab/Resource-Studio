@@ -27,9 +27,14 @@
 - توسيع MCP عبر Streamable HTTP اختياري مع Bearer authentication وTrusted Host وOrigin/HTTPS guards، مع إبقاء الربط المحلي هو الافتراضي ومنع الربط البعيد دون opt-in صريح.
 - إضافة حفظ ذري للحالة في `.resource-studio/mcp-state.json` واستعادتها بين عمليتين منفصلتين، مع TTL للتأكيد وRLock داخل العملية وعزل الملفات تحت الجذر المصرح.
 - إضافة عمليات MCP كاملة لـ`add` و`delete` و`change-language` إلى جانب `replace` عبر المسار المشترك للكاتب وإعادة الفتح والتحقق، مع regression coverage على fixture PE حقيقي.
-- إضافة `resource_studio.list_plugins` و`resource://plugins` لاكتشاف manifests والتحقق من التوافق والصلاحيات والحالة للقراءة فقط؛ لا تُنفذ entrypoints ولا تُمنح الإضافات صلاحية تنفيذ عبر MCP.
+- إضافة `resource_studio.list_plugins` و`resource://plugins` لاكتشاف manifests والتحقق من التوافق والصلاحيات والحالة للقراءة فقط؛ كان التنفيذ خارج هذا المسار في الدفعة الأولى، ثم أضيف لاحقًا runtime محدود ومفصول خارج العملية عبر أدوات مستقلة وبصلاحية `project.read` فقط.
 - تحديث عقد MCP ووثيقة التشغيل وCI لتغطية HTTP وpersistence وmutations وplugin discovery على Python وWindows.
 - إصلاح Windows oracle وForensic attribution لعملية `change-language` كي تُسجل إزالة لغة المصدر وإضافة لغة الهدف كتغيير مقصود، مع تمرير `sourceLanguage` إلى طبقات التحقق؛ وأثبتت بوابة Windows الواقعية operations الثلاث بنجاح.
+- تفعيل plugin runtime محدود عبر MCP: تنفيذ خارج العملية مع staging مؤقت، رفض symlinks، Python isolated mode، Windows Job Object، حدود زمن/ذاكرة/طلب/استجابة، grant صريح، confirmation، admin gate، quarantine محفوظ، وأداة إعادة تمكين إدارية؛ التنفيذ معطل افتراضيًا ولا يبدأ إلا مع opt-in صريح.
+- إبقاء `project.read` هو grant الوحيد المدعوم فعليًا؛ رفض `network` و`process.execute` وfilesystem وclipboard حتى تتوفر sandbox adapters متخصصة بدل منح صلاحيات شكلية.
+- إضافة external integration gateway إنتاجي مقيد بـHTTPS allowlist وعمليات ثابتة، مع منع SSRF، رفض العناوين الخاصة والـredirectات غير المعتمدة، أسرار من environment فقط، وخطط plan/confirm/admin مع request hashes وبدون تسريب secrets.
+- إضافة وحدة `core/msix.py` مستقلة لفحص MSIX/AppX و`AppxManifest.xml` و`AppxBlockMap.xml` وPRI metadata بحدود حجم وعدد entries ورفض المسارات الخطرة وXML entities، مع خطة rebuild منفصلة عبر MakeAppx على Windows وعدم خلطها مع PE writer.
+- إضافة أدوات MCP لـ`inspect_package` و`plan_package_change` و`apply_package_change`، وتحديث العقد والـTODO والاختبارات والتوثيق؛ signing وMRT Core deep PRI semantics بقيا مسارين منفصلين ومؤجلين حتى توفر أدوات وسياسات Windows المناسبة.
 
 - إضافة `resource_studio.static_code_analysis.v1`: bounded Capstone disassembly وbasic CFG من PE entrypoint مع RVA/file offsets وقيود صريحة، إضافة إلى unpacking indicators ساكنة مثل section expansion وhigh entropy وexecutable+writable sections وoverlay.
 - إضافة `resource_studio.hex_template.v1` لقوالب BITMAPINFOHEADER وVS_VERSIONINFO وDIALOG/MENU headers، مع field offsets وlengths وvalues وhex ranges قابلة للتحديد في WPF Preview.

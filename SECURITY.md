@@ -8,10 +8,10 @@ Resource Studio يتعامل مع ملفات تنفيذية قد تكون حسا
 
 | التصنيف | أمثلة | الموافقة |
 |---|---|---|
-| قراءة | `inspect_file`, `index_resources`, `preview_resource` | لا تحتاج تأكيدًا، مع احترام المسارات المسموحة |
-| تخطيط | `plan_resource_change`, `plan_extract` | لا تكتب، لكنها تعرض أثرًا واضحًا |
-| تعديل | `apply_plan`, `commit_resource`, `export_workspace` | تأكيد بشري صريح لكل عملية |
-| إدارة خادم | تغيير plugins أو المسارات أو النقل | تعطيل في الإصدار الأول أو تأكيد إداري منفصل |
+| قراءة | `inspect_file`, `index_resources`, `preview_resource`, `inspect_package`, `list_plugins`, `inspect_plugin`, `list_integrations` | لا تحتاج تأكيدًا، مع احترام المسارات المسموحة |
+| تخطيط | `plan_resource_change`, `plan_extract`, `plan_plugin_execution`, `plan_integration_request`, `plan_package_change` | لا تكتب المصدر، وتعرض الأثر والهاش والحدود |
+| تعديل/تنفيذ | `apply_plan`, `export_workspace`, `apply_plugin_execution`, `apply_integration_request`, `apply_package_change` | تأكيد بشري صريح؛ plugin/integration الخارجيان يحتاجان admin authorization أيضًا |
+| إدارة خادم | `enable_plugin` وتغيير سياسات النقل أو الجذور | admin authorization منفصل، مع سجل تدقيق وquarantine |
 
 ## 3. حماية المسارات
 
@@ -23,7 +23,7 @@ Resource Studio يتعامل مع ملفات تنفيذية قد تكون حسا
 
 ## 5. منع الأدوات العامة
 
-لا يعرض الخادم أداة تنفيذ أوامر عامة، ولا أداة كتابة مسار عام، ولا أداة تحميل URL ثم تشغيله. كل وظيفة محددة باسم ومخطط ومدخلات مقيدة. لا يسمح هذا الإصدار باستدعاء أدوات تنفيذ خارجية عامة؛ كل وظيفة محددة باسم ومخطط ومدخلات مقيدة، وتسجل العمليات والنتائج.
+لا يعرض الخادم أداة تنفيذ أوامر عامة، ولا أداة كتابة مسار عام، ولا أداة تحميل URL ثم تشغيله. تشغيل plugin لا يمرر أمرًا عامًا؛ بل يستخدم `PluginHost` خارج العملية، وstaging مؤقتًا، وentrypoint من manifest مع grant محدد. تشغيل entrypoint عبر MCP معطل افتراضيًا، ويتطلب opt-in صريحًا وadmin authorization وتأكيدًا بشريًا. الإصدار الحالي يدعم `project.read` فقط، ويرفض network/process/filesystem/clipboard حتى تتوفر sandbox adapters متخصصة؛ permission env ليس sandbox OS. التكاملات الخارجية لا تقبل URL أو headers من الطلب، وتستخدم HTTPS allowlist وعمليات ثابتة وبصمة إعدادات تمنع تغيير endpoint بعد التخطيط.
 
 ## 6. البيانات والخصوصية
 
@@ -35,9 +35,13 @@ Resource Studio يتعامل مع ملفات تنفيذية قد تكون حسا
 
 ## 8. MCP البعيد
 
-يبقى `stdio` هو النقل الافتراضي. عند إضافة Streamable HTTP يجب تنفيذ المصادقة، منع SSRF، التحقق من Origins، ربط الجلسة بالمستخدم، تقليل scopes، عدم تمرير رموز طرف ثالث، ومقاومة confused deputy. لا يسمح الخادم البعيد بتغيير مسارات الجذر أو إضافة plugin أو تشغيل adapter دون صلاحية إدارية منفصلة.
+يبقى `stdio` هو النقل الافتراضي. عند إضافة Streamable HTTP يجب تنفيذ المصادقة، منع SSRF، التحقق من Origins، ربط الجلسة بالمستخدم، تقليل scopes، عدم تمرير رموز طرف ثالث، ومقاومة confused deputy. لا يسمح الخادم البعيد بتغيير مسارات الجذر أو إضافة plugin أو تشغيل adapter دون صلاحية إدارية منفصلة. لا يُفتح plugin network scope عبر HTTP؛ external integrations تمر عبر gateway allowlist وبموافقة وadmin gate، بينما MSIX/PRI تبقى وحدة package منفصلة عن PE writer.
 
-## 9. سجل التدقيق
+## 9. MSIX/PRI والتوقيع
+
+تُعامل MSIX/AppX/PRI كحزم data-only مستقلة عن PE. الفحص bounded ويشمل manifest وblock map وPRI metadata، وإعادة البناء تتم عبر MakeAppx.exe في output جديد ثم reopen وvalidation. لا يعدل النظام حزمة موقعة عبر generic writer، ولا يحتفظ بمفتاح خاص؛ signing خطوة مستقلة بشهادة وسياسة يختارها المستخدم.
+
+## 10. سجل التدقيق
 
 كل عملية تسجل:
 
@@ -48,8 +52,10 @@ Resource Studio يتعامل مع ملفات تنفيذية قد تكون حسا
 - الموارد المتأثرة.
 - نتيجة التحقق وحالة التوقيع.
 - وقت البداية والنهاية والحالة.
+- في plugin runtime: pluginId وgrants وسبب quarantine دون تخزين الأسرار.
+- في external integration: integrationId وoperation وrequest hash دون payload credentials.
 
-## 10. المراجع
+## 11. المراجع
 
 [1]: [MCP Security Best Practices](https://modelcontextprotocol.io/docs/2026-07-28/tutorials/security/security_best_practices)
 

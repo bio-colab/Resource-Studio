@@ -133,9 +133,11 @@
 | [~] | PE-01 | PE inspector sections/imports/exports/relocs/TLS/debug | CORE-05 | `PEInspector` وCLI `inspect` وchecksum fields منجزة؛ توسعة exports/TLS حسب توفر LIEF لاحقة |
 | [~] | PE-02 | MUI support | PE-01, LOC-01 | كشف `.mui` وlanguage hint وsatellite hint قراءة فقط منجز؛ فتح/ربط/مقارنة فعلية لاحقة |
 | [~] | PE-03 | .NET resources/satellite assemblies قراءة محدودة | PE-01 | كشف CLR directory وتحذير metadata غير المفكوكة منجز؛ جداول .NET التفصيلية لاحقة |
-| [ ] | PE-04 | PRI/MSIX منفصلًا | PE-01 | لا يخلط مع `.rsrc` |
+| [~] | PE-04 | PRI/MSIX منفصلًا | PE-01 | bounded inspect للـMSIX/AppX وmanifest/blockmap وPRI metadata، وplan/apply منفصل عبر MakeAppx على Windows؛ MRT Core deep PRI semantics وsigning workflow الكامل لاحقان |
 | [~] | EXT-01 | Custom type definitions/parsers/viewers/serializers | PLUG-07, PE-01 | `ResourceTypeDefinition` وregistry declarative وentrypoint gate منجزة؛ تنفيذ parser الخارجي عبر host لاحق |
-| [~] | EXT-02 | Scripting بعد استقرار SDK والصلاحيات | PLUG-07, AUTO-01 | `PluginHost.dry_run_registered` يتحقق من المسار والطلب دون تشغيل؛ sandbox تنفيذ كامل لاحق |
+| [~] | EXT-02 | Scripting بعد استقرار SDK والصلاحيات | PLUG-07, AUTO-01 | تنفيذ plugin منخفض الصلاحية عبر MCP خارج العملية مع staging وquarantine و`project.read` منجز؛ صلاحيات mutation/network/process والـsandbox adapters المتخصصة لاحقة |
+| [x] | EXT-03 | MCP plugin runtime administration | EXT-02 | `inspect_plugin` و`plan_plugin_execution` و`apply_plugin_execution` و`enable_plugin` مع confirmation وadmin token وstate quarantine واختبارات Manus/Windows |
+| [x] | EXT-04 | External integration gateway مقيد | SECURITY, EXT-02 | HTTPS allowlist ثابت، منع SSRF، secrets من environment، plan/confirm/admin gate، وحدود request/response مع اختبارات mock |
 
 ## المرحلة 9: فجوات عالية الأثر اكتُشفت في المراجعة المعمارية
 
