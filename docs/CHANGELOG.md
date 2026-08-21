@@ -31,7 +31,7 @@
 
 ### أُضيف في دورة backend 2026-08-20
 
-- بحث موثق في Microsoft UpdateResource وLIEF وResource Hacker CLI والتراخيص.
+- بحث موثق في Microsoft UpdateResource وLIEF والتراخيص.
 - LIEFPEWriter مع Save As وbackup وatomic replace.
 - Replace بمورد مختلف الحجم، Add، Delete، وChangeLanguage مع إعادة فتح والتحقق.
 - PEHealth لتقرير PE والموارد والتوقيع والتحذيرات.
@@ -42,11 +42,11 @@
 - ربط writer بنظام Project/Workspace مباشرة.
 - واجهة مستخدم لتأكيد الخطط بصريًا بدل تمرير confirmation عبر عميل الاختبار.
 - محرك Resource Studio الكامل.
-- تكامل فعلي مع Resource Hacker Adapter.
+- تكامل فعلي مع Windows UpdateResource adapter.
 - Streamable HTTP والمصادقة البعيدة.
 - وحدة MSIX/PRI.
 - نظام plugins.
 
 ### ملاحظة حماية
 
-لم تُعدل نسخة Resource Hacker الأصلية، ولم تُنشأ أي إعدادات اتصال خارجية أو موصل MCP في جلسة المستخدم؛ ما تم إنشاؤه هو أساس مشروع ووثائق وعقد تصميمي محلي، وليس تفعيل خدمة خارجية.
+لم تُنشأ أي إعدادات اتصال خارجية أو موصل MCP في جلسة المستخدم؛ ما تم إنشاؤه هو أساس مشروع ووثائق وعقد تصميمي محلي، وليس تفعيل خدمة خارجية.

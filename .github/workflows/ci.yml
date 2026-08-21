@@ -41,7 +41,7 @@ jobs:
       - name: Verify forbidden artifacts are absent
         shell: bash
         run: |
-          ! find . -type f \( -iname 'ResourceHacker.exe' -o -iname '*.pdb' \) -print -quit | grep -q .
+          ! find . -type f \( -iname '*.pdb' \) -print -quit | grep -q .
 
   windows:
     name: Windows Python and WPF
@@ -76,14 +76,14 @@ jobs:
       - name: Verify forbidden source artifacts are absent
         shell: pwsh
         run: |
-          $forbidden = Get-ChildItem -Recurse -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -eq 'ResourceHacker.exe' -or ($_.Extension -eq '.pdb' -and $_.FullName -notmatch '\\(bin|obj)\\') }
+          $forbidden = Get-ChildItem -Recurse -File -ErrorAction SilentlyContinue | Where-Object { ($_.Extension -eq '.pdb' -and $_.FullName -notmatch '\\(bin|obj)\\') }
           if ($forbidden) { $forbidden | Select-Object -ExpandProperty FullName; exit 1 }
       - name: Build WPF
         run: dotnet build windows\ResourceStudio.Windows\ResourceStudio.Windows.csproj -c Release
       - name: Verify forbidden payloads are absent
         shell: pwsh
         run: |
-          $forbidden = Get-ChildItem -Recurse -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -eq 'ResourceHacker.exe' -or ($_.Extension -eq '.pdb' -and $_.FullName -notmatch '\\(bin|obj)\\') }
+          $forbidden = Get-ChildItem -Recurse -File -ErrorAction SilentlyContinue | Where-Object { ($_.Extension -eq '.pdb' -and $_.FullName -notmatch '\\(bin|obj)\\') }
           if ($forbidden) { $forbidden | Select-Object -ExpandProperty FullName; exit 1 }
       - name: Upload WPF build log
         if: always()

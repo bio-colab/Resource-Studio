@@ -18,7 +18,6 @@ flowchart LR
     Core[Resource Studio Core]
     Index[Resource Index]
     Workspace[Isolated Workspace]
-    Adapter[Optional Resource Hacker Adapter]
     Verify[Verifier + Audit Log]
     PE[PE Read-only Analyzer]
     Package[Future MSIX/PRI Module]
@@ -28,11 +27,9 @@ flowchart LR
     Auth --> Core
     Core --> Index
     Core --> Workspace
-    Core --> Adapter
     Core --> PE
     Core --> Package
     Workspace --> Verify
-    Adapter --> Verify
     PE --> Verify
     Package --> Verify
     Verify --> MCP
@@ -64,7 +61,7 @@ flowchart LR
 
 ### طبقة المحركات
 
-تشمل محلل موارد Win32، ومحللات الأنواع المعروفة، ومحلل PE للقراءة فقط، ومحول Resource Hacker الاختياري، ووحدة MSIX/PRI المستقبلية. يمكن إضافة محرك جديد دون تغيير عقد MCP العام.
+تشمل محلل موارد Win32، ومحللات الأنواع المعروفة، ومحلل PE للقراءة فقط، ووحدة MSIX/PRI المستقبلية. يمكن إضافة محرك جديد دون تغيير عقد MCP العام.
 
 ## 5. دورة عملية تعديل نموذجية
 

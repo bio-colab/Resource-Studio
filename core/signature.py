@@ -74,9 +74,9 @@ class SignatureToolError(RuntimeError):
     pass
 
 
-def inspect_signature(path: Path) -> PESignatureReport:
+def inspect_signature(path: Path, *, binary: Any | None = None) -> PESignatureReport:
     path = Path(path).expanduser().resolve()
-    binary = lief.parse(str(path))
+    binary = binary if binary is not None else lief.parse(str(path))
     if binary is None or not isinstance(binary, lief.PE.Binary):
         raise ValueError(f"not a supported PE: {path}")
     signatures = tuple(_signature_record(item) for item in binary.signatures)

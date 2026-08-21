@@ -70,6 +70,5 @@ python3 resource_studio_cli.py report diagnostics before.dll after.dll \
 
 [1]: https://learn.microsoft.com/en-us/windows/win32/debug/pe-format "Microsoft PE Format"
 
-[2]: https://www.angusj.com/resourcehacker/ "Resource Hacker: compiler, decompiler, GUI and command-line workflows"
 
 [3]: https://www.pe-explorer.com/peexplorer-tour-resource-editor.htm "PE Explorer Resource Viewer and Editor feature tour"

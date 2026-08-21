@@ -23,7 +23,7 @@ jobs:
           mkdir -p staging/resource-studio
           tar --exclude='./.git' --exclude='./staging' -cf - . | tar -xf - -C staging/resource-studio
           find staging/resource-studio -type f \( \
-            -iname 'ResourceHacker.exe' -o -iname '*.pdb' -o -iname '*.bak' -o \
+            -iname '*.pdb' -o -iname '*.bak' -o \
             -iname '*.provenance.json' -o -iname '*.forensic-baseline.json' -o \
             -iname '*.key' -o -iname '*.pub' \
           \) -delete

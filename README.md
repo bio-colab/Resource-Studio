@@ -1,6 +1,6 @@
 # Resource Studio
 
-**Resource Studio** هو مشروع مستقل لتحليل وتحرير موارد ملفات Windows PE مع أولوية واضحة للصحة القابلة للإثبات، وسلامة `Save As`، وقابلية إعادة الإنتاج. المشروع ليس نسخة مشتقة من Resource Hacker ولا يضمّن `ResourceHacker.exe` أو أي ملف من مجلد تثبيته.
+**Resource Studio** هو مشروع مستقل لتحليل وتحرير موارد ملفات Windows PE مع أولوية واضحة للصحة القابلة للإثبات، وسلامة `Save As`، وقابلية إعادة الإنتاج.
 
 > **قاعدة السلامة الأساسية:** لا يُكتب إلى ملف الإدخال. كل تعديل يمر إلى output جديد، ثم يعاد فتحه ويُفحص قبل commit، مع rollback وaudit عند الحاجة.
 
@@ -71,7 +71,7 @@ Durable commit + audit
 | .NET SDK 8.0 أو أحدث | بناء WPF على Windows |
 | Windows 10/11 | Windows oracle وWinVerifyTrust وWPF automation |
 
-لتثبيت .NET استخدم [صفحة .NET 8 الرسمية](https://dotnet.microsoft.com/download/dotnet/8.0). لا تُضمّن SDK أو `ResourceHacker.exe` في المستودع أو الحزم.
+لتثبيت .NET استخدم [صفحة .NET 8 الرسمية](https://dotnet.microsoft.com/download/dotnet/8.0). لا تُضمّن SDK أو `external executable` في المستودع أو الحزم.
 
 ## التثبيت والتشغيل
 
@@ -232,6 +232,8 @@ PYTHONPATH=. python3 tools/p0_baseline.py
 
 أُنجز P1 عبر [`core/resource_reader.py`](core/resource_reader.py): تستخدم `list` و`extract` و`search` وقراءة طرفي `diff` parse واحدًا دون إنشاء `Project` أو workspace أو audit. على fixture baseline نفسه أصبحت هذه المسارات عند `temporaryDirectories=0` و`temporaryFiles=0` و`fullFileReads=0`. لا يشمل P1 Writer أو Verification Engine أو resource mode في `hex`; التفاصيل في [`docs/P1-READONLY-READER.md`](docs/P1-READONLY-READER.md).
 
+أُنجز P2 عبر `VerificationContext`: يعيد Writer استخدام binary وsnapshot وResourceGraph وdeep/integrity/signature بين مراحل التحقق، مع بقاء pre-commit وpost-commit وforensic gates. على نفس fixture انخفض `writer.replace_manifest` من 49 إلى 11 LIEF parses ومن 14 إلى 12 full reads؛ التفاصيل في [`docs/P2-VERIFICATION-CONTEXT.md`](docs/P2-VERIFICATION-CONTEXT.md).
+
 ## حدود مقصودة
 
 لا يهدف Forensic-goal إلى بناء malware scanner أو IOC engine أو YARA أو PEiD أو entropy maps أو timeline عام أو hex forensic viewer جديد. أصبح Security-goal مسارًا مستقلًا للتحليل الساكن الدفاعي؛ لا يشغّل الملفات ولا يفك payloadات ولا يعلن أن heuristic واحدة تعني malware. أما Defender وYARA فهما موفّران خارجيان اختياريان على staged copies، وليسَا جزءًا من writer أو verdict داخلي. كما أن MCP مؤجل في هذه الدورة.
@@ -244,7 +246,7 @@ PYTHONPATH=. python3 tools/p0_baseline.py
 
 ## الترخيص والاعتماديات
 
-كود Resource Studio في هذا المستودع مرخص تحت [Apache License 2.0](LICENSE)، ما يسمح بالاستخدام والتعديل وإعادة التوزيع وفق شروط الترخيص، مع بقاء إشعار الحقوق والضمانات والقيود القانونية كما هي في `LICENSE`. هذا توصيف للمستودع وليس استشارة قانونية؛ راجع محاميًا عند دمجه في منتج تجاري أو عند خلطه بكود ذي شروط مختلفة. يعتمد backend PE على [LIEF](https://lief.re/) المرخص تحت Apache-2.0، وتوجد إشعارات الطرف الثالث في [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md). ResourceHacker.exe ليس جزءًا من المشروع ولا يُعاد توزيعه، ولا يمنح ترخيص Resource Studio أي حق في أصوله أو علامته أو ملفاته.
+كود Resource Studio في هذا المستودع مرخص تحت [Apache License 2.0](LICENSE)، ما يسمح بالاستخدام والتعديل وإعادة التوزيع وفق شروط الترخيص، مع بقاء إشعار الحقوق والضمانات والقيود القانونية كما هي في `LICENSE`. هذا توصيف للمستودع وليس استشارة قانونية؛ راجع محاميًا عند دمجه في منتج تجاري أو عند خلطه بكود ذي شروط مختلفة. يعتمد backend PE على [LIEF](https://lief.re/) المرخص تحت Apache-2.0، وتوجد إشعارات الطرف الثالث في [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md). external executable ليس جزءًا من المشروع ولا يُعاد توزيعه، ولا يمنح ترخيص Resource Studio أي حق في أصوله أو علامته أو ملفاته.
 
 ## روابط المشروع
 

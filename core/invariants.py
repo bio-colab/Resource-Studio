@@ -58,9 +58,9 @@ class PESurgicalChangeReport:
         }
 
 
-def snapshot(path: Path) -> PEInvariantSnapshot:
+def snapshot(path: Path, *, binary: Any | None = None) -> PEInvariantSnapshot:
     path = Path(path).expanduser().resolve()
-    binary = lief.parse(str(path))
+    binary = binary if binary is not None else lief.parse(str(path))
     if binary is None or not isinstance(binary, lief.PE.Binary):
         raise ValueError(f"not a supported PE: {path}")
     resource_section = _resource_section(binary)
@@ -100,9 +100,15 @@ def snapshot(path: Path) -> PEInvariantSnapshot:
     )
 
 
-def compare_surgical_change(before_path: Path, after_path: Path) -> PESurgicalChangeReport:
-    before = snapshot(before_path)
-    after = snapshot(after_path)
+def compare_surgical_change(
+    before_path: Path,
+    after_path: Path,
+    *,
+    before_snapshot: PEInvariantSnapshot | None = None,
+    after_snapshot: PEInvariantSnapshot | None = None,
+) -> PESurgicalChangeReport:
+    before = before_snapshot or snapshot(before_path)
+    after = after_snapshot or snapshot(after_path)
     violations: list[str] = []
     for field in ("machine", "imagebase", "entrypoint", "directories", "imports", "exports", "overlay", "tls", "load_config", "debug"):
         if getattr(before, field) != getattr(after, field):

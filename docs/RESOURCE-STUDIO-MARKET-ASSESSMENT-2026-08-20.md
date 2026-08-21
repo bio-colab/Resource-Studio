@@ -4,7 +4,7 @@
 
 ## الخلاصة التنفيذية
 
-نعم، **Resource Studio يمكن أن يفيد المطورين والهواة بوضوح**، لكن ليس بالطريقة نفسها التي تفيد بها أداة Resource Hacker التقليدية. فالمشروع الحالي لم يعد مجرد محرر موارد؛ بل أصبح أساسًا لـ **ورشة آمنة وقابلة للتكرار لتعديل موارد PE وتحليلها ومقارنتها وإدارتها ضمن مشروع**. قوته الأساسية هي الجمع بين Save As، snapshots، Undo/Redo، Audit Log، typed resource models، LIEF، الفحص، المقارنة، البحث، التقارير، CLI، WPF، وإضافات معزولة.
+نعم، **Resource Studio يمكن أن يفيد المطورين والهواة بوضوح**. فالمشروع الحالي لم يعد مجرد محرر موارد؛ بل أصبح أساسًا لـ **ورشة آمنة وقابلة للتكرار لتعديل موارد PE وتحليلها ومقارنتها وإدارتها ضمن مشروع**. قوته الأساسية هي الجمع بين Save As، snapshots، Undo/Redo، Audit Log، typed resource models، LIEF، الفحص، المقارنة، البحث، التقارير، CLI، WPF، وإضافات معزولة.
 
 في المقابل، لا يزال المشروع أقرب إلى **نواة منصة قوية مع واجهة أولية متقدمة** منه إلى منتج نهائي ينافس الأدوات الناضجة في كل سيناريو. فالوظائف الأساسية التي اعتاد عليها المستخدمون موجودة جزئيًا أو عبر CLI، بينما تنقصه كثافة المحررات المرئية، اتساع أنواع الموارد، العمل الجماعي على عدة ملفات، دعم .NET/MUI الكامل، المعاينة الإعلامية، واختبارات UI قابلة للتكرار.
 
@@ -30,7 +30,7 @@
 
 ## 2. ماذا يتوقع المستخدمون من هذا النوع من الأدوات؟
 
-توضح الأدوات الناضجة أن الطلب لا يقتصر على فتح شجرة موارد وتعديل نص. Resource Hacker الرسمي يجمع بين compiler/decompiler، تحرير الموارد في EXE/DLL/SCR، RES/MUI، WYSIWYG للقوائم والحوارات، وCLI وسكربتات متعددة الأوامر [1]. ويقدم Resource Tuner نطاقًا أوسع من أنواع الملفات والموارد، واستخراجًا جماعيًا، وبحثًا عبر ملفات عديدة، وResource Filter، وManifest Wizard، وفحصًا وإصلاحًا، وbackup وLog pane وRecent/Favorites [2].
+توضح الأدوات الناضجة أن الطلب لا يقتصر على فتح شجرة موارد وتعديل نص؛ بل يشمل preview، البحث متعدد الملفات، الفلاتر، الاستخراج الجماعي، المساعدة في Manifest، وسجل العمليات.
 
 أما Visual Studio Resource Explorer فيؤكد أن المطورين يعتبرون البحث والفلاتر، عرض عدة ملفات ولغات معًا، التعديل متعدد الملفات، Dark mode، التحقق من placeholders، التحذيرات، التكبير، والتعليقات جزءًا من تجربة الموارد الحديثة [3]. وتظهر وثائق Winres أن المترجمين يحتاجون إلى محرر مرئي يغير النص والحجم والموقع، وينشئ ثقافات مشتقة، ويفحص hotkeys، مع فصل واضح بين ملف اللغة المحايد وملف الثقافة [4].
 
@@ -53,11 +53,9 @@
 
 ## 3. مقارنة مباشرة بالأدوات الموجودة
 
-### Resource Hacker
+### الفجوة العملية
 
-Resource Studio لا يحتاج إلى إعادة تنفيذ Resource Hacker أو منافسته في كل compiler details. Resource Hacker يملك نضجًا تاريخيًا ويدعم CLI scripts وWYSIWYG للقوائم والحوارات [1]. التفوق المحتمل لـ Resource Studio هو في **طبقة المشروع الآمن**: عدم الكتابة إلى الأصل، خطة قبل التنفيذ، invariants، audit، snapshots، diff، machine-readable reports، plugin permissions، وPE metadata.
-
-الفجوة الأهم ليست في وجود `add/delete/modify`، بل في أن بعض المستخدمين يستطيعون تنفيذ هذه المهام في Resource Hacker أسرع من الواجهة الحالية. لذلك يجب أن يكون هدف المرحلة التالية جعل العمليات اليومية أسرع، لا إضافة abstraction جديد بلا مسار مرئي.
+التفوق المطلوب لـResource Studio هو في طبقة المشروع الآمن: عدم الكتابة إلى الأصل، خطة قبل التنفيذ، invariants، audit، snapshots، diff، machine-readable reports، plugin permissions، وPE metadata. الفجوة العملية المتبقية هي سرعة العمليات اليومية ووضوحها داخل الواجهة.
 
 ### Resource Tuner وPE Explorer
 
@@ -144,7 +142,7 @@ Visual Studio يوضح معيار UX الحديث: multi-file، multi-locale، c
 
 ### الدورة الثانية: جعل التعريب ميزة رئيسية
 
-بعد استقرار المحررات، تُبنى Localization Workbench: multi-file، multi-locale، comments، placeholder/hotkey checks، XLIFF/PO/RESX، وvisual dialog fitting. هذه ميزة يمكن أن تمنح المشروع هوية مختلفة عن Resource Hacker، خصوصًا للمشاريع القديمة التي لا تملك source tree منظمًا.
+بعد استقرار المحررات، تُبنى Localization Workbench: multi-file، multi-locale، comments، placeholder/hotkey checks، XLIFF/PO/RESX، وvisual dialog fitting. هذه ميزة مهمة للمشاريع القديمة التي لا تملك source tree منظمًا.
 
 ### الدورة الثالثة: توسيع التغطية والامتدادات
 
@@ -156,7 +154,7 @@ Visual Studio يوضح معيار UX الحديث: multi-file، multi-locale، c
 
 ## 8. قرارات ينبغي عدم اتخاذها الآن
 
-لا أوصي بإضافة عشرات المحررات المرئية دفعة واحدة، ولا بدمج ResourceHacker.exe داخل الحزمة، ولا بجعل Resource Studio محرر PE headers عامًا، ولا بتشغيل parsers خارجية داخل عملية WPF، ولا بإضافة خدمة Windows مقيمة من أجل وظائف يمكن تنفيذها محليًا.
+لا أوصي بإضافة عشرات المحررات المرئية دفعة واحدة، ولا بدمج external executable داخل الحزمة، ولا بجعل Resource Studio محرر PE headers عامًا، ولا بتشغيل parsers خارجية داخل عملية WPF، ولا بإضافة خدمة Windows مقيمة من أجل وظائف يمكن تنفيذها محليًا.
 
 كما لا أوصي بتقديم Test Certificate على أنه وسيلة لتجاوز ثقة Windows. يجب أن يبقى مسار التوقيع مخصصًا للاختبار المعزول، مع توضيح أن تعديل ملف موقع يبطل التوقيع السابق وأن الشهادة الاختبارية ليست ثقة إنتاجية.
 
@@ -168,7 +166,6 @@ Visual Studio يوضح معيار UX الحديث: multi-file، multi-locale، c
 
 ## المراجع
 
-[1]: https://www.angusj.com/resourcehacker/ "Resource Hacker الرسمي"
 [2]: https://www.heaventools.com/resource-tuner-features.htm "Resource Tuner Feature List"
 [3]: https://devblogs.microsoft.com/visualstudio/introducing-the-revamped-visual-studio-resource-explorer/ "Microsoft: Introducing the Revamped Visual Studio Resource Explorer"
 [4]: https://learn.microsoft.com/en-us/dotnet/framework/tools/winres-exe-windows-forms-resource-editor "Microsoft Learn: Winres.exe"

@@ -423,17 +423,22 @@ class LiefPEWriter:
         temporary: Path | None = None
         post_verification = None
         forensic_evidence = None
+        before_context = None
+        candidate_context = None
         try:
             with tempfile.NamedTemporaryFile(dir=output_path.parent, suffix=output_path.suffix, delete=False) as handle:
                 temporary = Path(handle.name)
             from .forensics import ForensicBaseline
+            from .verification import VerificationContext
 
-            forensic_baseline = ForensicBaseline.from_path(input_path)
+            before_context = VerificationContext.from_path(input_path)
+            forensic_baseline = ForensicBaseline.from_context(before_context)
             forensic_baseline_path = output_path.with_suffix(output_path.suffix + f".{operation_id}.forensic-baseline.json")
             forensic_baseline.save(forensic_baseline_path)
             binary.header.time_date_stamps = original_timestamp
             binary.write(str(temporary))
             self.validate_output(temporary)
+            candidate_context = VerificationContext.from_path(temporary)
             from .verification import verify_candidate
 
             pre_verification = verify_candidate(
@@ -445,6 +450,8 @@ class LiefPEWriter:
                 operation=operation,
                 expected_data=expected_data,
                 committed=False,
+                before_context=before_context,
+                candidate_context=candidate_context,
             )
             if not pre_verification.passed:
                 raise PEWriterError("candidate verification failed: " + "; ".join(pre_verification.errors or _failed_phases(pre_verification)))
@@ -452,6 +459,7 @@ class LiefPEWriter:
 
             commit_temporary(temporary, output_path)
             temporary = None
+            candidate_context = VerificationContext.from_path(output_path)
             post_verification = verify_candidate(
                 input_path,
                 output_path,
@@ -461,12 +469,19 @@ class LiefPEWriter:
                 operation=operation,
                 expected_data=expected_data,
                 committed=True,
+                before_context=before_context,
+                candidate_context=candidate_context,
             )
             if not post_verification.passed:
                 raise PEWriterError("committed output verification failed: " + "; ".join(post_verification.errors or _failed_phases(post_verification)))
             from .invariants import compare_surgical_change
 
-            surgical = compare_surgical_change(input_path, output_path)
+            surgical = compare_surgical_change(
+                input_path,
+                output_path,
+                before_snapshot=before_context.state,
+                after_snapshot=candidate_context.state,
+            )
             if not surgical.valid:
                 raise PEWriterError("write changed protected PE structures: " + ", ".join(surgical.violations))
             from .forensics import verify_transformation
@@ -482,6 +497,8 @@ class LiefPEWriter:
                 expected_data=expected_data,
                 committed=True,
                 baseline=forensic_baseline,
+                before_context=before_context,
+                candidate_context=candidate_context,
             )
             forensic_evidence = evidence.to_dict()
             if not evidence.verification.passed:

@@ -54,4 +54,4 @@ py -3.12 resource_studio_cli.py batch apply batch.json --report batch-report.jso
 
 لا يسمح المسار بالكتابة in-place. تُجهز كل الوظائف أولًا، ثم تُنقل المخرجات إلى مسارات Save As فقط. إذا كان output موجودًا يُحفظ `*.batch.bak`. وإذا فشل الالتزام بعد بدء النقل، تُستعاد المخرجات التي تم الالتزام بها من نسخها الاحتياطية.
 
-> لا تضع `ResourceHacker.exe` أو أي ملف أصلي مهم داخل `output`، ولا تجعل `output` مساويًا لأي `input`. Batch Workspace يرفض ذلك صراحة.
+> لا تضع `external executable` أو أي ملف أصلي مهم داخل `output`، ولا تجعل `output` مساويًا لأي `input`. Batch Workspace يرفض ذلك صراحة.

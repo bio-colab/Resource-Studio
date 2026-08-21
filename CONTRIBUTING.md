@@ -18,11 +18,11 @@ python3 -m venv .venv
 python -m pip install -r requirements-backend.txt
 ```
 
-يتطلب WPF على Windows .NET SDK 8.0 أو أحدث. لا تُضاف ملفات SDK أو runtime أو `ResourceHacker.exe` إلى المستودع.
+يتطلب WPF على Windows .NET SDK 8.0 أو أحدث. لا تُضاف ملفات SDK أو runtime أو `external executable` إلى المستودع.
 
 ## قواعد السلامة
 
-يجب ألا يكتب أي اختبار أو أداة إلى `C:\Program Files (x86)\Resource Hacker\` أو إلى ملف الإدخال الذي يختبره. كل تعديل PE يستخدم Save As إلى مسار output جديد، ويجب أن يمر عبر reopen وstructural validation وresource graph validation وpreservation checks قبل commit.
+يجب ألا يكتب أي اختبار أو أداة إلى `protected installation directory` أو إلى ملف الإدخال الذي يختبره. كل تعديل PE يستخدم Save As إلى مسار output جديد، ويجب أن يمر عبر reopen وstructural validation وresource graph validation وpreservation checks قبل commit.
 
 لا تستخدم ملفات مستخدم حقيقية أو شهادات إنتاج في الاختبارات. استخدم fixtures داخل `tests/fixtures` أو ملفات مؤقتة، واحذف المخرجات المؤقتة في `finally`. يجب ألا تحتوي السجلات أو pull requests على كلمات مرور PFX أو مفاتيح خاصة أو مسارات شخصية غير لازمة.
 
@@ -59,7 +59,7 @@ done
 | السلامة؟ | كيف ثبت عدم لمس الأصل وعدم استبدال input وعدم تسريب secrets |
 | الحدود؟ | ما لم يُختبر أو ما بقي Windows-only أو policy-dependent |
 
-لا ترفع `bin/` أو `obj/` أو `__pycache__/` أو ملفات `.pyc` أو PDB أو outputs أو snapshots أو `ResourceHacker.exe`. لا تعدّل التاريخ أو hash للأصل؛ يجب أن يبقى الهاش المرجعي `14A44FE31B04FBCC65E94E80016138A2E9FC9BB6DFCEA09B98DE57F8A22A1240`.
+لا ترفع `bin/` أو `obj/` أو `__pycache__/` أو ملفات `.pyc` أو PDB أو outputs أو snapshots أو `external executable`. لا تعدّل التاريخ أو hash للأصل؛ يجب أن يبقى الهاش المرجعي `14A44FE31B04FBCC65E94E80016138A2E9FC9BB6DFCEA09B98DE57F8A22A1240`.
 
 ## التوثيق
 
@@ -67,4 +67,4 @@ done
 
 ## الترخيص
 
-بإرسال مساهمة، تؤكد أن لك الحق في إرسالها وأنها لا تنسخ ملفات Resource Hacker أو موادًا مملوكة لطرف آخر. يخضع كود هذا المستودع إلى Apache-2.0 كما هو موضح في [`LICENSE`](LICENSE)، مع الاحتفاظ بإشعارات LIEF والطرف الثالث في [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md). لا تمنح مساهمتك أي حق في ResourceHacker.exe أو علامته أو ملفاته، ولا ينبغي للمساهمة أن تفترض أن ترخيص Resource Studio يغطي اعتماديات أو موادًا خارجية.
+بإرسال مساهمة، تؤكد أن لك الحق في إرسالها وأنها لا تنسخ موادًا مملوكة لطرف آخر. يخضع كود هذا المستودع إلى Apache-2.0 كما هو موضح في [`LICENSE`](LICENSE)، مع الاحتفاظ بإشعارات LIEF والطرف الثالث في [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md). لا ينبغي للمساهمة أن تفترض أن ترخيص Resource Studio يغطي اعتماديات أو موادًا خارجية.

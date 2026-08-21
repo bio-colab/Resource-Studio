@@ -27,9 +27,9 @@ class DeepPEInvariantReport:
         }
 
 
-def inspect_deep(path: Path) -> DeepPEInvariantReport:
+def inspect_deep(path: Path, *, binary: Any | None = None) -> DeepPEInvariantReport:
     path = Path(path).expanduser().resolve()
-    binary = lief.parse(str(path))
+    binary = binary if binary is not None else lief.parse(str(path))
     if binary is None or not isinstance(binary, lief.PE.Binary):
         raise ValueError(f"not a supported PE: {path}")
     file_size = path.stat().st_size

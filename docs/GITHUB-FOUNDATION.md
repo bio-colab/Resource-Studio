@@ -2,11 +2,11 @@
 
 ## الهدف
 
-تجعل هذه الدفعة مستودع Resource Studio قابلًا للاستخدام والمساهمة العامة دون خلط كود المشروع بملفات Resource Hacker أو اعتماديات الطرف الثالث أو ملفات المستخدمين.
+تجعل هذه الدفعة مستودع Resource Studio قابلًا للاستخدام والمساهمة العامة دون خلط كود المشروع بملفات خارجية أو اعتماديات الطرف الثالث أو ملفات المستخدمين.
 
 ## الترخيص
 
-كود المستودع مرخص تحت Apache License 2.0 في [`../LICENSE`](../LICENSE). اختير هذا الترخيص لأنه permissive وOSI-approved وله SPDX identifier ثابت `Apache-2.0`، مع احتفاظ المساهمين والمستخدمين بشروط الإشعارات والضمانات والقيود الواردة في النص الرسمي. لا يغطي الترخيص `ResourceHacker.exe` أو علامته أو أصوله أو أي ملف خارجي غير مملوك للمشروع.
+كود المستودع مرخص تحت Apache License 2.0 في [`../LICENSE`](../LICENSE). اختير هذا الترخيص لأنه permissive وOSI-approved وله SPDX identifier ثابت `Apache-2.0`، مع احتفاظ المساهمين والمستخدمين بشروط الإشعارات والضمانات والقيود الواردة في النص الرسمي. لا يغطي الترخيص `external executable` أو علامته أو أصوله أو أي ملف خارجي غير مملوك للمشروع.
 
 هذا قرار ترخيص للمستودع، وليس استشارة قانونية. يجب مراجعة المحامي عند دمج الكود في منتج أو عند جمعه مع ملفات أو اعتماديات ذات شروط مختلفة.
 
@@ -16,9 +16,9 @@
 
 ## CI/CD
 
-يقوم `.github/workflows/ci.yml` بتشغيل compileall واختبارات Python وCLI وQA على Ubuntu، ثم يعيد تشغيل الاختبارات ذات الصلة على Windows مع Python 3.12 و.NET 8 ويبني WPF Release. يتحقق workflow أيضًا من غياب `ResourceHacker.exe` وPDBs.
+يقوم `.github/workflows/ci.yml` بتشغيل compileall واختبارات Python وCLI وQA على Ubuntu، ثم يعيد تشغيل الاختبارات ذات الصلة على Windows مع Python 3.12 و.NET 8 ويبني WPF Release. يتحقق workflow أيضًا من غياب `external executable` وPDBs.
 
-يقوم `.github/workflows/release.yml` ببناء source bundle عند tags من نمط `vX.Y.Z` أو يدويًا، ويحذف `.git` و`.github` وملفات البناء والـartifacts المؤقتة والمفاتيح و`ResourceHacker.exe` قبل النشر. لا ينتج workflow binary يتضمن الأصل.
+يقوم `.github/workflows/release.yml` ببناء source bundle عند tags من نمط `vX.Y.Z` أو يدويًا، ويحذف `.git` و`.github` وملفات البناء والـartifacts المؤقتة والمفاتيح و`external executable` قبل النشر. لا ينتج workflow binary يتضمن الأصل.
 
 ## Community health
 

@@ -53,14 +53,14 @@ class PEIntegrityReport:
         }
 
 
-def inspect_integrity(path: Path) -> PEIntegrityReport:
+def inspect_integrity(path: Path, *, binary: Any | None = None) -> PEIntegrityReport:
     path = Path(path).expanduser().resolve()
     if not path.is_file():
         raise ValueError(f"file not found: {path}")
-    binary = lief.parse(str(path))
+    binary = binary if binary is not None else lief.parse(str(path))
     if binary is None or not isinstance(binary, lief.PE.Binary):
         raise ValueError(f"not a supported PE: {path}")
-    signature = inspect_signature(path)
+    signature = inspect_signature(path, binary=binary)
     rich_header_sha256 = _rich_header_sha256(path.read_bytes())
     stored = int(binary.optional_header.checksum)
     lief_checksum = int(binary.compute_checksum())

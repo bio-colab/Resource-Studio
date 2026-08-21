@@ -14,7 +14,7 @@ from .deep_invariants import inspect_deep
 from .invariants import snapshot
 from .pe_integrity import inspect_integrity
 from .provenance import canonical_json, environment_fingerprint
-from .verification import ResourceGraph, VerificationReport, verify_candidate
+from .verification import ResourceGraph, VerificationContext, VerificationReport, verify_candidate
 
 
 @dataclass(frozen=True)
@@ -33,7 +33,11 @@ class ForensicBaseline:
 
     @classmethod
     def from_path(cls, path: Path) -> "ForensicBaseline":
-        source = Path(path).expanduser().resolve()
+        return cls.from_context(VerificationContext.from_path(path))
+
+    @classmethod
+    def from_context(cls, context: VerificationContext) -> "ForensicBaseline":
+        source = context.path
         raw = source.read_bytes()
         return cls(
             schema="resource_studio.forensic_baseline.v1",
@@ -41,10 +45,10 @@ class ForensicBaseline:
             captured_at_utc=datetime.now(UTC).isoformat(),
             sha256=hashlib.sha256(raw).hexdigest(),
             size=len(raw),
-            pe=snapshot(source).to_dict(),
-            resource_graph=ResourceGraph.from_path(source).to_dict(),
-            deep_invariants=inspect_deep(source).to_dict(),
-            integrity=inspect_integrity(source).to_dict(),
+            pe=context.state.to_dict(),
+            resource_graph=context.graph.to_dict(),
+            deep_invariants=dict(context.deep_invariants),
+            integrity=dict(context.integrity),
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -220,11 +224,13 @@ def verify_transformation(
     committed: bool = False,
     baseline: ForensicBaseline | None = None,
     previous_evidence_sha256: str | None = None,
+    before_context: VerificationContext | None = None,
+    candidate_context: VerificationContext | None = None,
 ) -> ForensicEvidence:
     """Build evidence after independent reopen; Writer is not the evidence source."""
 
-    before = baseline or ForensicBaseline.from_path(before_path)
-    result = ForensicBaseline.from_path(candidate_path)
+    before = baseline or ForensicBaseline.from_context(before_context) if before_context is not None else baseline or ForensicBaseline.from_path(before_path)
+    result = ForensicBaseline.from_context(candidate_context) if candidate_context is not None else ForensicBaseline.from_path(candidate_path)
     verification = verify_candidate(
         before_path,
         candidate_path,
@@ -234,6 +240,8 @@ def verify_transformation(
         operation=operation,
         expected_data=expected_data,
         committed=committed,
+        before_context=before_context,
+        candidate_context=candidate_context,
     )
     return ForensicEvidence(
         operation_id=operation_id,

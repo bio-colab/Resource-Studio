@@ -57,7 +57,7 @@ def build_provenance(
             {"type": entry.resource_type, "name": entry.name, "language": entry.language, "size": len(entry.data), "sha256": entry.sha256}
             for entry in sorted(resources, key=lambda item: item.key)
         ],
-        "licenses": {"backend": "LIEF", "backendLicense": "Apache-2.0", "resourceHackerBundled": False},
+        "licenses": {"backend": "LIEF", "backendLicense": "Apache-2.0"},
     }
 
 

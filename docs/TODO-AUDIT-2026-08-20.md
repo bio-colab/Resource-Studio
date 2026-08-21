@@ -67,7 +67,7 @@ Dialog هو النقص الأكبر، لكن Accelerator وFont وMessageTable �
 
 ## ما لا أوصي بإضافته الآن
 
-لا أوصي بإضافة محرر شامل لكل PE headers أو disassembler أو malware analysis أو packer/unpacker إلى Resource Studio. هذه مشاريع مختلفة في النطاق والمخاطر، وستحوّل المنصة من محرر موارد آمن إلى أداة reverse engineering عامة. كما لا أوصي بإعادة دمج Resource Hacker داخل الحزمة؛ يبقى adapter المحلي الاختياري قرارًا أكثر أمانًا وقابلية للصيانة.
+لا أوصي بإضافة محرر شامل لكل PE headers أو disassembler أو malware analysis أو packer/unpacker إلى Resource Studio. هذه مشاريع مختلفة في النطاق والمخاطر، وستحوّل المنصة من محرر موارد آمن إلى أداة reverse engineering عامة. كما لا أوصي بإضافة أدوات تنفيذ خارجية إلى النواة؛ تبقى النواة محلية ومحددة وقابلة للتدقيق.
 
 ## ترتيب التنفيذ المقترح
 

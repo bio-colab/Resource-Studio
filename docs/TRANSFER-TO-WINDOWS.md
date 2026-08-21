@@ -2,11 +2,7 @@
 
 ## قاعدة الانتقال
 
-تُنقل حزمة Resource Studio فقط. لا تُنسخ `ResourceHacker.exe` إلى الحزمة، ولا يُكتب إلى:
-
-```text
-C:\Program Files (x86)\Resource Hacker\
-```
+تُنقل حزمة Resource Studio فقط. لا تُنسخ ملفات خارجية إلى الحزمة، ولا تُكتب المخرجات إلى مجلدات التثبيت المحمية.
 
 تبقى النسخة الأصلية مرجعًا للقراءة والمقارنة فقط.
 
@@ -34,7 +30,7 @@ for test in tests/core/test_*.py tests/test_cli.py tests/qa/test_*.py; do PYTHON
 C:\Users\<User>\Documents\ResourceStudio
 ```
 
-ثم يُنشأ virtual environment ويُثبت `lief==1.0.0` من `requirements-backend.txt`. لا يُستخدم مجلد تثبيت Resource Hacker كـ workspace، ولا تُحفظ المخرجات داخله.
+ثم يُنشأ virtual environment ويُثبت `lief==1.0.0` من `requirements-backend.txt`. لا تُستخدم مجلدات التثبيت المحمية كـ workspace، ولا تُحفظ المخرجات فيها.
 
 بعد ذلك تُنفذ فحوص البيئة التالية:
 
@@ -55,4 +51,4 @@ python -m unittest discover
 
 ## ما لا يُنقل
 
-لا تُنقل نسخة Resource Hacker الأصلية أو أي ملف من مجلد تثبيتها، ولا تُضمّن الأسرار أو الشهادات أو مفاتيح التوقيع، ولا تُفعّل وظائف MCP أو النقل البعيد ضمن هذه الدورة.
+لا تُنقل ملفات من مجلدات التثبيت، ولا تُضمّن الأسرار أو الشهادات أو مفاتيح التوقيع، ولا تُفعّل وظائف MCP أو النقل البعيد ضمن هذه الدورة.

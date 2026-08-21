@@ -3,6 +3,8 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+
+import lief
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -23,15 +25,19 @@ class ResourceGraph:
     layout_fingerprint: str
 
     @classmethod
-    def from_path(cls, path: Path) -> "ResourceGraph":
-        state = snapshot(Path(path))
+    def from_path(cls, path: Path, *, binary: Any | None = None) -> "ResourceGraph":
+        path = Path(path).expanduser().resolve()
+        binary = binary if binary is not None else lief.parse(str(path))
+        state = snapshot(path, binary=binary)
+        data_by_key = {
+            (resource_type, name, language): data
+            for resource_type, name, language, data in _entries(binary)
+        }
         leaves: list[dict[str, Any]] = []
         for item in state.resources:
             leaf = dict(item)
-            leaf["semanticFingerprint"] = semantic_fingerprint(
-                str(item["type"]),
-                _resource_bytes(Path(path), item),
-            )
+            key = (str(item["type"]), str(item["name"]), int(item["language"]))
+            leaf["semanticFingerprint"] = semantic_fingerprint(str(item["type"]), data_by_key.get(key, b""))
             leaves.append(leaf)
         leaves.sort(key=_leaf_key)
         semantic = [_stable_leaf(item, include_layout=False) for item in leaves]
@@ -51,6 +57,31 @@ class ResourceGraph:
             "fingerprint": self.fingerprint,
             "layoutFingerprint": self.layout_fingerprint,
         }
+
+
+@dataclass(frozen=True)
+class VerificationContext:
+    """One parsed PE plus its reusable structural and resource graph views."""
+
+    path: Path
+    state: Any
+    graph: ResourceGraph
+    deep_invariants: dict[str, Any]
+    integrity: dict[str, Any]
+
+    @classmethod
+    def from_path(cls, path: Path) -> "VerificationContext":
+        path = Path(path).expanduser().resolve()
+        binary = lief.parse(str(path))
+        if binary is None or not isinstance(binary, lief.PE.Binary):
+            raise ValueError(f"not a supported PE: {path}")
+        return cls(
+            path,
+            snapshot(path, binary=binary),
+            ResourceGraph.from_path(path, binary=binary),
+            inspect_deep(path, binary=binary).to_dict(),
+            inspect_integrity(path, binary=binary).to_dict(),
+        )
 
 
 @dataclass(frozen=True)
@@ -125,6 +156,8 @@ def verify_candidate(
     operation: str,
     expected_data: bytes | None = None,
     committed: bool = False,
+    before_context: VerificationContext | None = None,
+    candidate_context: VerificationContext | None = None,
 ) -> VerificationReport:
     """Verify a serialized candidate before or after durable commit."""
 
@@ -140,19 +173,21 @@ def verify_candidate(
         return _failed_report(phases, errors, "candidate is missing or empty")
 
     try:
-        after_state = snapshot(candidate_path)
-        before_state = snapshot(before_path)
+        after_context = candidate_context or VerificationContext.from_path(candidate_path)
+        before_context = before_context or VerificationContext.from_path(before_path)
+        after_state = after_context.state
+        before_state = before_context.state
         _phase(phases, "REOPEN", True, "LIEF reopened candidate")
     except Exception as exc:
         return _failed_report(phases, errors, f"reopen failed: {exc}")
 
-    integrity = inspect_integrity(candidate_path).to_dict()
-    deep_invariants = inspect_deep(candidate_path).to_dict()
+    integrity = after_context.integrity
+    deep_invariants = after_context.deep_invariants
     structural_ok = bool(deep_invariants.get("valid")) and not after_state.resource_issues
     _phase(phases, "STRUCTURAL_VALIDATION", structural_ok, "valid PE, geometry, directories, and resource bounds")
 
-    before_graph = ResourceGraph.from_path(before_path)
-    after_graph = ResourceGraph.from_path(candidate_path)
+    before_graph = before_context.graph
+    after_graph = after_context.graph
     graph_diff = _graph_diff(before_graph, after_graph)
     graph_ok = not after_graph.issues
     _phase(phases, "RESOURCE_GRAPH_VALIDATION", graph_ok, f"{len(after_graph.leaves)} canonical leaves")

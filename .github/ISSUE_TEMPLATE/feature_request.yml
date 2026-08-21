@@ -22,7 +22,7 @@ body:
     attributes:
       label: Scope and safety
       options:
-        - label: This proposal does not require bundling ResourceHacker.exe.
+        - label: This proposal does not add unrelated proprietary executables.
           required: true
         - label: This proposal preserves Save As and independent verification requirements.
           required: true

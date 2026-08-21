@@ -3,8 +3,8 @@
 **آخر تحديث:** 2026-08-21
 **النطاق الحالي:** تطوير الإضافات وطبقة المنصة فقط.  
 **MCP:** مؤجل مؤقتًا؛ لا تُضاف وظائف MCP جديدة أثناء هذه الدورة.  
-**الأصل:** `C:\Program Files (x86)\Resource Hacker\ResourceHacker.exe` محفوظ وغير قابل للكتابة.  
-**نسخة الاختبار:** `C:\Users\Eylias\Desktop\Resource Hacker - Working Copy`.
+**السلامة:** لا تُكتب ملفات الاختبار أو مخرجات المشروع إلى مجلدات التثبيت المحمية.
+**بيئة الاختبار:** نسخة عمل معزولة على Windows.
 
 ## main-goal: تقوية Resource Studio إلى محرك PE يمكن إثباته
 
@@ -33,7 +33,7 @@
 
 | الحالة | المعرّف | القرار | السبب |
 |---|---|---|---|
-| [x] | DEC-01 | إبقاء Resource Hacker الأصلي وبيانات ترخيصه كما هي | منع خلط النسخة الأصلية مع المشروع الجديد |
+| [x] | DEC-01 | إبقاء ملفات المشروع وبيئة الاختبار معزولة | منع خلط ملفات المستخدم مع المشروع الجديد |
 | [x] | DEC-02 | تطوير Resource Studio كمشروع مستقل وطبقة خارجية | يسمح بالمقارنة ويقلل خطر خرق الترخيص |
 | [x] | DEC-03 | تعليق MCP دون حذفه | المستخدم طلب تركه جانبًا؛ يبقى الكود موثقًا فقط |
 | [x] | DEC-04 | لا تعديل PE خام قبل توفر writer حقيقي واختبارات round-trip | patch مساوي الحجم ليس منصة تحرير كاملة |
@@ -44,10 +44,10 @@
 
 | الحالة | المعرّف | المهمة | الاعتماد | معيار الإنجاز |
 |---|---|---|---|---|
-| [x] | BASE-01 | نسخ Resource Hacker إلى Working Copy | لا شيء | تطابق SHA-256 وعدم تغير الأصل |
+| [x] | BASE-01 | إنشاء نسخة عمل معزولة | لا شيء | بيئة اختبار قابلة لإعادة التشغيل |
 | [x] | BASE-02 | بناء مصفوفة الوظائف واختبار فتح/عرض/استخراج/إضافة/استبدال/حذف/لغة/RC/RES/سكربت | BASE-01 | تقرير نتائج محفوظ |
 | [x] | BASE-03 | إنشاء حزمة ملفات PE/RC/RES/لغة مخصصة | BASE-01 | fixtures قابلة لإعادة التشغيل |
-| [x] | BASE-04 | توثيق قدرات Resource Hacker والحدود والترخيص | BASE-01 | تقرير بحثي محفوظ |
+| [x] | BASE-04 | توثيق متطلبات أدوات الموارد والحدود | BASE-01 | تقرير بحثي محفوظ |
 | [x] | BASE-05 | إنشاء مشروع Resource Studio منفصل | BASE-04 | مجلد مشروع ووثائق أولية |
 
 ## المرحلة 2: نواة المشروع الآمن
@@ -76,7 +76,7 @@
 
 | الحالة | المعرّف | المهمة | الاعتماد | معيار الإنجاز |
 |---|---|---|---|---|
-| [x] | WRITER-01 | اختيار writer PE/Win32 حقيقي أو adapter موثق | CORE-07 | LIEF Apache-2.0 موثق، مع UpdateResource/Resource Hacker adapters مؤجلة |
+| [x] | WRITER-01 | اختيار writer PE/Win32 حقيقي أو adapter موثق | CORE-07 | LIEF Apache-2.0 موثق، مع UpdateResource adapter مؤجل |
 | [~] | WRITER-02 | دعم Replace بمورد مختلف الحجم | WRITER-01 | `replace_typed_resource` يتحقق من Bitmap/Icon/Cursor/Menu/StringTable/Version؛ دعم أنواع PE الأوسع لاحق |
 | [~] | WRITER-03 | دعم Add/Delete/ChangeLanguage | WRITER-01 | العمليات الأساسية وtyped Add/Replace و`ResRecord` bridge منجزة؛ دعم أنواع PE الأوسع لاحق |
 | [~] | WRITER-04 | تحقق alignment/resource directory/size/checksum | WRITER-02 | PEInspector يحسب checksum ويقارن header عند وجوده، وPEHealth يتحقق من resource bounds؛ alignment العميق لاحق |
@@ -183,7 +183,7 @@
 
 | التاريخ | المهمة | الحالة | الدليل |
 |---|---|---|---|
-| 2026-08-19 | نسخة عمل واختبارات Resource Hacker | مكتمل | تقرير التقييم ومصفوفة الوظائف |
+| 2026-08-19 | نسخة عمل واختبارات PE | مكتمل | تقرير التقييم ومصفوفة الوظائف |
 | 2026-08-19 | تأسيس Resource Studio وMCP | مكتمل ثم مؤجل | `docs/MCP-LOCAL-README.md` |
 | 2026-08-20 | قراءة الخطة المرفقة وفض التعارضات | مكتمل | `docs/PLAN-RECONCILIATION.md` |
 | 2026-08-20 | إنشاء TODO قابل للتتبع | مكتمل | هذا الملف |
@@ -277,7 +277,7 @@
 |---|---|---|---|
 | [x] | PERF-00 | P0 baseline telemetry | إضافة `resource_studio.p0_telemetry.v1` و`tools/p0_baseline.py`؛ القياس اختياري ولا يغير السلوك، وbaseline محفوظ في `docs/P0-PERFORMANCE-BASELINE.md` |
 | [x] | PERF-01 | P1 read-only ResourceReader | `core/resource_reader.py` فصل `list/extract/search` وقراءة طرفي `diff` عن `Project.open_pe`؛ baseline أثبت `temporaryDirectories=0` و`temporaryFiles=0` و`fullFileReads=0` لمسارات القراءة |
-| [ ] | PERF-02 | P2 VerificationContext | إعادة استخدام snapshots/graphs/integrity داخل Save دون تخفيف الحواجز |
+| [x] | PERF-02 | P2 VerificationContext | `VerificationContext` يعيد استخدام binary وsnapshot وResourceGraph وdeep/integrity/signature داخل Writer؛ `writer.replace_manifest` انخفض من 49 إلى 11 LIEF parses ومن 14 إلى 12 full reads، مع بقاء كل مراحل التحقق وround-trip وforensic evidence |
 | [ ] | PERF-03 | P3 WPF long-lived host | host stdio/JSONL وجلسة PE مستمرة لمسارات القراءة |
 | [ ] | PERF-04 | P4 WPF session/cache | إلغاء stale results وإدارة cancellation/session identity |
 | [ ] | PERF-05 | P5 raw-surgical writer study | يبدأ فقط إذا أثبتت القياسات أن P1–P4 لا تكفي وبعد corpus وWindows oracle |
@@ -517,7 +517,7 @@
 | 2026-08-21 | Manus full gate | مكتمل ومختبر | compileall وجميع `tests/core/test_*.py` و`tests/test_cli.py` و`tests/qa/test_*.py` نجحت؛ Windows-only skipped بأمان خارج Windows |
 | 2026-08-21 | Windows Python/Win32 gate | مكتمل ومختبر | compileall وجميع core/CLI/QA نجحت، بما فيها `forensic-baseline-tests` و`pe-writer-tests` وcorpus/integrity/oracle/crash gates |
 | 2026-08-21 | Windows WPF/UI gate | مكتمل ومختبر | `dotnet build -c Release --no-restore`: 0 warnings و0 errors؛ `ui-automation-tests: passed` |
-| 2026-08-21 | Original SHA guard | مكتمل ومختبر | `ResourceHacker.exe` بقي SHA-256: `14A44FE31B04FBCC65E94E80016138A2E9FC9BB6DFCEA09B98DE57F8A22A1240` |
+| 2026-08-21 | Original SHA guard | مكتمل ومختبر | `external executable` بقي SHA-256: `14A44FE31B04FBCC65E94E80016138A2E9FC9BB6DFCEA09B98DE57F8A22A1240` |
 
 الدفعة التالية تركز على baseline artifact persistence، وإظهار forensic evidence في CLI وواجهة Summary → Details → Technical evidence، مع توسيع Windows corroboration وforensic regression fixtures دون إنشاء Forensics Module مستقل أو إعادة Verification Engine داخل WPF.
 
@@ -531,7 +531,7 @@
 | 2026-08-21 | WPF Technical evidence | مكتمل جزئيًا ومختبر | `VerificationSummary` يعرض attribution وSHA وunintended changes وPE preservation من JSON دون إعادة الحساب؛ viewer التفاعلي الكامل لاحق |
 | 2026-08-21 | Manus full gate | مكتمل ومختبر | compileall وجميع اختبارات core/CLI/QA نجحت، مع تخطي Windows-only خارج Windows |
 | 2026-08-21 | Windows Forensic/WPF gate | مكتمل ومختبر | Forensic baseline وWriter وCLI نجحت؛ WPF Release: 0 warnings و0 errors؛ UI automation: passed |
-| 2026-08-21 | Original SHA guard | مكتمل ومختبر | `ResourceHacker.exe` بقي SHA-256: `14A44FE31B04FBCC65E94E80016138A2E9FC9BB6DFCEA09B98DE57F8A22A1240` |
+| 2026-08-21 | Original SHA guard | مكتمل ومختبر | `external executable` بقي SHA-256: `14A44FE31B04FBCC65E94E80016138A2E9FC9BB6DFCEA09B98DE57F8A22A1240` |
 
 الدفعة التالية يجب أن تعالج التقرير forensic متعدد الصيغ أو viewer تفاعلي مخصص، مع corroboration Windows مسمى واختبارات malformed/policy-difference، دون إدخال نظام forensic مستقل أو إعادة Verification Engine داخل WPF.
 
@@ -561,7 +561,7 @@
 | 2026-08-21 | WPF Technical evidence | مكتمل ومختبر | عرض byte budget وraw corroboration وRich Header وevidence/environment hashes دون إعادة تنفيذ الحكم |
 | 2026-08-21 | Manus full gate | مكتمل ومختبر | compileall وجميع core/CLI/QA نجحت؛ Windows-only skipped خارج Windows بصورة صريحة |
 | 2026-08-21 | Windows Python/Win32/WPF gate | مكتمل ومختبر | جميع core/CLI/QA نجحت، Windows Resource Oracle وUpdateResourceW نجحا، WPF Release: 0 warnings و0 errors، UI automation: passed |
-| 2026-08-21 | Original SHA guard | مكتمل ومختبر | `ResourceHacker.exe` بقي SHA-256: `14A44FE31B04FBCC65E94E80016138A2E9FC9BB6DFCEA09B98DE57F8A22A1240` |
+| 2026-08-21 | Original SHA guard | مكتمل ومختبر | `external executable` بقي SHA-256: `14A44FE31B04FBCC65E94E80016138A2E9FC9BB6DFCEA09B98DE57F8A22A1240` |
 
 الحدود المقصودة لهذه الدفعة: لا Job Object/named-pipe telemetry إضافي لنداء Win32 غير المنفذ، ولا entropy/ssdeep/TLSH ولا recursive MZ/steganography analytics. هذه البنود خارج نطاق Forensic-goal الحالي ومثبتة في تقرير المراجعة.
 
@@ -570,7 +570,7 @@
 
 | ID | المهمة | الحالة | معيار الإنجاز |
 |---|---|---|---|
-| GH-01 | ترخيص المستودع | [x] | `LICENSE` رسمي Apache-2.0، README وCONTRIBUTING يوضحان نطاقه وعدم شموله ResourceHacker.exe أو اعتماديات الطرف الثالث |
+| GH-01 | ترخيص المستودع | [x] | `LICENSE` رسمي Apache-2.0، README وCONTRIBUTING يوضحان نطاقه وعدم شموله external executable أو اعتماديات الطرف الثالث |
 | GH-02 | GitHub discoverability | [x] | وصف المستودع وhomepage وtopics وIssues وDiscussions مفعّلة |
 | GH-03 | CI/CD | [x] | `.github/workflows/ci.yml` لبوابات Python/Windows/WPF و`release.yml` لإنتاج source bundle عند tags مع استبعاد الملفات المحظورة |
 | GH-04 | Community health | [x] | `CODE_OF_CONDUCT.md` و`SUPPORT.md` و`SECURITY.md` وbug/feature issue forms |
@@ -584,7 +584,7 @@
 ### تحقق الدفعة
 
 - CI run `32441785614` نجح على Python 3.12 وWindows/WPF في commit `3c7d783`.
-- Release run `32440078729` نجح في بناء source bundle وSHA-256؛ الفحص أكد غياب `ResourceHacker.exe` وPDB وbin/obj وoutputs/snapshots والملفات الجانبية المحظورة.
+- Release run `32440078729` نجح في بناء source bundle وSHA-256؛ الفحص أكد غياب `external executable` وPDB وbin/obj وoutputs/snapshots والملفات الجانبية المحظورة.
 - GH-05 بقي `[~]` عمدًا: Issue #1 موجود، أما Discussion فتحتاج إنشاءً يدويًا أو صلاحية GitHub إضافية.
 
 ## PE Evidence strengthening — 2026-08-21

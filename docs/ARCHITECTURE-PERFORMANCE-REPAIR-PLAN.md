@@ -52,7 +52,7 @@
 
 لا نلغي pre-commit verification أو post-commit readback؛ فالأول يحمي من commit لمرشح سيئ، والثاني يثبت bytes الهدف بعد `os.replace`. الذي يُزال هو إعادة حساب نفس snapshot أو graph بلا داعٍ. إذا تغير الملف أو لم تتطابق identity/hash، يبطل السياق ويعاد التحليل.
 
-معايير القبول هي تطابق verdicts وerrors وevidence hashes مع baseline، انخفاض عدد parses المقاسة، وبقاء اختبارات preservation وdeterminism وcrash consistency وWindows gates ناجحة.
+معايير القبول هي تطابق verdicts وerrors وevidence hashes مع baseline، انخفاض عدد parses المقاسة، وبقاء اختبارات preservation وdeterminism وcrash consistency وWindows gates ناجحة. نُفذ P2 عبر `VerificationContext`: انخفض `writer.replace_manifest` من 49 إلى 11 LIEF parses ومن 14 إلى 12 full reads في fixture baseline، مع نجاح اختبارات Writer وVerification وForensic وcrash consistency. بقيت pre-commit وpost-commit وforensic gates دون حذف.
 
 ### المرحلة E — تصنيف writer بدل اتهامه أو استبداله دفعة واحدة
 
@@ -72,14 +72,14 @@
 |---|---|---:|---:|
 | P0 | benchmark/trace بلا تغيير سلوك | منخفضة | يزيل الجدل ويحدد عنق الزجاجة الحقيقي |
 | P1 | read-only ResourceReader للـCLI | منخفضة | مكتمل؛ أزال workspace وtemporary I/O من list/extract/search |
-| P2 | VerificationContext وإزالة إعادة التحليل المكرر | متوسطة | يحسن الكتابة دون تقليل الضمانات |
+| P2 | VerificationContext وإزالة إعادة التحليل المكرر | متوسطة | مكتمل؛ خفض إعادة parsing في Writer دون تقليل الضمانات |
 | P3 | Python host طويل العمر للقراءة في WPF | متوسطة | يزيل process-per-action ويضيف state persistence |
 | P4 | WPF session/cache/cancellation | متوسطة | يحول الواجهة إلى تطبيق مستمر فعليًا |
 | P5 | دراسة raw-surgical writer لنطاق ضيق | عالية | لا يبدأ إلا بعد القياس وcorpus وWindows oracle |
 
 ## ما يجب ألا نفعله
 
-لا نحذف `verify_candidate` أو `verify_transformation` لمجرد أن LIEF قد يسبب drift؛ ذلك يخفي العيب بدل عزله. لا نقرر أن Resource Hacker أو أي أداة أخرى تثبت أن raw patching بسيط لكل أنواع الموارد؛ هذا افتراض غير آمن. لا نضيف database أو HTTP service أو MCP إلى مسار الأداء قبل أن نحل process-per-action وProject materialization. ولا نضع cache عالميًا بلا invalidation صارم، لأن stale PE evidence أخطر من البطء.
+لا نحذف `verify_candidate` أو `verify_transformation` لمجرد أن LIEF قد يسبب drift؛ ذلك يخفي العيب بدل عزله. لا نقرر أن أي أداة خارجية تثبت أن raw patching بسيط لكل أنواع الموارد؛ هذا افتراض غير آمن. لا نضيف database أو HTTP service أو MCP إلى مسار الأداء قبل أن نحل process-per-action وProject materialization. ولا نضع cache عالميًا بلا invalidation صارم، لأن stale PE evidence أخطر من البطء.
 
 ## معايير النجاح النهائية
 
