@@ -22,6 +22,7 @@ public partial class MainWindow : Window
     private Process? _activeCliProcess;
     private CancellationTokenSource? _cliCancellation;
     private ReadHostClient? _readHost;
+    private long _requestGeneration;
 
     public MainWindow()
     {
@@ -121,6 +122,7 @@ public partial class MainWindow : Window
     {
         if (!RequirePe()) return;
         var result = await RunCliCaptureAsync("inspect", _selectedPe!, "--json");
+        if (result.IsStale) return;
         InspectBox.Text = PrettyJson(result.StdoutOrError);
         StatusText.Text = result.ExitCode == 0 ? "Inspection completed" : $"CLI exited with code {result.ExitCode}";
     }
@@ -129,6 +131,7 @@ public partial class MainWindow : Window
     {
         if (!RequirePe()) return;
         var result = await RunCliCaptureAsync("validate", _selectedPe!, "--json");
+        if (result.IsStale) return;
         InspectBox.Text = PrettyJson(result.StdoutOrError);
         StatusText.Text = result.ExitCode == 0 ? "Validation completed" : $"CLI exited with code {result.ExitCode}";
     }
@@ -247,6 +250,7 @@ public partial class MainWindow : Window
         var args = new List<string> { "batch", action, manifest, "--json" };
         if (action == "apply") args.AddRange(new[] { "--report", Path.ChangeExtension(manifest, ".batch-report.json") });
         var result = await RunCliCaptureAsync(args.ToArray());
+        if (result.IsStale) return;
         BatchReportBox.Text = PrettyJson(result.StdoutOrError);
         StatusText.Text = result.ExitCode == 0 ? $"Batch {action} completed" : $"CLI exited with code {result.ExitCode}";
     }
@@ -265,6 +269,7 @@ public partial class MainWindow : Window
             return;
         }
         var result = await RunCliCaptureAsync("localization", "compare", LocalizationCatalogBox.Text, "--source-language", LocalizationSourceBox.Text, "--target-language", LocalizationTargetBox.Text, "--json");
+        if (result.IsStale) return;
         LocalizationOutputBox.Text = PrettyJson(result.StdoutOrError);
         StatusText.Text = result.ExitCode == 0 ? "Localization comparison completed" : $"CLI exited with code {result.ExitCode}";
     }
@@ -279,6 +284,7 @@ public partial class MainWindow : Window
         var dialog = new SaveFileDialog { Filter = "Localization catalogs (*.json)|*.json|All files (*.*)|*.*", FileName = "pseudo-localized.json" };
         if (dialog.ShowDialog() != true) return;
         var result = await RunCliCaptureAsync("localization", "pseudo", LocalizationCatalogBox.Text, "--source-language", LocalizationSourceBox.Text, "--target-language", LocalizationTargetBox.Text, "--output", dialog.FileName, "--json");
+        if (result.IsStale) return;
         LocalizationOutputBox.Text = PrettyJson(result.StdoutOrError);
         StatusText.Text = result.ExitCode == 0 ? "Pseudo-localization completed" : $"CLI exited with code {result.ExitCode}";
     }
@@ -296,6 +302,7 @@ public partial class MainWindow : Window
         if (SearchHexBox.IsChecked == true) args.Add("--hex");
         args.Add("--json");
         var result = await RunCliCaptureAsync(args.ToArray());
+        if (result.IsStale) return;
         if (result.ExitCode != 0)
         {
             SearchGrid.ItemsSource = null;
@@ -311,6 +318,7 @@ public partial class MainWindow : Window
     {
         if (!RequirePe()) return;
         var result = await RunCliCaptureAsync("security", _selectedPe!, "--json");
+        if (result.IsStale) return;
         SecurityReportBox.Text = PrettyJson(result.StdoutOrError);
         StatusText.Text = result.ExitCode == 0 ? "Static security analysis completed" : $"CLI exited with code {result.ExitCode}";
     }
@@ -319,6 +327,7 @@ public partial class MainWindow : Window
     {
         if (!RequirePe()) return;
         var result = await RunCliCaptureAsync("evidence-graph", _selectedPe!, "--json");
+        if (result.IsStale) return;
         EvidenceGraphBox.Text = PrettyJson(result.StdoutOrError);
         StatusText.Text = result.ExitCode == 0 ? "Evidence graph completed" : $"CLI exited with code {result.ExitCode}";
     }
@@ -332,6 +341,7 @@ public partial class MainWindow : Window
             return;
         }
         var result = await RunCliCaptureAsync("evidence-query", _selectedPe!, EvidenceQueryBox.Text, "--json");
+        if (result.IsStale) return;
         EvidenceQueryResultsBox.Text = PrettyJson(result.StdoutOrError);
         StatusText.Text = result.ExitCode == 0 ? "Evidence query completed" : $"CLI exited with code {result.ExitCode}";
     }
@@ -342,6 +352,7 @@ public partial class MainWindow : Window
         var dialog = new SaveFileDialog { Filter = "Resource Studio cases (*.case.json)|*.case.json|JSON files (*.json)|*.json", FileName = Path.GetFileNameWithoutExtension(_selectedPe) + ".case.json" };
         if (dialog.ShowDialog() != true) return;
         var result = await RunCliCaptureAsync("case", "create", _selectedPe!, "--output", dialog.FileName, "--json");
+        if (result.IsStale) return;
         CasePathBox.Text = dialog.FileName + Environment.NewLine + PrettyJson(result.StdoutOrError);
         StatusText.Text = result.ExitCode == 0 ? "Case created" : $"CLI exited with code {result.ExitCode}";
     }
@@ -357,6 +368,7 @@ public partial class MainWindow : Window
             casePath = dialog.FileName;
         }
         var result = await RunCliCaptureAsync("case", "analyze", casePath, _selectedPe!, "--json");
+        if (result.IsStale) return;
         CasePathBox.Text = casePath + Environment.NewLine + PrettyJson(result.StdoutOrError);
         StatusText.Text = result.ExitCode == 0 ? "Case analyzed" : $"CLI exited with code {result.ExitCode}";
     }
@@ -373,6 +385,7 @@ public partial class MainWindow : Window
             return;
         }
         var result = await RunCliCaptureAsync("diff", DiffLeftBox.Text, DiffRightBox.Text, "--json");
+        if (result.IsStale) return;
         DiffTree.Items.Clear();
         if (result.ExitCode != 0)
         {
@@ -392,6 +405,7 @@ public partial class MainWindow : Window
     {
         if (!RequirePe()) return;
         var result = await RunCliCaptureAsync("list", _selectedPe!, "--json");
+        if (result.IsStale) return;
         if (result.ExitCode != 0)
         {
             StatusText.Text = $"CLI exited with code {result.ExitCode}";
@@ -429,6 +443,7 @@ public partial class MainWindow : Window
             arguments.AddRange(new[] { "--output", bitmapOutput });
         }
         var result = await RunCliCaptureAsync(arguments.ToArray());
+        if (result.IsStale) return;
         PreviewBox.Text = result.ExitCode == 0 ? PrettyJson(result.StdoutOrError) : result.StdoutOrError;
         if (result.ExitCode == 0)
         {
@@ -555,14 +570,17 @@ public partial class MainWindow : Window
     {
         var stopwatch = Stopwatch.StartNew();
         var operation = string.Join(" ", arguments.Take(2));
+        var requestId = Interlocked.Increment(ref _requestGeneration);
+        _cliCancellation?.Cancel();
         using var cancellation = new CancellationTokenSource();
         _cliCancellation = cancellation;
-        SetCliState(CliOperationState.Running, $"Running: {operation}");
+        if (IsCurrentRequest(requestId)) SetCliState(CliOperationState.Running, $"Running: {operation}");
+        Process? ownedProcess = null;
         if (_cliPath is null)
         {
-            SetCliState(CliOperationState.Failed, "CLI not found — check the project folder");
+            if (IsCurrentRequest(requestId)) SetCliState(CliOperationState.Failed, "CLI not found — check the project folder");
             _cliCancellation = null;
-            return new CliResult(2, "resource_studio_cli.py was not found.", CliOperationState.Failed, stopwatch.ElapsedMilliseconds);
+            return new CliResult(2, "resource_studio_cli.py was not found.", CliOperationState.Failed, stopwatch.ElapsedMilliseconds, !IsCurrentRequest(requestId));
         }
         try
         {
@@ -580,13 +598,15 @@ public partial class MainWindow : Window
                         : hostState == CliOperationState.Stopped
                             ? $"{operation} stopped — input unchanged"
                             : $"{operation} failed — open Inspect for details";
-                    SetCliState(hostState, hostDetail);
-                    return new CliResult(hostResult.ExitCode, hostResult.Output, hostState, stopwatch.ElapsedMilliseconds);
+                    var hostIsStale = !IsCurrentRequest(requestId);
+                    if (!hostIsStale) SetCliState(hostState, hostDetail);
+                    return new CliResult(hostResult.ExitCode, hostResult.Output, hostState, stopwatch.ElapsedMilliseconds, hostIsStale);
                 }
                 catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
                 {
-                    SetCliState(CliOperationState.Stopped, $"{operation} stopped — input unchanged");
-                    return new CliResult(130, "Operation stopped; input unchanged.", CliOperationState.Stopped, stopwatch.ElapsedMilliseconds);
+                    var hostIsStale = !IsCurrentRequest(requestId);
+                    if (!hostIsStale) SetCliState(CliOperationState.Stopped, $"{operation} stopped — input unchanged");
+                    return new CliResult(130, "Operation stopped; input unchanged.", CliOperationState.Stopped, stopwatch.ElapsedMilliseconds, hostIsStale);
                 }
                 catch
                 {
@@ -611,6 +631,7 @@ public partial class MainWindow : Window
             info.ArgumentList.Add(_cliPath);
             foreach (var argument in arguments) info.ArgumentList.Add(argument);
             using var process = Process.Start(info) ?? throw new InvalidOperationException("Could not start Python CLI");
+            ownedProcess = process;
             _activeCliProcess = process;
             var stdoutTask = process.StandardOutput.ReadToEndAsync();
             var stderrTask = process.StandardError.ReadToEndAsync();
@@ -622,24 +643,27 @@ public partial class MainWindow : Window
             var detail = state == CliOperationState.Completed
                 ? $"{operation} completed in {stopwatch.Elapsed.TotalSeconds:0.0}s"
                 : $"{operation} failed — open Inspect for details";
-            SetCliState(state, detail);
-            return new CliResult(process.ExitCode, resultText, state, stopwatch.ElapsedMilliseconds);
+            var processIsStale = !IsCurrentRequest(requestId);
+            if (!processIsStale) SetCliState(state, detail);
+            return new CliResult(process.ExitCode, resultText, state, stopwatch.ElapsedMilliseconds, processIsStale);
         }
         catch (OperationCanceledException)
         {
-            if (_activeCliProcess is { HasExited: false }) _activeCliProcess.Kill(entireProcessTree: true);
-            SetCliState(CliOperationState.Stopped, $"{operation} stopped — input unchanged");
-            return new CliResult(130, "Operation stopped; input unchanged.", CliOperationState.Stopped, stopwatch.ElapsedMilliseconds);
+            if (ownedProcess is { HasExited: false }) ownedProcess.Kill(entireProcessTree: true);
+            var processIsStale = !IsCurrentRequest(requestId);
+            if (!processIsStale) SetCliState(CliOperationState.Stopped, $"{operation} stopped — input unchanged");
+            return new CliResult(130, "Operation stopped; input unchanged.", CliOperationState.Stopped, stopwatch.ElapsedMilliseconds, processIsStale);
         }
         catch (Exception exc)
         {
-            SetCliState(CliOperationState.Failed, "Could not start CLI — see the error details");
-            return new CliResult(2, exc.ToString(), CliOperationState.Failed, stopwatch.ElapsedMilliseconds);
+            var processIsStale = !IsCurrentRequest(requestId);
+            if (!processIsStale) SetCliState(CliOperationState.Failed, "Could not start CLI — see the error details");
+            return new CliResult(2, exc.ToString(), CliOperationState.Failed, stopwatch.ElapsedMilliseconds, processIsStale);
         }
         finally
         {
-            _activeCliProcess = null;
-            _cliCancellation = null;
+            if (ReferenceEquals(_activeCliProcess, ownedProcess)) _activeCliProcess = null;
+            if (ReferenceEquals(_cliCancellation, cancellation)) _cliCancellation = null;
         }
     }
 
@@ -650,9 +674,12 @@ public partial class MainWindow : Window
             || (arguments[0] == "localization" && arguments.Count > 1 && arguments[1] == "compare");
     }
 
+    private bool IsCurrentRequest(long requestId) => Volatile.Read(ref _requestGeneration) == requestId;
+
     private void StopCli_Click(object sender, RoutedEventArgs e)
     {
         if (_cliState != CliOperationState.Running) return;
+        Interlocked.Increment(ref _requestGeneration);
         _cliCancellation?.Cancel();
         if (_activeCliProcess is { HasExited: false }) _activeCliProcess.Kill(entireProcessTree: true);
     }
@@ -718,5 +745,5 @@ public partial class MainWindow : Window
         Stopped,
     }
 
-    private sealed record CliResult(int ExitCode, string StdoutOrError, CliOperationState State, long DurationMilliseconds);
+    private sealed record CliResult(int ExitCode, string StdoutOrError, CliOperationState State, long DurationMilliseconds, bool IsStale = false);
 }

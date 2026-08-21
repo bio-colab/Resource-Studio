@@ -236,6 +236,8 @@ PYTHONPATH=. python3 tools/p0_baseline.py
 
 أُنجز P3 عبر [`tools/wpf_read_host.py`](tools/wpf_read_host.py) و`ReadHostClient.cs`: تستخدم MainWindow عملية Python طويلة العمر عبر JSONL لمسارات القراءة الساخنة، مع session cache لـ`list/search` وfallback للمسار القديم عند الحاجة. على fixture baseline كان `search` الدافئ 8.177ms داخل host مقابل 467.936ms لتشغيل CLI مستقل في بيئة Linux؛ هذه مقارنة process startup وليست benchmark Windows. لا ينقل P3 core إلى Rust أو C++ قبل قياس Windows يثبت الحاجة؛ التفاصيل في [`docs/P3-READ-HOST.md`](docs/P3-READ-HOST.md).
 
+أُنجز P4 بإضافة `_requestGeneration` و`CliResult.IsStale`: عند بدء طلب أحدث يُلغى السابق، ولا يستطيع ناتج قديم الكتابة إلى UI. كما أصبحت عملية fallback مملوكة للطلب الذي أنشأها، وتفاصيل ذلك في [`docs/P4-WPF-SESSION.md`](docs/P4-WPF-SESSION.md).
+
 ## حدود مقصودة
 
 لا يهدف Forensic-goal إلى بناء malware scanner أو IOC engine أو YARA أو PEiD أو entropy maps أو timeline عام أو hex forensic viewer جديد. أصبح Security-goal مسارًا مستقلًا للتحليل الساكن الدفاعي؛ لا يشغّل الملفات ولا يفك payloadات ولا يعلن أن heuristic واحدة تعني malware. أما Defender وYARA فهما موفّران خارجيان اختياريان على staged copies، وليسَا جزءًا من writer أو verdict داخلي. كما أن MCP مؤجل في هذه الدورة.
