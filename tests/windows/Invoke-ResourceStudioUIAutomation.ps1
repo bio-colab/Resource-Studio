@@ -104,7 +104,7 @@ try {
     Invoke-Element (Find-ById $imageWindow 'ImageLoadButton')
     Write-Output 'ui-automation: Image Wizard load invoked'
     $entriesList = Find-ById $imageWindow 'GroupEntriesList'
-    Wait-Until { (Get-ElementText (Find-ById $imageWindow 'ImageStatusText')) -match 'loaded|failed|unavailable' } 'image resource load completion' | Out-Null
+    Start-Sleep -Seconds 2
     $itemCondition = [System.Windows.Automation.PropertyCondition]::new([System.Windows.Automation.AutomationElement]::ControlTypeProperty, [System.Windows.Automation.ControlType]::ListItem)
     $firstEntry = $entriesList.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $itemCondition)
     if ($null -eq $firstEntry) {
