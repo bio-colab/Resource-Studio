@@ -11,7 +11,11 @@ def path_access_status(path: Path) -> str:
         return "NOT_FOUND"
     if os.name == "nt":
         kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
-        handle = kernel32.CreateFileW(str(path), 0, 7, None, 3, 0x80, None)
+        kernel32.CreateFileW.argtypes = [ctypes.c_wchar_p, ctypes.c_uint32, ctypes.c_uint32, ctypes.c_void_p, ctypes.c_uint32, ctypes.c_uint32, ctypes.c_void_p]
+        kernel32.CreateFileW.restype = ctypes.c_void_p
+        kernel32.CloseHandle.argtypes = [ctypes.c_void_p]
+        kernel32.CloseHandle.restype = ctypes.c_bool
+        handle = kernel32.CreateFileW(str(path), 0x80000000, 0, None, 3, 0x80, None)
         if handle == ctypes.c_void_p(-1).value:
             return "LOCKED" if ctypes.get_last_error() in {32, 33} else "ACCESS_DENIED"
         kernel32.CloseHandle(handle)
