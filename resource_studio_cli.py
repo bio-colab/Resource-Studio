@@ -18,6 +18,9 @@ from core.security_providers import load_external_scan
 from core.security_workspace import stage_readonly_copy
 from core.evidence_ledger import EvidenceLedger, generate_ed25519_keypair
 from core.evidence_model import build_evidence_summary, evidence_summary_hash
+from core.evidence_graph import EvidenceGraph
+from core.evidence_query import query_summary
+from core.case_lifecycle import CaseFile
 from core.forensics import ForensicBaseline
 from core.deep_invariants import inspect_deep
 from core.dialog_resources import DialogResource
@@ -517,6 +520,51 @@ def command_image_diff(args: argparse.Namespace) -> int:
     return 0
 
 
+def command_evidence_graph(args: argparse.Namespace) -> int:
+    report = analyze_security(args.input)
+    summary = report.get("evidence")
+    if not isinstance(summary, dict):
+        raise ValueError("security report did not produce an evidence summary")
+    graph = EvidenceGraph.from_summary(summary)
+    payload = graph.to_dict()
+    payload["graphHash"] = graph.graph_hash()
+    _print(payload, args.json)
+    return 0 if report["parse"]["status"] == "VALID_PE" else 1
+
+
+def command_evidence_query(args: argparse.Namespace) -> int:
+    report = analyze_security(args.input)
+    summary = report.get("evidence")
+    if not isinstance(summary, dict):
+        raise ValueError("security report did not produce an evidence summary")
+    matches = query_summary(summary, args.query)
+    _print({"query": args.query, "count": len(matches), "matches": matches}, args.json)
+    return 0 if report["parse"]["status"] == "VALID_PE" else 1
+
+
+def command_case(args: argparse.Namespace) -> int:
+    if args.action == "create":
+        case = CaseFile.create(args.input)
+        case.save(args.output)
+        payload = case.payload
+    elif args.action == "analyze":
+        case = CaseFile.load(args.case)
+        case.add_security_report(analyze_security(args.input))
+        case.save(args.case)
+        payload = case.payload
+    elif args.action == "transition":
+        case = CaseFile.load(args.case)
+        case.transition(args.status, note=args.note)
+        case.save(args.case)
+        payload = case.payload
+    else:
+        case = CaseFile.load(args.case)
+        payload = case.payload
+        payload["auditVerification"] = case.verify_audit()
+    _print(payload, args.json)
+    return 0
+
+
 def command_security(args: argparse.Namespace) -> int:
     external_results = tuple(load_external_scan(path) for path in (args.external_result or []))
     staged = stage_readonly_copy(args.input, args.stage_root) if args.stage_root else None
@@ -677,6 +725,40 @@ def parser() -> argparse.ArgumentParser:
     security_parser.add_argument("--ledger", type=Path, help="append the report to a local tamper-evident EvidenceLedger")
     security_parser.add_argument("--json", action="store_true")
     security_parser.set_defaults(handler=command_security)
+
+    graph_parser = subparsers.add_parser("evidence-graph", help="build a deterministic evidence graph from a PE")
+    graph_parser.add_argument("input", type=Path)
+    graph_parser.add_argument("--json", action="store_true")
+    graph_parser.set_defaults(handler=command_evidence_graph)
+
+    query_parser = subparsers.add_parser("evidence-query", help="filter normalized evidence with a safe query")
+    query_parser.add_argument("input", type=Path)
+    query_parser.add_argument("query")
+    query_parser.add_argument("--json", action="store_true")
+    query_parser.set_defaults(handler=command_evidence_query)
+
+    case_parser = subparsers.add_parser("case", help="manage a deterministic evidence case lifecycle")
+    case_actions = case_parser.add_subparsers(dest="action", required=True)
+    case_create = case_actions.add_parser("create")
+    case_create.add_argument("input", type=Path)
+    case_create.add_argument("--output", type=Path, required=True)
+    case_create.add_argument("--json", action="store_true")
+    case_create.set_defaults(handler=command_case)
+    case_analyze = case_actions.add_parser("analyze")
+    case_analyze.add_argument("case", type=Path)
+    case_analyze.add_argument("input", type=Path)
+    case_analyze.add_argument("--json", action="store_true")
+    case_analyze.set_defaults(handler=command_case)
+    case_transition = case_actions.add_parser("transition")
+    case_transition.add_argument("case", type=Path)
+    case_transition.add_argument("status")
+    case_transition.add_argument("--note")
+    case_transition.add_argument("--json", action="store_true")
+    case_transition.set_defaults(handler=command_case)
+    case_show = case_actions.add_parser("show")
+    case_show.add_argument("case", type=Path)
+    case_show.add_argument("--json", action="store_true")
+    case_show.set_defaults(handler=command_case)
 
     preview_parser = subparsers.add_parser("preview", help="preview a typed resource with raw fallback")
     preview_parser.add_argument("input", type=Path)

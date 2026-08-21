@@ -271,6 +271,17 @@
 | 2026-08-20 | تنفيذ SYS-09 Job Object Containment Proof | مكتمل ومختبر | child/grandchild probe داخل `WindowsJob`، و`JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE` أنهى الشجرة؛ اختبار Windows نجح |
 | 2026-08-20 | تنفيذ SYS-10 WPF Process-State baseline | مكتمل جزئيًا ومختبر | `CliStateText` وAutomationId وحالات Idle/Running/Completed/Failed؛ build WPF بـ0 أخطاء و0 تحذيرات وUI automation مع fixture ICON نجح |
 
+## Advanced Evidence layers
+
+| الحالة | المعرّف | المهمة | معيار الإنجاز |
+|---|---|---|---|
+| [x] | ADV-01 | Evidence Graph | `resource_studio.evidence_graph.v1` بعقد وعلاقات حتمية `corroborates` و`contradicts` و`derives-from` و`supports` و`references`، مع graph hash قابل للمقارنة |
+| [x] | ADV-02 | Query / Filtering Engine | grammar آمنة تدعم namespaces محددة و`== != > >= < <= contains` و`and/or/parentheses` دون `eval` |
+| [x] | ADV-03 | Case lifecycle | `resource_studio.case.v1` مع `OPEN → TRIAGED → ANALYZED → REPORTED → CLOSED` وtimeline وaudit event hash-chain وتقارير قابلة لإعادة التحميل |
+| [x] | ADV-04 | CLI surface | أوامر `evidence-graph` و`evidence-query` و`case create/analyze/transition/show` |
+| [x] | ADV-05 | WPF Security Center | تبويب Security Center يعرض static report وgraph وquery results وcase path فوق CLI الحالي؛ اختبار Windows/WPF النهائي مطلوب بعد الدفع |
+| [ ] | ADV-06 | Graph-aware report export | تصدير graph/query/case إلى Markdown/CSV/HTML مع links قابلة للنقر ومصادر الأدلة |
+
 ## Security-goal: PE security and safe reverse-engineering
 
 | الحالة | المعرّف | المهمة | معيار الإنجاز |

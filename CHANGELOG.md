@@ -24,6 +24,10 @@
 - إضافة `CommitResult.verified_sha256` مع post-commit readback بعد الاستبدال.
 - إضافة `core/pure_loader_oracle.py` لاختبار اختيار اللغة على canonical ResourceGraph دون الادعاء بأنه بديل Win32.
 - إضافة `EvidenceLedger` اختياريًا كسجل JSONL append-only مع hash-chain وتوقيع Ed25519 عند توفر `cryptography`، دون ادعاء chain of custody قانونية.
+- إضافة `resource_studio.evidence_graph.v1` بعقد evidence nodes وعلاقات `corroborates` و`contradicts` و`derives-from` و`supports` و`references` مع graph hash حتمي.
+- إضافة Query Engine آمن وأوامر `evidence-query` و`evidence-graph`، مع namespaces محددة وoperators مقارنة و`contains` و`and/or` دون `eval`.
+- إضافة `resource_studio.case.v1` وأوامر `case create/analyze/transition/show` مع lifecycle وtimeline وaudit event hash-chain وتقارير قابلة لإعادة التحميل.
+- إضافة تبويب WPF Security Center يعرض static security report وEvidence Graph ونتائج Query وcase path فوق CLI/Core الحالية، دون إعادة تنفيذ Verification Engine.
 - إضافة evidence chain metadata القابل لإعادة البناء: `prevSha256` وenvironment fingerprint وcommand line وevidence sha256.
 - إضافة `PreservationMap` بخريطة byte ranges وتصنيف `EXPECTED_TARGET_RESOURCE` و`EXPECTED_RESOURCE_CONTAINER` و`EXPECTED_HEADER_RECALC` و`UNEXPECTED`، مع ميزانية unexpected تساوي صفرًا.
 - إضافة raw resource parser مستقل محدود يقارن موارد `IMAGE_RESOURCE_DIRECTORY` مع canonical ResourceGraph.

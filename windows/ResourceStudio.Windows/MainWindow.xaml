@@ -111,6 +111,29 @@
             <TabItem AutomationProperties.AutomationId="InspectTab" Header="Inspect">
                 <TextBox AutomationProperties.AutomationId="InspectDetailsBox" AutomationProperties.Name="Inspection details" x:Name="InspectBox" Margin="6" FontFamily="Consolas" FontSize="12" AcceptsReturn="True" IsReadOnly="True" TextWrapping="NoWrap" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" />
             </TabItem>
+            <TabItem AutomationProperties.AutomationId="SecurityTab" Header="Security Center">
+                <Grid Margin="6">
+                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+                    <WrapPanel Margin="0,0,0,6">
+                        <Button AutomationProperties.AutomationId="SecurityAnalyzeButton" Content="Analyze PE" Click="SecurityAnalyze_Click" Margin="0,0,6,0" ToolTip="Run static-only analysis; the PE is never executed" />
+                        <Button AutomationProperties.AutomationId="EvidenceGraphButton" Content="Build Evidence Graph" Click="EvidenceGraph_Click" Margin="0,0,6,0" ToolTip="Build a deterministic graph from normalized evidence" />
+                        <Button AutomationProperties.AutomationId="CaseCreateButton" Content="Create Case" Click="CaseCreate_Click" Margin="0,0,6,0" ToolTip="Create a case JSON without modifying the PE" />
+                        <Button AutomationProperties.AutomationId="CaseAnalyzeButton" Content="Analyze Case" Click="CaseAnalyze_Click" />
+                    </WrapPanel>
+                    <DockPanel Grid.Row="1" Margin="0,0,0,6">
+                        <Button AutomationProperties.AutomationId="EvidenceQueryButton" Content="Run Query" DockPanel.Dock="Right" Click="EvidenceQuery_Click" />
+                        <TextBox AutomationProperties.AutomationId="EvidenceQueryBox" AutomationProperties.Name="Evidence query" x:Name="EvidenceQueryBox" Text="finding.severity == &quot;HIGH&quot;" Margin="0,0,6,0" ToolTip="Safe query: resource.type == &quot;ICON&quot; or evidence.confidence &gt;= 0.8" />
+                    </DockPanel>
+                    <Grid Grid.Row="2">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions><RowDefinition Height="*" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+                        <TextBox AutomationProperties.AutomationId="SecurityReportBox" AutomationProperties.Name="Static security report" x:Name="SecurityReportBox" Grid.Row="0" Grid.Column="0" Margin="0,0,6,6" FontFamily="Consolas" FontSize="11" AcceptsReturn="True" IsReadOnly="True" TextWrapping="NoWrap" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" />
+                        <TextBox AutomationProperties.AutomationId="EvidenceGraphBox" AutomationProperties.Name="Evidence graph" x:Name="EvidenceGraphBox" Grid.Row="0" Grid.Column="1" Margin="6,0,0,6" FontFamily="Consolas" FontSize="11" AcceptsReturn="True" IsReadOnly="True" TextWrapping="NoWrap" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" />
+                        <TextBox AutomationProperties.AutomationId="EvidenceQueryResultsBox" AutomationProperties.Name="Evidence query results" x:Name="EvidenceQueryResultsBox" Grid.Row="1" Grid.Column="0" Margin="0,6,6,0" FontFamily="Consolas" FontSize="11" AcceptsReturn="True" IsReadOnly="True" TextWrapping="NoWrap" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" />
+                        <TextBox AutomationProperties.AutomationId="CasePathBox" AutomationProperties.Name="Case file path" x:Name="CasePathBox" Grid.Row="1" Grid.Column="1" Margin="6,6,0,0" FontFamily="Consolas" FontSize="11" AcceptsReturn="True" IsReadOnly="True" TextWrapping="NoWrap" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" />
+                    </Grid>
+                </Grid>
+            </TabItem>
             <TabItem AutomationProperties.AutomationId="DiffTab" Header="Diff">
                 <Grid Margin="6">
                     <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>

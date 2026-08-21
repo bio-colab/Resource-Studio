@@ -305,6 +305,60 @@ public partial class MainWindow : Window
         StatusText.Text = "Search completed";
     }
 
+    private async void SecurityAnalyze_Click(object sender, RoutedEventArgs e)
+    {
+        if (!RequirePe()) return;
+        var result = await RunCliCaptureAsync("security", _selectedPe!, "--json");
+        SecurityReportBox.Text = PrettyJson(result.StdoutOrError);
+        StatusText.Text = result.ExitCode == 0 ? "Static security analysis completed" : $"CLI exited with code {result.ExitCode}";
+    }
+
+    private async void EvidenceGraph_Click(object sender, RoutedEventArgs e)
+    {
+        if (!RequirePe()) return;
+        var result = await RunCliCaptureAsync("evidence-graph", _selectedPe!, "--json");
+        EvidenceGraphBox.Text = PrettyJson(result.StdoutOrError);
+        StatusText.Text = result.ExitCode == 0 ? "Evidence graph completed" : $"CLI exited with code {result.ExitCode}";
+    }
+
+    private async void EvidenceQuery_Click(object sender, RoutedEventArgs e)
+    {
+        if (!RequirePe()) return;
+        if (string.IsNullOrWhiteSpace(EvidenceQueryBox.Text))
+        {
+            MessageBox.Show("Enter an evidence query first.", "Evidence Query", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        var result = await RunCliCaptureAsync("evidence-query", _selectedPe!, EvidenceQueryBox.Text, "--json");
+        EvidenceQueryResultsBox.Text = PrettyJson(result.StdoutOrError);
+        StatusText.Text = result.ExitCode == 0 ? "Evidence query completed" : $"CLI exited with code {result.ExitCode}";
+    }
+
+    private async void CaseCreate_Click(object sender, RoutedEventArgs e)
+    {
+        if (!RequirePe()) return;
+        var dialog = new SaveFileDialog { Filter = "Resource Studio cases (*.case.json)|*.case.json|JSON files (*.json)|*.json", FileName = Path.GetFileNameWithoutExtension(_selectedPe) + ".case.json" };
+        if (dialog.ShowDialog() != true) return;
+        var result = await RunCliCaptureAsync("case", "create", _selectedPe!, "--output", dialog.FileName, "--json");
+        CasePathBox.Text = dialog.FileName + Environment.NewLine + PrettyJson(result.StdoutOrError);
+        StatusText.Text = result.ExitCode == 0 ? "Case created" : $"CLI exited with code {result.ExitCode}";
+    }
+
+    private async void CaseAnalyze_Click(object sender, RoutedEventArgs e)
+    {
+        if (!RequirePe()) return;
+        var casePath = CasePathBox.Text.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault(value => value.EndsWith(".json", StringComparison.OrdinalIgnoreCase));
+        if (string.IsNullOrWhiteSpace(casePath) || !File.Exists(casePath))
+        {
+            var dialog = new OpenFileDialog { Filter = "Resource Studio cases (*.case.json;*.json)|*.case.json;*.json|All files (*.*)|*.*", Title = "Open case" };
+            if (dialog.ShowDialog() != true) return;
+            casePath = dialog.FileName;
+        }
+        var result = await RunCliCaptureAsync("case", "analyze", casePath, _selectedPe!, "--json");
+        CasePathBox.Text = casePath + Environment.NewLine + PrettyJson(result.StdoutOrError);
+        StatusText.Text = result.ExitCode == 0 ? "Case analyzed" : $"CLI exited with code {result.ExitCode}";
+    }
+
     private void DiffLeftBrowse_Click(object sender, RoutedEventArgs e) => ChooseDiffFile(DiffLeftBox);
 
     private void DiffRightBrowse_Click(object sender, RoutedEventArgs e) => ChooseDiffFile(DiffRightBox);

@@ -178,10 +178,14 @@ python3 resource_studio_cli.py report diagnostics before.dll after.dll --format 
 python3 resource_studio_cli.py security sample.dll --json
 python3 resource_studio_cli.py security sample.dll --external-result defender-result.json --json
 python3 resource_studio_cli.py security sample.dll --stage-root ./security-staging --ledger ./security-ledger.jsonl --json
+python3 resource_studio_cli.py evidence-graph sample.dll --json
+python3 resource_studio_cli.py evidence-query sample.dll 'resource.type == "MANIFEST" and resource.size >= 0' --json
+python3 resource_studio_cli.py case create sample.dll --output sample.case.json --json
+python3 resource_studio_cli.py case analyze sample.case.json sample.dll --json
 python3 resource_studio_cli.py report security sample.dll --format markdown --output security.md
 ```
 
-توثّق [`docs/PRODUCTIZATION.md`](docs/PRODUCTIZATION.md) عقود journal/resume وPost-write Diagnostics وحدود المرحلة التالية. وتوثّق [`docs/SECURITY-GOAL.md`](docs/SECURITY-GOAL.md) عقد `external_scan.v1`؛ الخيار `--external-result` يستورد JSON موجودًا ولا يشغّل الموفر، بينما `--stage-root` ينشئ نسخة read-only و`--ledger` يربط التقرير بسجل EvidenceLedger محلي.
+توثّق [`docs/PRODUCTIZATION.md`](docs/PRODUCTIZATION.md) عقود journal/resume وPost-write Diagnostics وحدود المرحلة التالية. وتوثّق [`docs/SECURITY-GOAL.md`](docs/SECURITY-GOAL.md) عقد `external_scan.v1`؛ الخيار `--external-result` يستورد JSON موجودًا ولا يشغّل الموفر، بينما `--stage-root` ينشئ نسخة read-only و`--ledger` يربط التقرير بسجل EvidenceLedger محلي. وتشرح [`docs/ADVANCED-EVIDENCE-DESIGN.md`](docs/ADVANCED-EVIDENCE-DESIGN.md) عقود graph/query/case، وتعرض WPF Security Center هذه الطبقات فوق CLI دون إعادة تنفيذ Verification Engine.
 
 ينفذ `durable_commit` أيضًا post-commit readback ويعيد `verifiedSha256` للbytes المقروءة من الهدف بعد الاستبدال. ويثبت Writer determinism regression أن نفس mutation ينتج نفس SHA-256، مع تثبيت COFF timestamp الأصلي بدل تركه يتغير عشوائيًا.
 
