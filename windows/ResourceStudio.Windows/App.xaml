@@ -38,8 +38,8 @@
             <Setter Property="Foreground" Value="{StaticResource PaperBrush}" />
         </Style>
         <Style TargetType="Button">
-            <Setter Property="Margin" Value="4" />
-            <Setter Property="Padding" Value="12,6" />
+            <Setter Property="Margin" Value="2" />
+            <Setter Property="Padding" Value="8,4" />
             <Setter Property="Foreground" Value="{StaticResource PaperBrush}" />
             <Setter Property="Background" Value="{StaticResource SlateElevatedBrush}" />
             <Setter Property="BorderBrush" Value="{StaticResource SignalCyanBrush}" />
@@ -54,8 +54,9 @@
             <Setter Property="Foreground" Value="{StaticResource PaperBrush}" />
             <Setter Property="BorderBrush" Value="{StaticResource DividerBrush}" />
             <Setter Property="BorderThickness" Value="0,0,1,0" />
-            <Setter Property="Padding" Value="4,2" />
-            <Setter Property="Margin" Value="0,0,4,0" />
+            <Setter Property="Padding" Value="3,1" />
+            <Setter Property="Margin" Value="0,0,2,0" />
+            <Setter Property="FontSize" Value="12" />
         </Style>
         <Style TargetType="TextBox">
             <Setter Property="Background" Value="{StaticResource SlateInputBrush}" />
