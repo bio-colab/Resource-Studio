@@ -93,7 +93,7 @@
                                               HorizontalAlignment="Center"
                                               VerticalAlignment="Center"
                                               TextElement.Foreground="{TemplateBinding Foreground}"
-                                              FontWeight="{TemplateBinding FontWeight}" />
+                                              TextElement.FontWeight="{TemplateBinding FontWeight}" />
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsSelected" Value="True">
