@@ -562,7 +562,7 @@ def _entries_from_lief(binary: Any) -> list[ResourceEntry]:
         return []
     entries: list[ResourceEntry] = []
     for type_node in binary.resources.childs:
-        resource_type = type_names.get(int(type_node.id), str(type_node.id))
+        resource_type = str(type_node.name) if getattr(type_node, "has_name", False) else type_names.get(int(type_node.id), str(type_node.id))
         for name_node in type_node.childs:
             resource_name = str(name_node.name) if getattr(name_node, "has_name", False) else str(name_node.id)
             for leaf in name_node.childs:
