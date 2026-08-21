@@ -22,6 +22,8 @@
 - تطبيق العلامة على WPF عبر `ApplicationIcon` و`Window.Icon` وواجهة رأس تحمل اسم المنتج، مع لوحة ألوان موحدة وإبقاء دلالات triage منفصلة عن verdict الأمني.
 - إضافة `tests/qa/test_branding_contract.py` لإثبات وجود الأصول وربطها بعقود XAML وMSBuild.
 - إضافة نافذة About أصلية داخل WPF مرتبطة بهوية Resource Studio، تشرح وظيفة المشروع، وتعرض اسم المطور Elias Sharar والبريد `aliasbio95@gmail.com` ورابط المستودع، مع دعم كامل لموارد الثيم الديناميكية وعقد UI automation.
+- استكمال MCP Phase 1 المحلي عبر `stdio`: تثبيت `mcp==2.0.0` في dependencies وCI، وإضافة fileId محدود الجلسة، Resources وResource Templates وPrompts، ودورة plan/confirm/apply/export/cancel مع TTL للتأكيد.
+- ربط MCP بمسار `LiefPEWriter` و`PEHealth` المشترك، وإضافة `resource_studio.result.v1` وaudit references واختبار stdio على Python وWindows. النقل البعيد والمصادقة وحالة الخادم الدائمة تبقى خارج هذه الدفعة.
 
 - إضافة `resource_studio.static_code_analysis.v1`: bounded Capstone disassembly وbasic CFG من PE entrypoint مع RVA/file offsets وقيود صريحة، إضافة إلى unpacking indicators ساكنة مثل section expansion وhigh entropy وexecutable+writable sections وoverlay.
 - إضافة `resource_studio.hex_template.v1` لقوالب BITMAPINFOHEADER وVS_VERSIONINFO وDIALOG/MENU headers، مع field offsets وlengths وvalues وhex ranges قابلة للتحديد في WPF Preview.

@@ -30,7 +30,7 @@ jobs:
       - name: Install dependencies
         run: python -m pip install -r requirements-backend.txt
       - name: Compile Python
-        run: python -m compileall -q core tests resource_studio_cli.py
+        run: python -m compileall -q core mcp tests resource_studio_cli.py
       - name: Run Python gates
         shell: bash
         run: |
@@ -38,6 +38,7 @@ jobs:
           for test in tests/core/test_*.py tests/test_cli.py tests/qa/test_*.py; do
             PYTHONPATH=. python "$test"
           done
+          PYTHONPATH=. python tests/test_mcp_stdio.py
       - name: Verify forbidden artifacts are absent
         shell: bash
         run: |
@@ -63,7 +64,7 @@ jobs:
         run: python -m pip install -r requirements-backend.txt
       - name: Compile Python
         shell: pwsh
-        run: py -3.12 -m compileall -q core tests resource_studio_cli.py
+        run: py -3.12 -m compileall -q core mcp tests resource_studio_cli.py
       - name: Run Python and Windows gates
         shell: pwsh
         env:
@@ -73,6 +74,7 @@ jobs:
           Get-ChildItem tests\core\test_*.py | ForEach-Object { py -3.12 $_.FullName }
           py -3.12 tests\test_cli.py
           Get-ChildItem tests\qa\test_*.py | ForEach-Object { py -3.12 $_.FullName }
+          py -3.12 tests\test_mcp_stdio.py
       - name: Verify forbidden source artifacts are absent
         shell: pwsh
         run: |

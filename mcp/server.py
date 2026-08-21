@@ -1,15 +1,25 @@
 from __future__ import annotations
 
+import base64
 import hashlib
 import json
 import logging
 import os
 import shutil
 import struct
+import sys
+import time
 import uuid
 from pathlib import Path
 from typing import Any
+from urllib.parse import unquote
 
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from core.health import PEHealth
+from core.pe_writer import LiefPEWriter
 from mcp.server import MCPServer
 
 LOGGER = logging.getLogger("resource_studio.mcp")
@@ -17,9 +27,12 @@ ROOT = Path(os.environ.get("RESOURCE_STUDIO_ROOT", Path.cwd())).expanduser().res
 WORKSPACE_ROOT = ROOT / ".resource-studio" / "workspaces"
 MAX_FILE_BYTES = 256 * 1024 * 1024
 MAX_RESOURCE_NODES = 100_000
+FILES: dict[str, dict[str, Any]] = {}
 WORKSPACES: dict[str, dict[str, Any]] = {}
 PLANS: dict[str, dict[str, Any]] = {}
 AUDIT: dict[str, dict[str, Any]] = {}
+MAX_RESOURCE_RAW_BYTES = 4 * 1024 * 1024
+CONFIRMATION_TTL_SECONDS = 10 * 60
 
 TYPE_NAMES = {
     1: "CURSOR",
@@ -78,6 +91,42 @@ def _safe_path(path: str) -> Path:
 def _read_file(path: Path) -> bytes:
     with path.open("rb") as stream:
         return stream.read(MAX_FILE_BYTES + 1)
+
+
+def _register_file(path: Path, *, role: str = "source") -> dict[str, Any]:
+    resolved = _safe_path(str(path))
+    data = _read_file(resolved)
+    file_id = f"file_{uuid.uuid4().hex[:16]}"
+    record = {
+        "fileId": file_id,
+        "path": str(resolved),
+        "sha256": _sha256(data),
+        "size": len(data),
+        "role": role,
+    }
+    FILES[file_id] = record
+    return record
+
+
+def _resolve_file(*, file_id: str | None = None, path: str | None = None, role: str = "source") -> dict[str, Any]:
+    if file_id and path:
+        raise ValueError("provide file_id or path, not both")
+    if file_id:
+        record = FILES.get(file_id)
+        if record is None:
+            raise ValueError(f"unknown fileId: {file_id}")
+        resolved = _safe_path(record["path"])
+        current = _register_file(resolved, role=record.get("role", role))
+        if current["sha256"] != record["sha256"]:
+            raise ValueError("registered file changed after fileId creation; register it again")
+        return record
+    if path:
+        return _register_file(_safe_path(path), role=role)
+    raise ValueError("file_id is required; path is accepted only for initial registration")
+
+
+def _file_ref(record: dict[str, Any]) -> dict[str, Any]:
+    return {key: record[key] for key in ("fileId", "sha256", "size", "role")}
 
 
 def _sha256(data: bytes) -> str:
@@ -266,6 +315,16 @@ def _workspace(workspace_id: str) -> dict[str, Any]:
     return workspace
 
 
+def _require_confirmation(plan: dict[str, Any], confirmation_token: str, confirmed: bool) -> None:
+    if not confirmed:
+        raise ValueError("explicit human confirmation is required")
+    if confirmation_token != plan.get("confirmationToken"):
+        raise ValueError("invalid or expired confirmation token")
+    created = float(plan.get("confirmationCreatedAt", 0))
+    if created <= 0 or time.time() - created > CONFIRMATION_TTL_SECONDS:
+        raise ValueError("confirmation token expired; rebuild the plan")
+
+
 def _resource_key(item: dict[str, Any]) -> tuple[str, str, str]:
     return (str(item.get("type")), str(item.get("name")), str(item.get("language")))
 
@@ -316,10 +375,141 @@ def workspace_info() -> str:
             "root": str(ROOT),
             "readOnly": True,
             "maxFileBytes": MAX_FILE_BYTES,
-            "serverVersion": "0.2.0",
+            "maxResourceRawBytes": MAX_RESOURCE_RAW_BYTES,
+            "serverVersion": "0.3.0",
+            "sessionState": "in_memory",
         },
         ensure_ascii=False,
     )
+
+
+@server.tool(
+    name="resource_studio.register_file",
+    title="Register a local file",
+    description="Register a file under the configured root and return a session-scoped fileId and immutable hash.",
+    structured_output=True,
+)
+def register_file(path: str) -> dict[str, Any]:
+    record = _register_file(_safe_path(path))
+    return {
+        "schemaVersion": "resource_studio.file.v1",
+        **_file_ref(record),
+        "readOnly": True,
+        "manifestUri": f"resource://file/{record['fileId']}/manifest",
+    }
+
+
+@server.resource(
+    "resource://workspace/{workspace_id}",
+    name="workspace",
+    title="Resource Studio isolated workspace",
+    description="Read-only metadata for an isolated workspace created in this server session.",
+    mime_type="application/json",
+)
+def workspace_resource(workspace_id: str) -> str:
+    return json.dumps({"schemaVersion": "resource_studio.workspace.v1", **_workspace(workspace_id)}, ensure_ascii=False)
+
+
+@server.resource(
+    "resource://file/{file_id}/manifest",
+    name="file_manifest",
+    title="PE file manifest",
+    description="Read-only PE and resource manifest for a registered file.",
+    mime_type="application/json",
+)
+def file_manifest(file_id: str) -> str:
+    record = _resolve_file(file_id=file_id)
+    inspected = _inspect(record["path"])
+    return json.dumps(
+        {
+            "schemaVersion": "resource_studio.file_manifest.v1",
+            "file": _file_ref(record),
+            "pe": inspected["pe"],
+            "resourceCount": inspected["resourceCount"],
+            "resources": inspected["resources"],
+            "warnings": inspected["warnings"],
+            "readOnly": True,
+        },
+        ensure_ascii=False,
+    )
+
+
+@server.resource(
+    "resource://file/{file_id}/resource/{resource_key}",
+    name="file_resource",
+    title="PE resource payload",
+    description="Read-only metadata and bounded base64 payload for one registered PE resource.",
+    mime_type="application/json",
+)
+def file_resource(file_id: str, resource_key: str) -> str:
+    record = _resolve_file(file_id=file_id)
+    inspected = _inspect(record["path"])
+    parts = unquote(resource_key).split("/", 2)
+    if len(parts) != 3:
+        raise ValueError("resource_key must contain type/name/language")
+    wanted = tuple(parts)
+    item = next((candidate for candidate in inspected["resources"] if _resource_key(candidate) == wanted), None)
+    if item is None:
+        raise ValueError("resource was not found in the registered file")
+    payload = None
+    if item.get("data_offset") is not None and item.get("size", 0) <= MAX_RESOURCE_RAW_BYTES:
+        data = _read_file(Path(record["path"]))
+        offset = int(item["data_offset"])
+        size = int(item["size"])
+        payload = base64.b64encode(data[offset : offset + size]).decode("ascii")
+    return json.dumps(
+        {
+            "schemaVersion": "resource_studio.resource.v1",
+            "file": _file_ref(record),
+            "resource": item,
+            "payloadBase64": payload,
+            "payloadIncluded": payload is not None,
+            "readOnly": True,
+        },
+        ensure_ascii=False,
+    )
+
+
+@server.resource(
+    "resource://plan/{plan_id}",
+    name="plan",
+    title="Resource Studio change plan",
+    description="Read-only change plan awaiting confirmation or already applied.",
+    mime_type="application/json",
+)
+def plan_resource(plan_id: str) -> str:
+    return json.dumps(get_plan(plan_id), ensure_ascii=False)
+
+
+@server.resource(
+    "resource://operation/{operation_id}/audit",
+    name="operation_audit",
+    title="Resource Studio operation audit",
+    description="Read-only audit record for a verified operation.",
+    mime_type="application/json",
+)
+def operation_audit(operation_id: str) -> str:
+    return json.dumps(read_audit(operation_id), ensure_ascii=False)
+
+
+@server.prompt(
+    name="review_change",
+    title="Review a Resource Studio change",
+    description="Prepare a human-readable review request for a planned change.",
+)
+def review_change(plan_id: str) -> list[dict[str, Any]]:
+    plan = get_plan(plan_id)
+    return [{"role": "user", "content": {"type": "text", "text": "Review this Resource Studio plan before confirmation:\n" + json.dumps(plan, ensure_ascii=False, indent=2)}}]
+
+
+@server.prompt(
+    name="pe_triage",
+    title="Triage a PE manifest",
+    description="Prepare a read-only triage prompt from a registered file manifest.",
+)
+def pe_triage(file_id: str) -> list[dict[str, Any]]:
+    manifest = json.loads(file_manifest(file_id))
+    return [{"role": "user", "content": {"type": "text", "text": "Triage this PE manifest without executing the file:\n" + json.dumps(manifest, ensure_ascii=False, indent=2)}}]
 
 
 @server.tool(
@@ -328,9 +518,10 @@ def workspace_info() -> str:
     description="Copy a source file into an internal isolated workspace without changing the source.",
     structured_output=True,
 )
-def create_workspace(path: str) -> dict[str, Any]:
+def create_workspace(path: str | None = None, file_id: str | None = None) -> dict[str, Any]:
     """Create a disposable isolated copy for future plans and modifications."""
-    source = _safe_path(path)
+    source_record = _resolve_file(file_id=file_id, path=path)
+    source = Path(source_record["path"])
     source_data = _read_file(source)
     workspace_id = f"ws_{uuid.uuid4().hex[:16]}"
     workspace_dir = WORKSPACE_ROOT / workspace_id
@@ -341,6 +532,7 @@ def create_workspace(path: str) -> dict[str, Any]:
     WORKSPACES[workspace_id] = {
         "workspace_id": workspace_id,
         "source_path": str(source),
+        "source_file_id": source_record["fileId"],
         "source_sha256": _sha256(source_data),
         "workspace_path": str(workspace_path),
         "workspace_sha256": _sha256(workspace_data),
@@ -349,10 +541,12 @@ def create_workspace(path: str) -> dict[str, Any]:
         "schemaVersion": "resource_studio.workspace.v1",
         "workspaceId": workspace_id,
         "sourcePath": str(source),
+        "sourceFileId": source_record["fileId"],
         "sourceSha256": _sha256(source_data),
         "workspacePath": str(workspace_path),
         "workspaceSha256": _sha256(workspace_data),
         "sourceReadOnly": True,
+        "sourceFile": _file_ref(source_record),
         "workspaceReady": True,
     }
 
@@ -363,10 +557,17 @@ def create_workspace(path: str) -> dict[str, Any]:
     description="Read-only structural and resource comparison of two files under the configured root.",
     structured_output=True,
 )
-def diff_files(path_a: str, path_b: str) -> dict[str, Any]:
-    """Compare two files without modifying either file."""
-    left = _inspect(path_a)
-    right = _inspect(path_b)
+def diff_files(
+    path_a: str | None = None,
+    path_b: str | None = None,
+    file_id_a: str | None = None,
+    file_id_b: str | None = None,
+) -> dict[str, Any]:
+    """Compare two registered files or paths without modifying either file."""
+    left_record = _resolve_file(file_id=file_id_a, path=path_a)
+    right_record = _resolve_file(file_id=file_id_b, path=path_b)
+    left = _inspect(left_record["path"])
+    right = _inspect(right_record["path"])
     left_resources = _resource_lookup(left["resources"])
     right_resources = _resource_lookup(right["resources"])
     keys = sorted(set(left_resources) | set(right_resources))
@@ -385,8 +586,8 @@ def diff_files(path_a: str, path_b: str) -> dict[str, Any]:
         changes.append({"type": key[0], "name": key[1], "language": key[2], "status": status})
     return {
         "schemaVersion": "resource_studio.diff.v1",
-        "left": {"path": left["path"], "sha256": left["sha256"]},
-        "right": {"path": right["path"], "sha256": right["sha256"]},
+        "left": {"path": left["path"], **_file_ref(left_record)},
+        "right": {"path": right["path"], **_file_ref(right_record)},
         "fileChanged": left["sha256"] != right["sha256"],
         "changes": changes,
         "readOnly": True,
@@ -461,6 +662,7 @@ def plan_resource_change(
         "writesFiles": False,
         "requiresConfirmation": True,
         "confirmationToken": uuid.uuid4().hex,
+        "confirmationCreatedAt": time.time(),
         "status": "planned",
     }
     PLANS[plan_id] = plan
@@ -474,51 +676,48 @@ def plan_resource_change(
     structured_output=True,
 )
 def apply_plan(plan_id: str, confirmation_token: str, confirmed: bool = False) -> dict[str, Any]:
-    """Apply a narrow, confirmed, same-size replacement to a workspace copy."""
+    """Apply a confirmed replacement through the shared PE writer and verifier."""
     plan = PLANS.get(plan_id)
     if plan is None:
         raise ValueError(f"unknown plan: {plan_id}")
     if plan.get("status") != "planned":
         raise ValueError("plan is not pending")
-    if not confirmed:
-        raise ValueError("explicit human confirmation is required")
-    if confirmation_token != plan.get("confirmationToken"):
-        raise ValueError("invalid or expired confirmation token")
+    _require_confirmation(plan, confirmation_token, confirmed)
     if plan["operation"] != "replace":
-        raise ValueError("this milestone only applies same-size replace plans")
+        raise ValueError("this milestone applies replace plans; add/delete use the shared writer in the next mutation slice")
 
     workspace = _workspace(plan["workspaceId"])
     workspace_path = Path(workspace["workspace_path"])
-    current_workspace_data = _read_file(workspace_path)
-    current_workspace_sha = _sha256(current_workspace_data)
+    current_workspace_sha = _sha256(_read_file(workspace_path))
     if current_workspace_sha != plan["workspaceSha256"]:
         raise ValueError("workspace changed after the plan was created; rebuild the plan")
 
     before = plan.get("before") or {}
-    offset = before.get("data_offset")
-    size = before.get("size")
-    payload_info = plan.get("payload") or {}
-    payload_path = payload_info.get("path")
-    if offset is None or size is None or not payload_path:
+    payload_path = (plan.get("payload") or {}).get("path")
+    if not payload_path:
         raise ValueError("plan does not contain a writable resource payload")
-    payload_file = _safe_path(payload_path)
-    payload = _read_file(payload_file)
-    if len(payload) != size:
-        raise ValueError("safe same-size backend rejected a payload size change")
-    if offset < 0 or offset + size > len(current_workspace_data):
-        raise ValueError("resource data range is outside the workspace file")
-
+    payload = _read_file(_safe_path(payload_path))
+    resource = plan["resource"]
+    resource_name: str | int = resource["name"]
+    if isinstance(resource_name, str) and resource_name.isdecimal():
+        resource_name = int(resource_name)
     output_path = workspace_path.with_name(f"{workspace_path.stem}.applied{workspace_path.suffix}")
-    patched = bytearray(current_workspace_data)
-    patched[offset : offset + size] = payload
-    output_path.write_bytes(patched)
+    result = LiefPEWriter().replace_resource(
+        workspace_path,
+        output_path,
+        resource["type"],
+        resource_name,
+        resource.get("language"),
+        payload,
+        backup_existing_output=False,
+    )
     output = _inspect(str(output_path))
-    key = _resource_key(before)
+    output_record = _register_file(output_path, role="verified_output")
+    key = (str(resource["type"]), str(resource["name"]), str(resource.get("language")))
     after = _resource_lookup(output["resources"]).get(key)
-    payload_sha = _sha256(payload)
-    if after is None or after.get("sha256") != payload_sha:
+    if after is None or after.get("sha256") != _sha256(payload):
         output_path.unlink(missing_ok=True)
-        raise ValueError("post-write verification failed; output was removed")
+        raise ValueError("shared writer verification did not expose the requested resource")
 
     operation_id = f"op_{uuid.uuid4().hex[:16]}"
     audit = {
@@ -528,28 +727,127 @@ def apply_plan(plan_id: str, confirmation_token: str, confirmed: bool = False) -
         "workspaceId": plan["workspaceId"],
         "operation": "replace",
         "sourceWorkspaceSha256": current_workspace_sha,
+        "sourceFile": _file_ref(FILES[workspace["source_file_id"]]),
         "outputPath": str(output_path),
-        "outputSha256": output["sha256"],
+        "outputFile": _file_ref(output_record),
+        "outputSha256": result.after_sha256,
         "resource": {"type": key[0], "name": key[1], "language": key[2]},
         "beforeSha256": before.get("sha256"),
         "afterSha256": after.get("sha256"),
-        "verified": True,
+        "verified": result.verified,
+        "verification": result.verification or {},
+        "forensicEvidence": result.forensic_evidence or {},
     }
     plan["status"] = "applied"
     plan["usedConfirmation"] = True
+    plan["confirmationUsedAt"] = time.time()
     plan["outputPath"] = str(output_path)
+    plan["exportConfirmationToken"] = uuid.uuid4().hex
+    plan["exportConfirmationCreatedAt"] = time.time()
     AUDIT[operation_id] = audit
     return {
-        "schemaVersion": "resource_studio.apply.v1",
+        "schemaVersion": "resource_studio.result.v1",
         "operationId": operation_id,
         "planId": plan_id,
-        "status": "verified",
+        "status": "verified" if result.verified else "failed",
+        "source": {"workspaceId": plan["workspaceId"], "sha256": current_workspace_sha},
+        "output": {"file": _file_ref(output_record), "pathPolicy": "workspace-only"},
         "outputPath": str(output_path),
-        "outputSha256": output["sha256"],
-        "changes": [{"beforeSha256": before.get("sha256"), "afterSha256": after.get("sha256")}],
-        "verification": {"reopened": True, "resourceHashMatchesPayload": True},
+        "outputSha256": result.after_sha256,
+        "changes": [{
+            "type": key[0],
+            "name": key[1],
+            "language": key[2],
+            "action": "modified",
+            "beforeSha256": before.get("sha256"),
+            "afterSha256": after.get("sha256"),
+        }],
+        "warnings": list((result.verification or {}).get("warnings", [])),
+        "verification": {
+            "reopened": True,
+            "resourceHashMatchesPayload": True,
+            "writer": result.verification or {},
+            "forensic": result.forensic_evidence or {},
+            "signatureStatus": "checked_by_writer",
+        },
+        "auditUri": f"resource://operation/{operation_id}/audit",
+        "exportConfirmationRequired": True,
+        "exportConfirmationToken": plan["exportConfirmationToken"],
+    }
+
+
+@server.tool(
+    name="resource_studio.export_workspace",
+    title="Export a verified workspace output",
+    description="Copy a verified workspace result to a new user-selected file after an explicit export confirmation.",
+    structured_output=True,
+)
+def export_workspace(plan_id: str, confirmation_token: str, destination_path: str, confirmed: bool = False) -> dict[str, Any]:
+    plan = PLANS.get(plan_id)
+    if plan is None:
+        raise ValueError(f"unknown plan: {plan_id}")
+    if plan.get("status") != "applied":
+        raise ValueError("only an applied verified plan can be exported")
+    if not confirmed or confirmation_token != plan.get("exportConfirmationToken"):
+        raise ValueError("explicit export confirmation is required")
+    created = float(plan.get("exportConfirmationCreatedAt", 0))
+    if created <= 0 or time.time() - created > CONFIRMATION_TTL_SECONDS:
+        raise ValueError("export confirmation token expired; rebuild the apply result")
+    source = _safe_path(plan["outputPath"])
+    destination = Path(destination_path).expanduser()
+    if not destination.is_absolute():
+        destination = ROOT / destination
+    destination = destination.resolve()
+    if destination == source or destination.is_symlink() or ROOT not in destination.parents:
+        raise ValueError("export destination must be a new regular file under the configured root")
+    if destination.exists():
+        raise ValueError("export destination already exists; choose a new Save As path")
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(source, destination)
+    exported = _register_file(destination, role="exported_output")
+    operation_id = f"op_{uuid.uuid4().hex[:16]}"
+    audit = {
+        "schemaVersion": "resource_studio.audit.v1",
+        "operationId": operation_id,
+        "planId": plan_id,
+        "operation": "export",
+        "sourceFile": _file_ref(FILES[_workspace(plan["workspaceId"])["source_file_id"]]),
+        "outputFile": _file_ref(exported),
+        "outputSha256": exported["sha256"],
+        "verified": exported["sha256"] == _sha256(source.read_bytes()),
+    }
+    AUDIT[operation_id] = audit
+    plan["exportedFileId"] = exported["fileId"]
+    plan["exportConfirmationUsedAt"] = time.time()
+    return {
+        "schemaVersion": "resource_studio.result.v1",
+        "operationId": operation_id,
+        "planId": plan_id,
+        "status": "verified" if audit["verified"] else "failed",
+        "source": {"file": _file_ref(FILES[_workspace(plan["workspaceId"])["source_file_id"]])},
+        "output": {"file": _file_ref(exported), "pathPolicy": "new-file-under-root"},
+        "changes": [],
+        "warnings": [],
+        "verification": {"reopened": True, "sha256MatchesSource": audit["verified"]},
         "auditUri": f"resource://operation/{operation_id}/audit",
     }
+
+
+@server.tool(
+    name="resource_studio.cancel_plan",
+    title="Cancel a change plan",
+    description="Cancel a pending plan before any mutation occurs.",
+    structured_output=True,
+)
+def cancel_plan(plan_id: str) -> dict[str, Any]:
+    plan = PLANS.get(plan_id)
+    if plan is None:
+        raise ValueError(f"unknown plan: {plan_id}")
+    if plan.get("status") != "planned":
+        raise ValueError("only a pending plan can be cancelled")
+    plan["status"] = "cancelled"
+    plan["confirmationToken"] = None
+    return {"schemaVersion": "resource_studio.plan.v1", "planId": plan_id, "status": "cancelled", "writesFiles": False}
 
 
 @server.tool(
@@ -586,9 +884,17 @@ def get_plan(plan_id: str) -> dict[str, Any]:
     description="Read-only inspection of a local file's hash, PE headers, sections, and resource count.",
     structured_output=True,
 )
-def inspect_file(path: str) -> dict[str, Any]:
-    """Inspect a file under the configured read-only root without modifying it."""
-    return _inspect(path)
+def inspect_file(path: str | None = None, file_id: str | None = None) -> dict[str, Any]:
+    """Inspect a registered file, or register a path on first use."""
+    record = _resolve_file(file_id=file_id, path=path)
+    inspected = _inspect(record["path"])
+    health = PEHealth.inspect(Path(record["path"]))
+    return {
+        **inspected,
+        "file": _file_ref(record),
+        "health": health.to_dict(),
+        "manifestUri": f"resource://file/{record['fileId']}/manifest",
+    }
 
 
 @server.tool(
@@ -597,12 +903,14 @@ def inspect_file(path: str) -> dict[str, Any]:
     description="Read-only enumeration of Win32 resource type, name, language, size, offset, and SHA-256.",
     structured_output=True,
 )
-def index_resources(path: str) -> dict[str, Any]:
-    """Index resources in a PE file under the configured root without modifying it."""
-    inspected = _inspect(path)
+def index_resources(path: str | None = None, file_id: str | None = None) -> dict[str, Any]:
+    """Index resources in a registered file, or register a path on first use."""
+    record = _resolve_file(file_id=file_id, path=path)
+    inspected = _inspect(record["path"])
     return {
         "schemaVersion": "resource_studio.resource_index.v1",
         "path": inspected["path"],
+        "file": _file_ref(record),
         "sha256": inspected["sha256"],
         "resourceCount": inspected["resourceCount"],
         "resources": inspected["resources"],
