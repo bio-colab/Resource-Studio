@@ -202,7 +202,14 @@ def verify_candidate(
     preservation_ok = all(preservation.values())
     _phase(phases, "PRESERVATION_CHECK", preservation_ok, _failed_fields(preservation))
 
-    windows = _windows_validation(before_path, candidate_path)
+    windows = _windows_validation(
+        before_path,
+        candidate_path,
+        resource_type=resource_type,
+        resource_name=resource_name,
+        language=language,
+        operation=operation,
+    )
     windows_ok = windows.get("status") in {"PASSED", "SKIPPED"}
     _phase(phases, "WINDOWS_VALIDATION", windows_ok, str(windows.get("status")))
 
@@ -321,7 +328,15 @@ def _header(state: Any) -> tuple[Any, ...]:
     return (state.machine, state.imagebase, state.entrypoint)
 
 
-def _windows_validation(before_path: Path, candidate_path: Path) -> dict[str, Any]:
+def _windows_validation(
+    before_path: Path,
+    candidate_path: Path,
+    *,
+    resource_type: str | int,
+    resource_name: str | int,
+    language: int | None,
+    operation: str,
+) -> dict[str, Any]:
     if os.name != "nt":
         return {"status": "SKIPPED", "reason": "Windows-only oracle"}
     from .windows_resource_oracle import compare_with_lief, inspect
@@ -333,8 +348,31 @@ def _windows_validation(before_path: Path, candidate_path: Path) -> dict[str, An
     oracle_added = sorted(set(after_map) - set(before_map))
     oracle_removed = sorted(set(before_map) - set(after_map))
     oracle_changed = sorted(key for key in set(before_map) & set(after_map) if before_map[key] != after_map[key])
+    target = (str(resource_type), str(resource_name), int(language or 0))
+    target_added = target in oracle_added
+    target_removed = target in oracle_removed
+    target_changed = target in oracle_changed
+    if operation == "add":
+        target_ok = target_added or target_changed
+        unexpected_removed = oracle_removed
+    elif operation == "delete":
+        target_ok = target_removed
+        unexpected_removed = [item for item in oracle_removed if item != target]
+    elif operation == "change-language":
+        target_ok = target_added or target_removed
+        unexpected_removed = [item for item in oracle_removed if item != target]
+    else:
+        target_ok = target_changed
+        unexpected_removed = oracle_removed
+    unexpected_changed = [item for item in oracle_changed if item != target]
     comparison = compare_with_lief(candidate_path)
-    passed = not before.warnings and not after.warnings and comparison.matches
+    passed = (
+        not before.warnings
+        and not after.warnings
+        and target_ok
+        and not unexpected_removed
+        and not unexpected_changed
+    )
     return {
         "status": "PASSED" if passed else "FAILED",
         "beforeResourceCount": before.resource_count,
@@ -342,7 +380,14 @@ def _windows_validation(before_path: Path, candidate_path: Path) -> dict[str, An
         "added": [list(item) for item in oracle_added],
         "removed": [list(item) for item in oracle_removed],
         "changed": [list(item) for item in oracle_changed],
+        "target": list(target),
+        "targetChanged": target_changed,
+        "targetAdded": target_added,
+        "targetRemoved": target_removed,
+        "unexpectedRemoved": [list(item) for item in unexpected_removed],
+        "unexpectedChanged": [list(item) for item in unexpected_changed],
         "liefComparison": comparison.to_dict(),
+        "liefVisibility": "MATCHED" if comparison.matches else "WINDOWS_LOADER_SUBSET",
     }
 
 
