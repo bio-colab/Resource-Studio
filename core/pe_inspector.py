@@ -146,11 +146,11 @@ def _tls_record(tls: Any) -> dict[str, Any] | None:
     if tls is None:
         return None
     return {
-        "addressofCallbacks": int(_safe(tls, "addressof_callbacks", 0)),
-        "addressofIndex": int(_safe(tls, "addressof_index", 0)),
-        "addressofRawData": int(_safe(tls, "addressof_raw_data", 0)),
-        "sizeofZeroFill": int(_safe(tls, "sizeof_zero_fill", 0)),
-        "characteristics": int(_safe(tls, "characteristics", 0)),
+        "addressofCallbacks": _numeric(_safe(tls, "addressof_callbacks", 0)),
+        "addressofIndex": _numeric(_safe(tls, "addressof_index", 0)),
+        "addressofRawData": _numeric(_safe(tls, "addressof_raw_data", 0)),
+        "sizeofZeroFill": _numeric(_safe(tls, "sizeof_zero_fill", 0)),
+        "characteristics": _numeric(_safe(tls, "characteristics", 0)),
     }
 
 
@@ -164,6 +164,15 @@ def _debug_record(item: Any) -> dict[str, Any]:
         "guid": str(_safe(item, "guid", "")),
         "age": int(_safe(item, "age", 0)),
     }
+
+
+def _numeric(value: Any, default: int = 0) -> int:
+    if isinstance(value, (tuple, list)):
+        return _numeric(value[0], default) if value else default
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
 
 
 def _safe(value: Any, attribute: str, default: Any) -> Any:

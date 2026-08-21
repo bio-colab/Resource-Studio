@@ -12,6 +12,9 @@
 
 - إضافة `resource_studio.static_code_analysis.v1`: bounded Capstone disassembly وbasic CFG من PE entrypoint مع RVA/file offsets وقيود صريحة، إضافة إلى unpacking indicators ساكنة مثل section expansion وhigh entropy وexecutable+writable sections وoverlay.
 - إضافة `runtime_evidence.v1` لاستيراد behavioral telemetry وmemory-analysis reports وAPI-call traces الخارجية بعد مطابقة target SHA-256؛ لا ينفذ Resource Studio العينة ولا يقرأ live memory ولا يتصل بعملية.
+- توسيع PE corpus من fixture PE واحد إلى ملفات benign متعددة: x86 وx64، minimal وresource-heavy، named/numeric resources، multiple languages، weird alignment، UPX packed profile، overlay، وشهادة اختبار self-signed، مع manifest SHA-256 وtoolchain/profile metadata.
+- إضافة builder قابل لإعادة التشغيل في `tools/build_pe_corpus.py`، وتوسيع PE matrix ليجري read-only checks على كل PE manifest entry.
+- تطبيع قيم TLS range التي يعيدها LIEF في بعض x86/x64 fixtures داخل `PEInspector` بدل إسقاط الفحص باستثناء `TypeError`.
 
 - استكمال عقد Evidence Query: دعم الأقواس، operators غير الحساسة لحالة الأحرف، وتحويل `external_scan.v1` إلى سجلات قابلة للاستعلام عبر namespace `externalScan`، مع regression coverage وأمثلة موثقة.
 

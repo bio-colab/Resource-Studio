@@ -33,8 +33,8 @@
 | Forensic core | `ForensicBaseline` و`ForensicEvidence` و`verify_transformation` في `core/forensics.py`؛ baseline/result وoperation attribution وforensic difference موثقة ومختبرة جزئيًا |
 | Security Layer | static PE report، unpacking indicators، bounded Capstone disassembly وCFG، وimport-only behavioral telemetry/memory/API evidence مع target SHA-256 |
 | Windows shell | WPF مستقل فوق CLI، Verification summary، async CLI runner، Stop، Preview، Image Wizard، وUI automation |
-| Testing | اختبارات core/CLI/QA، corpus matrix، bounded وstructure-aware fuzzing، crash consistency، Win32 oracles، Job Object، WPF build وUI automation |
-| الوثائق | `CONTRIBUTING.md`، `CHANGELOG.md`، `TODO.md`، وملفات الأهداف والتقارير في `docs/` |
+| Testing | اختبارات core/CLI/QA، PE corpus matrix متعدد المعمارية والprofiles، bounded وstructure-aware fuzzing، crash consistency، Win32 oracles، Job Object، WPF build وUI automation |
+| الوثائق | `CONTRIBUTING.md`، `CHANGELOG.md`، `TODO.md`، وملفات الأهداف والتقارير في `docs/`، ومنها [`docs/PE-CORPUS.md`](docs/PE-CORPUS.md) |
 
 ## المسار المفاهيمي
 
@@ -85,7 +85,8 @@ python3 -m venv .venv
 . .venv/bin/activate
 # Windows PowerShell
 # .venv\Scripts\Activate.ps1
-python -m pip install -r requirements-backend.txt
+python3 -m pip install -r requirements-backend.txt
+# optional corpus rebuild tools on Debian/Ubuntu: MinGW-w64, UPX, OpenSSL, osslsigncode
 ```
 
 لفحص مورد PE عبر CLI:

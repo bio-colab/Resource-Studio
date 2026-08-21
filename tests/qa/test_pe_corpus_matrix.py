@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import struct
 import tempfile
 from pathlib import Path
@@ -15,6 +16,7 @@ from core.version_info import VersionInfo
 
 ROOT = Path(__file__).resolve().parents[2]
 FIXTURE = ROOT / "tests" / "fixtures" / "sample.dll"
+MANIFEST = ROOT / "tests" / "corpus_manifest.json"
 
 
 def dib() -> bytes:
@@ -28,6 +30,19 @@ def icon_dib() -> bytes:
 
 
 def main() -> None:
+    manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
+    pe_entries = [item for item in manifest["entries"] if item.get("expectedParse") == "pe"]
+    assert len(pe_entries) >= 9
+    for item in pe_entries:
+        path = ROOT / item["path"]
+        report = PEHealth.inspect(path)
+        assert report.is_pe is True, path
+        inspector = PEInspector.inspect(path)
+        assert inspector.machine, path
+        assert inspector.size == path.stat().st_size, path
+        project = Project.open_pe(path, ROOT / "tests" / ".tmp-corpus-project" / path.stem)
+        assert project.entries or item.get("profile") == "minimal", path
+    assert {item["architecture"] for item in pe_entries if item.get("kind") == "generated-pe"} >= {"x86", "x64"}
     original_hash = hashlib.sha256(FIXTURE.read_bytes()).hexdigest()
     writer = LiefPEWriter()
     with tempfile.TemporaryDirectory(prefix="resource-studio-pe-corpus-") as temporary:

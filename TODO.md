@@ -20,7 +20,7 @@
 | [x] | SYS-04 | Durable Same-Volume Commit | `commit_temporary` ينفذ fsync ثم ReplaceFileW/MoveFileExW مع same-volume detection وfallback؛ Writer يستخدمه قبل validation والrollback؛ tests نجحت محليًا وعلى Windows |
 | [x] | SYS-05 | Round-trip Contract Registry | `core/roundtrip_contracts.py` يسجل raw byte وManifest canonical وMenu/VersionInfo semantic؛ اختبارات إعادة parse وnormalization نجحت محليًا وعلى Windows |
 | [x] | SYS-06 | Differential Resource Oracle | `test_win32_update_resource_oracle.py` يطبق no-op raw update عبر UpdateResourceW على نسخة مؤقتة ثم يقارن LIEF/Win32 loader resource tree والbytes؛ نجح على Windows، وMUI/LN ما تزال policy مقيدة |
-| [x] | SYS-07 | PE Corpus Taxonomy | `tests/corpus_manifest.json` يثبت hashes وتصنيف PE/negative/auxiliary وallowed normalization؛ corpus manifest test نجح محليًا وعلى Windows |
+| [~] | SYS-07 | PE Corpus Taxonomy | `tests/corpus_manifest.json` يثبت hashes وprovenance لـ9 PE entries تشمل x86/x64 وminimal/resource-heavy وmultiple-language وweird-alignment وpacked-benign وoverlay وtest-signed؛ ARM64 وold/modern MSVC وDelphi و.NET ما تزال فجوات موثقة في `docs/PE-CORPUS.md` |
 | [~] | SYS-08 | Parser Fuzz Harnesses | bounded harness يطبق على Manifest/Menu/VersionInfo ويصنف accepted/expected-rejected/crash/excessive-allocation/oversize؛ نجح محليًا وعلى Windows؛ coverage-guided engine مستقل ما يزال لاحقًا |
 | [x] | SYS-09 | Job Object Containment Proof | `test_job_tree_containment.py` ينشئ child ثم grandchild داخل Job Object ويثبت انتهاء الشجرة عند إغلاق handle؛ نجح على Windows |
 | [~] | SYS-10 | WPF Process-State Contract | إضافة `CliStateText` وحالات Idle/Running/Completed/Failed واختبار UIA يثبت Completed مع BMP preview؛ async cancellation وenabled-controls matrix الكاملة ما تزال لاحقة |

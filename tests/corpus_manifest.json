@@ -4,13 +4,185 @@
     {
       "path": "tests/fixtures/sample.dll",
       "sha256": "d1a71f9ac1728082c1b276392725c3e010b98714888579b99152e401abedbf11",
-      "kind": "pe-fixture",
-      "architecture": "fixture-defined",
+      "kind": "reference-pe",
+      "architecture": "x64",
+      "toolchain": "fixture-defined",
+      "profile": "reference-resource-fixture",
       "expectedParse": "pe",
       "signature": "unsigned-or-fixture-defined",
       "languages": "fixture-defined",
-      "resourceCoverage": ["raw", "typed", "multiple-language-as-available"],
-      "allowedNormalization": ["resource-section-layout", "padding"]
+      "resourceCoverage": [
+        "raw",
+        "typed",
+        "multiple-language-as-available"
+      ],
+      "allowedNormalization": [
+        "resource-section-layout",
+        "padding"
+      ]
+    },
+    {
+      "path": "tests/fixtures/mingw_x86_minimal.dll",
+      "sha256": "09fe5193e3f1a3235a988451e99f6745acd14c53ab1c834456c9b936dba7920c",
+      "kind": "generated-pe",
+      "architecture": "x86",
+      "toolchain": "MinGW-w64 13.2",
+      "profile": "minimal",
+      "expectedParse": "pe",
+      "signature": "unsigned",
+      "languages": [
+        "unknown"
+      ],
+      "resourceCoverage": [
+        "exports",
+        "code"
+      ]
+    },
+    {
+      "path": "tests/fixtures/mingw_x86_resource_heavy.exe",
+      "sha256": "8c62598aee1fdd32e138f1a624dc7cbccda4424ef38c00d5be039265b7c09204",
+      "kind": "generated-pe",
+      "architecture": "x86",
+      "toolchain": "MinGW-w64 13.2",
+      "profile": "resource-heavy",
+      "expectedParse": "pe",
+      "signature": "unsigned",
+      "languages": [
+        "en-US",
+        "de-DE"
+      ],
+      "resourceCoverage": [
+        "numeric",
+        "named",
+        "multiple-language",
+        "STRINGTABLE",
+        "MENU",
+        "DIALOGEX",
+        "VERSIONINFO",
+        "RCDATA"
+      ]
+    },
+    {
+      "path": "tests/fixtures/mingw_x64_minimal.dll",
+      "sha256": "e80a2a0ea06f40a03152e9689a4fe1866708ae4031df5b70cb7bad6aa7337a74",
+      "kind": "generated-pe",
+      "architecture": "x64",
+      "toolchain": "MinGW-w64 13.2",
+      "profile": "minimal",
+      "expectedParse": "pe",
+      "signature": "unsigned",
+      "languages": [
+        "unknown"
+      ],
+      "resourceCoverage": [
+        "exports",
+        "code"
+      ]
+    },
+    {
+      "path": "tests/fixtures/mingw_x64_resource_heavy.exe",
+      "sha256": "ede16258b9e70ae0fe0d32ee8ebb968c469d6794b2fa3fef1361193b39c6a060",
+      "kind": "generated-pe",
+      "architecture": "x64",
+      "toolchain": "MinGW-w64 13.2",
+      "profile": "resource-heavy",
+      "expectedParse": "pe",
+      "signature": "unsigned",
+      "languages": [
+        "en-US",
+        "de-DE"
+      ],
+      "resourceCoverage": [
+        "numeric",
+        "named",
+        "multiple-language",
+        "STRINGTABLE",
+        "MENU",
+        "DIALOGEX",
+        "VERSIONINFO",
+        "RCDATA"
+      ]
+    },
+    {
+      "path": "tests/fixtures/mingw_x64_weird_alignment.exe",
+      "sha256": "b7af41b7b0beb46843b2d6adafd0d2a01ed7913ee913ab6422e53da65b0653c9",
+      "kind": "generated-pe",
+      "architecture": "x64",
+      "toolchain": "MinGW-w64 13.2",
+      "profile": "weird-alignment",
+      "expectedParse": "pe",
+      "signature": "unsigned",
+      "languages": [
+        "en-US",
+        "de-DE"
+      ],
+      "resourceCoverage": [
+        "non-page-section-alignment",
+        "resources"
+      ]
+    },
+    {
+      "path": "tests/fixtures/mingw_x64_resource_heavy_upx.exe",
+      "sha256": "4449c9243b1d3b06361fbf5d35a7487fff6e09515ed660360ead1c989ff0b4f6",
+      "kind": "generated-pe",
+      "architecture": "x64",
+      "toolchain": "MinGW-w64 13.2 + UPX 4.2.2",
+      "profile": "packed-benign",
+      "expectedParse": "pe",
+      "signature": "unsigned",
+      "languages": [
+        "en-US",
+        "de-DE"
+      ],
+      "resourceCoverage": [
+        "packed-code",
+        "resources"
+      ],
+      "limitations": [
+        "benign generated payload; UPX profile validates static heuristics, not malware behavior"
+      ]
+    },
+    {
+      "path": "tests/fixtures/mingw_x64_resource_heavy_overlay.exe",
+      "sha256": "e2b86284af3a072e81155eb372cd75f69fd4ed700b931cd271c36a49c9e2fdaf",
+      "kind": "generated-pe",
+      "architecture": "x64",
+      "toolchain": "MinGW-w64 13.2",
+      "profile": "overlay",
+      "expectedParse": "pe",
+      "signature": "unsigned",
+      "languages": [
+        "en-US",
+        "de-DE"
+      ],
+      "resourceCoverage": [
+        "overlay",
+        "resources"
+      ],
+      "limitations": [
+        "overlay bytes are deterministic benign test data"
+      ]
+    },
+    {
+      "path": "tests/fixtures/mingw_x64_resource_heavy_test_signed.exe",
+      "sha256": "d9a07f44b7058e0508f41c81bddd937fb7ca82d2508f98b13b761de9efa7192d",
+      "kind": "generated-pe",
+      "architecture": "x64",
+      "toolchain": "MinGW-w64 13.2 + osslsigncode 2.8",
+      "profile": "test-signed",
+      "expectedParse": "pe",
+      "signature": "self-signed-test-certificate",
+      "languages": [
+        "en-US",
+        "de-DE"
+      ],
+      "resourceCoverage": [
+        "resources",
+        "certificate-table"
+      ],
+      "limitations": [
+        "certificate is generated for corpus testing and is not a trusted publisher identity"
+      ]
     },
     {
       "path": "tests/fixtures/not-pe.txt",
