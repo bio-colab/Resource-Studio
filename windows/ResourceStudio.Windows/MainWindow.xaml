@@ -21,21 +21,21 @@
                 <ToolBarTray AutomationProperties.Name="Primary actions">
 
             <ToolBar Header="Workspace">
-                <Button AutomationProperties.AutomationId="OpenPeButton" AutomationProperties.AcceleratorKey="Ctrl+O" AutomationProperties.HelpText="Open a PE file without modifying it; shortcut Ctrl+O" ToolTip="Open a PE file without modifying it" Content="Open PE" Click="OpenPe_Click" />
-                <Button AutomationProperties.AutomationId="ListResourcesButton" ToolTip="Explore the resources in the current PE" Content="Explore resources" Click="List_Click" />
-                <Button AutomationProperties.AutomationId="InspectButton" AutomationProperties.AcceleratorKey="Ctrl+I" AutomationProperties.HelpText="Inspect PE structure and integrity; shortcut Ctrl+I" ToolTip="Inspect PE structure and integrity" Content="Inspect" Click="Inspect_Click" />
-                <Button AutomationProperties.AutomationId="ValidateButton" AutomationProperties.HelpText="Validate the current PE without writing" ToolTip="Validate the current PE without writing" Content="Validate" Click="Validate_Click" />
+                <Button AutomationProperties.AutomationId="OpenPeButton" AutomationProperties.AcceleratorKey="Ctrl+O" AutomationProperties.HelpText="Open a PE file without modifying it; shortcut Ctrl+O" AutomationProperties.Name="Open PE" ToolTip="Open a PE file without modifying it" Click="OpenPe_Click"><StackPanel Orientation="Horizontal"><TextBlock Text="↥" FontSize="15" Margin="0,0,6,0" /><TextBlock Text="Open PE" /></StackPanel></Button>
+                <Button AutomationProperties.AutomationId="ListResourcesButton" AutomationProperties.Name="Explore resources" ToolTip="Explore the resources in the current PE" Click="List_Click"><StackPanel Orientation="Horizontal"><TextBlock Text="☷" FontSize="15" Margin="0,0,6,0" /><TextBlock Text="Explore resources" /></StackPanel></Button>
+                <Button AutomationProperties.AutomationId="InspectButton" AutomationProperties.AcceleratorKey="Ctrl+I" AutomationProperties.HelpText="Inspect PE structure and integrity; shortcut Ctrl+I" AutomationProperties.Name="Inspect" ToolTip="Inspect PE structure and integrity" Click="Inspect_Click"><StackPanel Orientation="Horizontal"><TextBlock Text="⌕" FontSize="15" Margin="0,0,6,0" /><TextBlock Text="Inspect" /></StackPanel></Button>
+                <Button AutomationProperties.AutomationId="ValidateButton" AutomationProperties.Name="Validate" AutomationProperties.HelpText="Validate the current PE without writing" ToolTip="Validate the current PE without writing" Click="Validate_Click"><StackPanel Orientation="Horizontal"><TextBlock Text="✓" FontSize="14" Margin="0,0,6,0" /><TextBlock Text="Validate" /></StackPanel></Button>
             </ToolBar>
             <ToolBar Header="Editors">
-                <Button AutomationProperties.AutomationId="DialogEditorButton" ToolTip="Edit a dialog visually and save a new PE" Content="Dialog Editor" Click="DialogEditor_Click" />
-                <Button AutomationProperties.AutomationId="StringTableEditorButton" ToolTip="Edit StringTable entries and save a new PE" Content="StringTable Editor" Click="StringTableEditor_Click" />
-                <Button AutomationProperties.AutomationId="ResourceWizardsButton" ToolTip="Edit VersionInfo, Manifest, or Menu" Content="Resource Wizards" Click="ResourceWizards_Click" />
-                <Button AutomationProperties.AutomationId="ImageWizardButton" ToolTip="Preview and edit bitmap, icon, or cursor resources" Content="Image Wizard" Click="ImageWizard_Click" />
+                <Button AutomationProperties.AutomationId="DialogEditorButton" AutomationProperties.Name="Dialog Editor" ToolTip="Edit a dialog visually and save a new PE" Click="DialogEditor_Click"><StackPanel Orientation="Horizontal"><TextBlock Text="▱" FontSize="15" Margin="0,0,6,0" /><TextBlock Text="Dialog Editor" /></StackPanel></Button>
+                <Button AutomationProperties.AutomationId="StringTableEditorButton" AutomationProperties.Name="StringTable Editor" ToolTip="Edit StringTable entries and save a new PE" Click="StringTableEditor_Click"><StackPanel Orientation="Horizontal"><TextBlock Text="A" FontSize="14" Margin="0,0,6,0" /><TextBlock Text="StringTable Editor" /></StackPanel></Button>
+                <Button AutomationProperties.AutomationId="ResourceWizardsButton" AutomationProperties.Name="Resource Wizards" ToolTip="Edit VersionInfo, Manifest, or Menu" Click="ResourceWizards_Click"><StackPanel Orientation="Horizontal"><TextBlock Text="✦" FontSize="14" Margin="0,0,6,0" /><TextBlock Text="Resource Wizards" /></StackPanel></Button>
+                <Button AutomationProperties.AutomationId="ImageWizardButton" AutomationProperties.Name="Image Wizard" ToolTip="Preview and edit bitmap, icon, or cursor resources" Click="ImageWizard_Click"><StackPanel Orientation="Horizontal"><TextBlock Text="▧" FontSize="15" Margin="0,0,6,0" /><TextBlock Text="Image Wizard" /></StackPanel></Button>
             </ToolBar>
             <ToolBar Header="Tools">
-                <Button AutomationProperties.AutomationId="AuthenticodeToolsButton" ToolTip="Inspect or change signature state using Save As" Content="Authenticode Tools" Click="AuthenticodeTools_Click" />
-                <Button AutomationProperties.AutomationId="PythonGuiButton" ToolTip="Open the legacy Python interface" Content="Open Python GUI" Click="OpenPythonGui_Click" />
-                <Button AutomationProperties.AutomationId="ThemeButton" ToolTip="Toggle light and dark appearance" Content="Toggle dark mode" Click="Theme_Click" />
+                <Button AutomationProperties.AutomationId="AuthenticodeToolsButton" AutomationProperties.Name="Authenticode Tools" ToolTip="Inspect or change signature state using Save As" Click="AuthenticodeTools_Click"><StackPanel Orientation="Horizontal"><TextBlock Text="◈" FontSize="14" Margin="0,0,6,0" /><TextBlock Text="Authenticode Tools" /></StackPanel></Button>
+                <Button AutomationProperties.AutomationId="PythonGuiButton" AutomationProperties.Name="Open Python GUI" ToolTip="Open the legacy Python interface" Click="OpenPythonGui_Click"><StackPanel Orientation="Horizontal"><TextBlock Text="›_" FontSize="13" Margin="0,0,6,0" /><TextBlock Text="Open Python GUI" /></StackPanel></Button>
+                <Button AutomationProperties.AutomationId="ThemeButton" AutomationProperties.Name="Toggle dark mode" ToolTip="Toggle light and dark appearance" Click="Theme_Click"><StackPanel Orientation="Horizontal"><TextBlock Text="◐" FontSize="14" Margin="0,0,6,0" /><TextBlock Text="Toggle dark mode" /></StackPanel></Button>
             </ToolBar>
                 </ToolBarTray>
             </DockPanel>
@@ -43,11 +43,11 @@
         <DockPanel Grid.Row="1" Margin="4,0,4,8" AutomationProperties.Name="Workspace context">
             <TextBlock Text="Current PE" VerticalAlignment="Center" Margin="0,0,8,0" />
             <TextBox AutomationProperties.AutomationId="PathBox" AutomationProperties.Name="Current PE path" x:Name="PathBox" Padding="6" IsReadOnly="True" ToolTip="The input PE is never overwritten; edits use Save As" />
-            <TextBlock AutomationProperties.AutomationId="OutputPolicyText" Text="Save As only" Foreground="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}" VerticalAlignment="Center" Margin="10,0,0,0" ToolTip="The original input remains unchanged" />
+            <TextBlock AutomationProperties.AutomationId="OutputPolicyText" Text="Save As only" Foreground="{DynamicResource MistBrush}" VerticalAlignment="Center" Margin="10,0,0,0" ToolTip="The original input remains unchanged" />
         </DockPanel>
-        <TabControl Grid.Row="2" Margin="4,0,4,4" AutomationProperties.Name="Resource Studio workbench">
+        <TabControl Grid.Row="2" Margin="4,0,4,4" AutomationProperties.Name="Resource Studio workbench" Background="{DynamicResource DeepSlateBrush}">
             <TabItem AutomationProperties.AutomationId="ResourcesTab" Header="Resources">
-                <Grid Margin="6">
+                <Grid Margin="6" Background="{DynamicResource SlatePanelBrush}">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="3*" />
                         <ColumnDefinition Width="2*" />
@@ -59,25 +59,38 @@
                     <DockPanel Grid.ColumnSpan="2" Margin="0,0,0,6">
                         <TextBlock Text="Filter" VerticalAlignment="Center" Margin="0,0,6,0" />
                         <TextBox x:Name="ResourceFilterBox" Width="260" TextChanged="ResourceFilterBox_TextChanged" />
-                        <TextBlock AutomationProperties.AutomationId="ResourceCountText" x:Name="ResourceCountText" Text="0 resources" VerticalAlignment="Center" Margin="12,0,0,0" Foreground="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}" />
+                        <TextBlock AutomationProperties.AutomationId="ResourceCountText" x:Name="ResourceCountText" Text="0 resources" VerticalAlignment="Center" Margin="12,0,0,0" Foreground="{DynamicResource MistBrush}" />
                     </DockPanel>
-                    <DataGrid AutomationProperties.AutomationId="ResourceGrid" AutomationProperties.Name="Resource list" x:Name="ResourceGrid" Grid.Row="1" Grid.Column="0" AutoGenerateColumns="True" IsReadOnly="True" SelectionChanged="ResourceGrid_SelectionChanged" LoadingRow="ResourceGrid_LoadingRow" />
+                    <Grid Grid.Row="1" Grid.Column="0">
+                        <DataGrid AutomationProperties.AutomationId="ResourceGrid" AutomationProperties.Name="Resource list" x:Name="ResourceGrid" AutoGenerateColumns="True" IsReadOnly="True" SelectionChanged="ResourceGrid_SelectionChanged" LoadingRow="ResourceGrid_LoadingRow" />
+                        <StackPanel x:Name="ResourceEmptyState" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False">
+                            <TextBlock Text="⌁" FontSize="30" Foreground="{DynamicResource SignalCyanBrush}" HorizontalAlignment="Center" />
+                            <TextBlock x:Name="ResourceEmptyStateText" Text="Open a PE to explore its resources" FontSize="15" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                            <TextBlock Text="The original input stays untouched; edits use Save As" Foreground="{DynamicResource MistBrush}" HorizontalAlignment="Center" Margin="0,5,0,0" />
+                        </StackPanel>
+                    </Grid>
                     <Grid Grid.Row="1" Grid.Column="1" Margin="8,0,0,0">
                         <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
                         <TextBlock Text="Properties" FontWeight="Bold" Margin="0,0,0,6" />
-                        <DataGrid AutomationProperties.AutomationId="PropertyGrid" AutomationProperties.Name="Selected resource properties" x:Name="PropertyGrid" Grid.Row="1" AutoGenerateColumns="True" IsReadOnly="True" />
+                        <Grid Grid.Row="1">
+                            <DataGrid AutomationProperties.AutomationId="PropertyGrid" AutomationProperties.Name="Selected resource properties" x:Name="PropertyGrid" AutoGenerateColumns="True" IsReadOnly="True" />
+                            <StackPanel x:Name="PropertyEmptyState" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False">
+                                <TextBlock Text="Select a resource" FontSize="14" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                                <TextBlock Text="Properties and typed preview appear here" Foreground="{DynamicResource MistBrush}" HorizontalAlignment="Center" Margin="0,5,0,0" />
+                            </StackPanel>
+                        </Grid>
                     </Grid>
                 </Grid>
             </TabItem>
             <TabItem AutomationProperties.AutomationId="PreviewTab" Header="Preview">
-                <Grid Margin="6">
+                <Grid Margin="6" Background="{DynamicResource SlatePanelBrush}">
                     <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
                     <TextBlock x:Name="PreviewHeader" Text="Select a resource to preview." Margin="0,0,0,6" />
                     <Grid Grid.Row="1"><Grid.ColumnDefinitions><ColumnDefinition Width="2*" /><ColumnDefinition Width="3*" /></Grid.ColumnDefinitions><ScrollViewer AutomationProperties.Name="Visual preview" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"><StackPanel x:Name="PreviewVisualPanel" Margin="4" /></ScrollViewer><Grid Grid.Column="1" Margin="8,0,0,0"><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="170" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions><TextBlock Text="Structural template fields — select a field to highlight its bytes" FontWeight="SemiBold" Margin="0,0,0,4" /><DataGrid x:Name="PreviewFieldsGrid" AutomationProperties.AutomationId="PreviewFieldsGrid" AutomationProperties.Name="Hex template fields" AutoGenerateColumns="True" IsReadOnly="True" SelectionChanged="PreviewFieldsGrid_SelectionChanged" Grid.Row="1" /><TextBlock Text="Hex bytes" FontWeight="SemiBold" Margin="0,8,0,4" Grid.Row="2" /><TextBox AutomationProperties.AutomationId="PreviewHexBox" AutomationProperties.Name="Raw hex bytes" x:Name="PreviewHexBox" Grid.Row="3" FontFamily="Consolas" FontSize="13" AcceptsReturn="True" IsReadOnly="True" TextWrapping="NoWrap" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" /></Grid></Grid>
                 </Grid>
             </TabItem>
             <TabItem AutomationProperties.AutomationId="SearchTab" Header="Search">
-                <Grid Margin="6">
+                <Grid Margin="6" Background="{DynamicResource SlatePanelBrush}">
                     <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
                     <WrapPanel Margin="0,0,0,6">
                         <TextBox AutomationProperties.AutomationId="SearchQueryBox" x:Name="SearchQueryBox" Width="300" Margin="0,0,6,0" />
@@ -89,7 +102,7 @@
                 </Grid>
             </TabItem>
             <TabItem AutomationProperties.AutomationId="BatchTab" Header="Batch Workspace">
-                <Grid Margin="6">
+                <Grid Margin="6" Background="{DynamicResource SlatePanelBrush}">
                     <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
                     <DockPanel Margin="0,0,0,6">
                         <Button Content="Browse manifest" DockPanel.Dock="Right" Click="BatchBrowse_Click" />
@@ -103,7 +116,7 @@
                 </Grid>
             </TabItem>
             <TabItem AutomationProperties.AutomationId="LocalizationTab" Header="Localization">
-                <Grid Margin="6">
+                <Grid Margin="6" Background="{DynamicResource SlatePanelBrush}">
                     <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
                     <DockPanel Margin="0,0,0,6">
                         <Button Content="Browse catalog" DockPanel.Dock="Right" Click="LocalizationBrowse_Click" />
@@ -124,7 +137,7 @@
                 <TextBox AutomationProperties.AutomationId="InspectDetailsBox" AutomationProperties.Name="Inspection details" x:Name="InspectBox" Margin="6" FontFamily="Consolas" FontSize="12" AcceptsReturn="True" IsReadOnly="True" TextWrapping="NoWrap" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" />
             </TabItem>
             <TabItem AutomationProperties.AutomationId="SecurityTab" Header="Security Center">
-                <Grid Margin="6">
+                <Grid Margin="6" Background="{DynamicResource SlatePanelBrush}">
                     <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
                     <WrapPanel Margin="0,0,0,6">
                         <Button AutomationProperties.AutomationId="SecurityAnalyzeButton" Content="Analyze PE" Click="SecurityAnalyze_Click" Margin="0,0,6,0" ToolTip="Run static-only analysis; the PE is never executed" />
@@ -136,15 +149,16 @@
                         <Button AutomationProperties.AutomationId="EvidenceQueryButton" Content="Run Query" DockPanel.Dock="Right" Click="EvidenceQuery_Click" />
                         <TextBox AutomationProperties.AutomationId="EvidenceQueryBox" AutomationProperties.Name="Evidence query" x:Name="EvidenceQueryBox" Text="finding.severity == &quot;HIGH&quot;" Margin="0,0,6,0" ToolTip="Safe query: resource.type == &quot;ICON&quot; or evidence.confidence &gt;= 0.8" />
                     </DockPanel>
-                    <WrapPanel Grid.Row="2" Margin="0,0,0,6">
+                                            <WrapPanel Grid.Row="2" Margin="0,0,0,6">
+
                         <TextBox AutomationProperties.AutomationId="AnnotationTargetKindBox" AutomationProperties.Name="Annotation target kind" x:Name="AnnotationTargetKindBox" Width="90" Text="resource" Margin="0,0,6,0" ToolTip="Target kind, for example resource or finding" />
                         <TextBox AutomationProperties.AutomationId="AnnotationTargetIdBox" AutomationProperties.Name="Annotation target id" x:Name="AnnotationTargetIdBox" Width="150" Margin="0,0,6,0" ToolTip="Stable target identifier" />
                         <TextBox AutomationProperties.AutomationId="AnnotationTagBox" AutomationProperties.Name="Annotation tag" x:Name="AnnotationTagBox" Width="110" Margin="0,0,6,0" ToolTip="Optional tag" />
                         <TextBox AutomationProperties.AutomationId="AnnotationNoteBox" AutomationProperties.Name="Annotation note" x:Name="AnnotationNoteBox" Width="220" Margin="0,0,6,0" ToolTip="Optional note" />
                         <Button AutomationProperties.AutomationId="AddAnnotationButton" Content="Add Annotation" Click="AddAnnotation_Click" Margin="0,0,6,0" />
                         <Button AutomationProperties.AutomationId="ExportSelectionButton" Content="Export Selection" Click="ExportSelection_Click" Margin="0,0,6,0" />
-                        <Border x:Name="TriageBanner" Padding="8,3" Background="#E5E7EB" BorderBrush="#9CA3AF" BorderThickness="1" CornerRadius="3" AutomationProperties.Name="Evidence triage status">
-                            <TextBlock x:Name="TriageBannerText" Text="Triage: not run" FontWeight="SemiBold" />
+                        <Border x:Name="TriageBanner" Padding="8,3" Background="{DynamicResource SlateElevatedBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1" CornerRadius="3" AutomationProperties.Name="Evidence triage status">
+                            <TextBlock x:Name="TriageBannerText" Text="Triage: not run" Foreground="{DynamicResource PaperBrush}" FontWeight="SemiBold" />
                         </Border>
                     </WrapPanel>
                     <Grid Grid.Row="3">
@@ -158,7 +172,7 @@
                 </Grid>
             </TabItem>
             <TabItem AutomationProperties.AutomationId="DiffTab" Header="Diff">
-                <Grid Margin="6">
+                <Grid Margin="6" Background="{DynamicResource SlatePanelBrush}">
                     <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
                     <DockPanel Margin="0,0,0,6">
                         <Button Content="Browse" DockPanel.Dock="Right" Click="DiffLeftBrowse_Click" />
@@ -176,13 +190,15 @@
                 </Grid>
             </TabItem>
         </TabControl>
-        <Border Grid.Row="3" Margin="4" Padding="8,5" BorderBrush="#D0D7DE" BorderThickness="1" AutomationProperties.Name="Operation status">
-            <StackPanel Orientation="Horizontal">
-                <TextBlock AutomationProperties.AutomationId="MainStatusText" x:Name="StatusText" Text="Ready" Margin="0,0,12,0" />
-                <TextBlock AutomationProperties.AutomationId="CliStateText" x:Name="CliStateText" Text="Idle" FontWeight="SemiBold" Margin="0,0,12,0" />
-                <TextBlock AutomationProperties.AutomationId="StatusDetailText" x:Name="StatusDetailText" Text="Open a PE to begin" Foreground="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}" TextTrimming="CharacterEllipsis" Margin="0,0,12,0" />
-                <Button AutomationProperties.AutomationId="StopCliButton" AutomationProperties.HelpText="Stop the active CLI process; the input remains unchanged" x:Name="StopCliButton" Content="Stop" Click="StopCli_Click" IsEnabled="False" Padding="10,2" ToolTip="Stop the current CLI operation; the input remains unchanged" />
-            </StackPanel>
+        <Border Grid.Row="3" Margin="4" Padding="8,5" Background="{DynamicResource SlatePanelBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1" CornerRadius="4" AutomationProperties.Name="Operation status">
+            <DockPanel>
+                <Button AutomationProperties.AutomationId="StopCliButton" AutomationProperties.HelpText="Stop the active CLI process; the input remains unchanged" x:Name="StopCliButton" DockPanel.Dock="Right" Background="{DynamicResource EvidenceRedBrush}" Foreground="{DynamicResource DeepSlateBrush}" BorderBrush="{DynamicResource EvidenceRedBrush}" Click="StopCli_Click" IsEnabled="False" Padding="10,2" ToolTip="Stop the current CLI operation; the input remains unchanged"><StackPanel Orientation="Horizontal"><TextBlock Text="■" FontSize="11" Margin="0,0,5,0" /><TextBlock Text="Stop" /></StackPanel></Button>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock AutomationProperties.AutomationId="MainStatusText" x:Name="StatusText" Text="Ready" Margin="0,0,12,0" />
+                    <TextBlock AutomationProperties.AutomationId="CliStateText" x:Name="CliStateText" Text="Idle" Foreground="{DynamicResource SignalCyanBrush}" FontWeight="SemiBold" Margin="0,0,12,0" />
+                    <TextBlock AutomationProperties.AutomationId="StatusDetailText" x:Name="StatusDetailText" Text="Open a PE to begin" Foreground="{DynamicResource MistBrush}" TextTrimming="CharacterEllipsis" Margin="0,0,12,0" />
+                </StackPanel>
+            </DockPanel>
         </Border>
     </Grid>
 </Window>

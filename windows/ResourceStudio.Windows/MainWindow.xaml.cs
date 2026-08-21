@@ -55,19 +55,35 @@ public partial class MainWindow : Window
     private void Theme_Click(object sender, RoutedEventArgs e)
     {
         _darkMode = !_darkMode;
-        if (_darkMode)
-        {
-            Background = new SolidColorBrush(Color.FromRgb(30, 34, 42));
-            Foreground = Brushes.White;
-            RootGrid.Background = Background;
-        }
-        else
-        {
-            Background = SystemColors.WindowBrush;
-            Foreground = SystemColors.WindowTextBrush;
-            RootGrid.Background = Background;
-        }
+        ApplyThemePalette(_darkMode);
         StatusText.Text = _darkMode ? "Dark mode enabled" : "Light mode enabled";
+    }
+
+    private void ApplyThemePalette(bool dark)
+    {
+        SetBrushColor("DeepSlateBrush", dark ? "#101827" : "#F7FAFC");
+        SetBrushColor("SlatePanelBrush", dark ? "#182337" : "#FFFFFF");
+        SetBrushColor("SlateElevatedBrush", dark ? "#223149" : "#EEF2F7");
+        SetBrushColor("SlateInputBrush", dark ? "#111C2D" : "#FFFFFF");
+        SetBrushColor("DividerBrush", dark ? "#34445C" : "#CBD5E1");
+        SetBrushColor("PaperBrush", dark ? "#F3F7FB" : "#172033");
+        SetBrushColor("MistBrush", dark ? "#B7C4D6" : "#526174");
+        SetBrushColor("SignalCyanBrush", dark ? "#2DD4BF" : "#0F766E");
+        SetBrushColor("AnalysisBlueBrush", dark ? "#60A5FA" : "#2563EB");
+        SetBrushColor("TriageAmberBrush", dark ? "#F59E0B" : "#B45309");
+        SetBrushColor("EvidenceRedBrush", dark ? "#EF4444" : "#B91C1C");
+        SetBrushColor("VerifiedGreenBrush", dark ? "#34D399" : "#047857");
+        Background = (Brush)Application.Current.Resources["DeepSlateBrush"];
+        Foreground = (Brush)Application.Current.Resources["PaperBrush"];
+        RootGrid.Background = Background;
+    }
+
+    private void SetBrushColor(string key, string value)
+    {
+        if (Application.Current.Resources[key] is SolidColorBrush brush && ColorConverter.ConvertFromString(value) is Color color)
+        {
+            brush.Color = color;
+        }
     }
 
     private void ApplyHighContrastTheme()
@@ -223,6 +239,7 @@ public partial class MainWindow : Window
     private void ResourceGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (ResourceGrid.SelectedItem is not ResourceRow row) return;
+        PropertyEmptyState.Visibility = Visibility.Collapsed;
         PropertyGrid.ItemsSource = new[]
         {
             new PropertyRow("Type", row.Type),
@@ -349,7 +366,7 @@ public partial class MainWindow : Window
             if (!document.RootElement.TryGetProperty("resourceTriage", out var triage) || triage.ValueKind != JsonValueKind.Object)
             {
                 TriageBannerText.Text = "Triage: not available";
-                TriageBanner.Background = new SolidColorBrush(Color.FromRgb(229, 231, 235));
+                SetTriageBannerBrush((SolidColorBrush)Application.Current.Resources["SlateElevatedBrush"]);
                 ApplyResourceFilter();
                 return;
             }
@@ -358,7 +375,7 @@ public partial class MainWindow : Window
             var color = global.ValueKind == JsonValueKind.Object && global.TryGetProperty("color", out var colorValue) ? colorValue.GetString() ?? "#E5E7EB" : "#E5E7EB";
             var reason = global.ValueKind == JsonValueKind.Object && global.TryGetProperty("reasons", out var reasons) && reasons.ValueKind == JsonValueKind.Array ? string.Join(", ", reasons.EnumerateArray().Select(item => item.ToString()).Take(2)) : "visual cue only";
             TriageBannerText.Text = $"Triage: {level} — {reason}";
-            TriageBanner.Background = ParseBrush(color, Color.FromRgb(229, 231, 235));
+            SetTriageBannerBrush(ParseBrush(color, ((SolidColorBrush)Application.Current.Resources["SlateElevatedBrush"]).Color));
             if (triage.TryGetProperty("resources", out var resources) && resources.ValueKind == JsonValueKind.Object)
             {
                 foreach (var item in resources.EnumerateObject())
@@ -374,7 +391,7 @@ public partial class MainWindow : Window
         catch (JsonException)
         {
             TriageBannerText.Text = "Triage: invalid report";
-            TriageBanner.Background = new SolidColorBrush(Color.FromRgb(254, 226, 226));
+            SetTriageBannerBrush(new SolidColorBrush(Color.FromRgb(127, 29, 29)));
             ApplyResourceFilter();
         }
     }
@@ -383,6 +400,18 @@ public partial class MainWindow : Window
     {
         try { return new SolidColorBrush((Color)ColorConverter.ConvertFromString(value)!); }
         catch { return new SolidColorBrush(fallback); }
+    }
+
+    private void SetTriageBannerBrush(SolidColorBrush brush)
+    {
+        TriageBanner.Background = brush;
+        TriageBannerText.Foreground = ReadableTextBrush(brush.Color);
+    }
+
+    private static SolidColorBrush ReadableTextBrush(Color background)
+    {
+        var luminance = (0.299 * background.R + 0.587 * background.G + 0.114 * background.B) / 255.0;
+        return new SolidColorBrush(luminance > 0.62 ? Color.FromRgb(16, 24, 39) : Colors.White);
     }
 
     private static string ResourceTriageKey(ResourceRow row) => $"resource:{row.Type}/{row.Name}/{row.Language?.ToString() ?? "None"}";
@@ -533,9 +562,13 @@ public partial class MainWindow : Window
     private void ApplyResourceFilter()
     {
         var query = ResourceFilterBox.Text.Trim();
-        ResourceGrid.ItemsSource = string.IsNullOrEmpty(query)
+        var filtered = string.IsNullOrEmpty(query)
             ? _resources.ToList()
             : _resources.Where(row => $"{row.Type} {row.Name} {row.Language} {row.Sha256}".Contains(query, StringComparison.OrdinalIgnoreCase)).ToList();
+        ResourceGrid.ItemsSource = filtered;
+        ResourceEmptyStateText.Text = _resources.Count == 0 ? "Open a PE to explore its resources" : "No resources match this filter";
+        ResourceEmptyState.Visibility = filtered.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        PropertyEmptyState.Visibility = PropertyGrid.Items.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private async void PreviewResource(ResourceRow row)
