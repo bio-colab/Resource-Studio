@@ -557,6 +557,16 @@ def command_case(args: argparse.Namespace) -> int:
         case.transition(args.status, note=args.note)
         case.save(args.case)
         payload = case.payload
+    elif args.action == "annotate":
+        case = CaseFile.load(args.case)
+        annotation = case.add_annotation(target_kind=args.target_kind, target_id=args.target_id, tag=args.tag, note=args.note, actor=args.actor)
+        case.save(args.case)
+        payload = {"annotation": annotation, "case": case.payload}
+    elif args.action == "select":
+        case = CaseFile.load(args.case)
+        output = case.export_selection(args.output, annotation_ids=args.annotation_id or (), tags=args.tag or ())
+        payload = json.loads(output.read_text(encoding="utf-8"))
+        payload["output"] = str(output)
     else:
         case = CaseFile.load(args.case)
         payload = case.payload
@@ -759,6 +769,22 @@ def parser() -> argparse.ArgumentParser:
     case_show.add_argument("case", type=Path)
     case_show.add_argument("--json", action="store_true")
     case_show.set_defaults(handler=command_case)
+    case_annotate = case_actions.add_parser("annotate")
+    case_annotate.add_argument("case", type=Path)
+    case_annotate.add_argument("--target-kind", required=True)
+    case_annotate.add_argument("--target-id", required=True)
+    case_annotate.add_argument("--tag")
+    case_annotate.add_argument("--note")
+    case_annotate.add_argument("--actor", default="resource-studio")
+    case_annotate.add_argument("--json", action="store_true")
+    case_annotate.set_defaults(handler=command_case)
+    case_select = case_actions.add_parser("select")
+    case_select.add_argument("case", type=Path)
+    case_select.add_argument("--output", type=Path, required=True)
+    case_select.add_argument("--annotation-id", action="append")
+    case_select.add_argument("--tag", action="append")
+    case_select.add_argument("--json", action="store_true")
+    case_select.set_defaults(handler=command_case)
 
     preview_parser = subparsers.add_parser("preview", help="preview a typed resource with raw fallback")
     preview_parser.add_argument("input", type=Path)

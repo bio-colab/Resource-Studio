@@ -6,8 +6,9 @@ import os
 import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any, Iterable, Mapping
 
+from .evidence_annotations import build_selection_manifest, create_annotation
 from .evidence_graph import EvidenceGraph
 from .security_analysis import analyze_security
 
@@ -47,6 +48,7 @@ class CaseFile:
             "evidenceGraph": None,
             "findings": [],
             "reports": [],
+            "annotations": [],
             "timeline": [],
             "audit": {"events": []},
         }
@@ -119,6 +121,42 @@ class CaseFile:
         if not str(note).strip():
             raise CaseLifecycleError("case note cannot be empty")
         self._append_event("NOTE_ADDED", {"note": str(note)}, actor=actor)
+
+    def add_annotation(
+        self,
+        *,
+        target_kind: str,
+        target_id: str,
+        tag: str | None = None,
+        note: str | None = None,
+        actor: str = "resource-studio",
+    ) -> dict[str, Any]:
+        graph_hash = self.payload.get("evidenceGraphHash")
+        annotation = create_annotation(
+            target_kind=target_kind,
+            target_id=target_id,
+            tag=tag,
+            note=note,
+            actor=actor,
+            artifact_sha256=str(self.payload["artifact"]["sha256"]),
+            graph_hash=str(graph_hash) if graph_hash else None,
+        )
+        self.payload.setdefault("annotations", []).append(annotation)
+        self._append_event("ANNOTATION_ADDED", {"annotationId": annotation["annotationId"], "target": annotation["target"], "tag": annotation.get("tag")}, actor=actor)
+        return annotation
+
+    def export_selection(
+        self,
+        path: Path,
+        *,
+        annotation_ids: Iterable[str] = (),
+        tags: Iterable[str] = (),
+    ) -> Path:
+        manifest = build_selection_manifest(self.payload, annotation_ids=annotation_ids, tags=tags)
+        destination = Path(path).expanduser().resolve()
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_text(json.dumps(manifest, ensure_ascii=False, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+        return destination
 
     def timeline(self) -> tuple[Mapping[str, Any], ...]:
         return tuple(self.payload.get("timeline", []))

@@ -240,6 +240,8 @@ PYTHONPATH=. python3 tools/p0_baseline.py
 
 أُجري تقييم Rust جراحيًا على byte-search عبر FFI. تطابقت النتائج مع Python، لكن `bytes.find` كان أسرع، لذلك لم يُدخل المشروع dependency أو native artifact غير مبرر. النتيجة والتجربة في [`docs/RUST-EVALUATION.md`](docs/RUST-EVALUATION.md).
 
+بعد مراجعة أنماط Wireshark وOxygen Forensic Detective، أضيفت annotations append-only إلى case مع `artifactSha256` و`graphHash` وactor وUTC timestamp، وأضيف `case annotate` و`case select` لتصدير `evidence_selection.v1` انتقائيًا. تعرض Security Center controls الأساسية لذلك دون تعديل PE؛ الدراسة والمقارنة في [`docs/FORENSIC-ANALYTICS-RESEARCH.md`](docs/FORENSIC-ANALYTICS-RESEARCH.md).
+
 ## حدود مقصودة
 
 لا يهدف Forensic-goal إلى بناء malware scanner أو IOC engine أو YARA أو PEiD أو entropy maps أو timeline عام أو hex forensic viewer جديد. أصبح Security-goal مسارًا مستقلًا للتحليل الساكن الدفاعي؛ لا يشغّل الملفات ولا يفك payloadات ولا يعلن أن heuristic واحدة تعني malware. أما Defender وYARA فهما موفّران خارجيان اختياريان على staged copies، وليسَا جزءًا من writer أو verdict داخلي. كما أن MCP مؤجل في هذه الدورة.

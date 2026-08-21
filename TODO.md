@@ -595,8 +595,9 @@
 | [x] | EVID-01 | Evidence Summary موحّد | `core/evidence_model.py` يطبع artifact وobservations وraw ranges وstatistics وprovenance |
 | [x] | EVID-02 | Corroboration مستقل | `inspect` و`ForensicEvidence` يربطان ResourceGraph بـraw resource parser ويعرضان `CORROBORATED` أو `DISCREPANCY` |
 | [x] | EVID-03 | Expert Findings | findings تحتوي severity وconfidence وevidence references وlimitations، دون تحويل entropy إلى verdict |
-| [ ] | EVID-04 | RSQL محدود وآمن | query parser فوق ResourceIndex وEvidence Summary بعد تثبيت grammar وfalse-positive tests |
-| [ ] | EVID-05 | Mutation timeline | timeline مشتق من AuditLog وForensicEvidence بعد تعريف lifecycle للحالات والـcase |
+| [x] | EVID-04 | Query / Filtering Engine محدود وآمن | `core/evidence_query.py` grammar محدودة فوق Evidence Summary مع اختبارات false-positive وبدون `eval` |
+| [x] | EVID-05 | Mutation timeline | `CaseFile.timeline` وaudit hash-chain يثبتان انتقالات الحالة والتقارير والملاحظات |
+| [x] | EVID-06 | Evidence annotations وselection | annotations append-only مربوطة بـartifact SHA-256 وgraph hash، و`evidence_selection.v1` للتصدير الانتقائي؛ التفاصيل في `docs/FORENSIC-ANALYTICS-RESEARCH.md` |
 
 ### ملاحظة الترخيص
 

@@ -113,7 +113,7 @@
             </TabItem>
             <TabItem AutomationProperties.AutomationId="SecurityTab" Header="Security Center">
                 <Grid Margin="6">
-                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
                     <WrapPanel Margin="0,0,0,6">
                         <Button AutomationProperties.AutomationId="SecurityAnalyzeButton" Content="Analyze PE" Click="SecurityAnalyze_Click" Margin="0,0,6,0" ToolTip="Run static-only analysis; the PE is never executed" />
                         <Button AutomationProperties.AutomationId="EvidenceGraphButton" Content="Build Evidence Graph" Click="EvidenceGraph_Click" Margin="0,0,6,0" ToolTip="Build a deterministic graph from normalized evidence" />
@@ -124,7 +124,15 @@
                         <Button AutomationProperties.AutomationId="EvidenceQueryButton" Content="Run Query" DockPanel.Dock="Right" Click="EvidenceQuery_Click" />
                         <TextBox AutomationProperties.AutomationId="EvidenceQueryBox" AutomationProperties.Name="Evidence query" x:Name="EvidenceQueryBox" Text="finding.severity == &quot;HIGH&quot;" Margin="0,0,6,0" ToolTip="Safe query: resource.type == &quot;ICON&quot; or evidence.confidence &gt;= 0.8" />
                     </DockPanel>
-                    <Grid Grid.Row="2">
+                    <WrapPanel Grid.Row="2" Margin="0,0,0,6">
+                        <TextBox AutomationProperties.AutomationId="AnnotationTargetKindBox" AutomationProperties.Name="Annotation target kind" x:Name="AnnotationTargetKindBox" Width="90" Text="resource" Margin="0,0,6,0" ToolTip="Target kind, for example resource or finding" />
+                        <TextBox AutomationProperties.AutomationId="AnnotationTargetIdBox" AutomationProperties.Name="Annotation target id" x:Name="AnnotationTargetIdBox" Width="150" Margin="0,0,6,0" ToolTip="Stable target identifier" />
+                        <TextBox AutomationProperties.AutomationId="AnnotationTagBox" AutomationProperties.Name="Annotation tag" x:Name="AnnotationTagBox" Width="110" Margin="0,0,6,0" ToolTip="Optional tag" />
+                        <TextBox AutomationProperties.AutomationId="AnnotationNoteBox" AutomationProperties.Name="Annotation note" x:Name="AnnotationNoteBox" Width="220" Margin="0,0,6,0" ToolTip="Optional note" />
+                        <Button AutomationProperties.AutomationId="AddAnnotationButton" Content="Add Annotation" Click="AddAnnotation_Click" Margin="0,0,6,0" />
+                        <Button AutomationProperties.AutomationId="ExportSelectionButton" Content="Export Selection" Click="ExportSelection_Click" />
+                    </WrapPanel>
+                    <Grid Grid.Row="3">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                         <Grid.RowDefinitions><RowDefinition Height="*" /><RowDefinition Height="*" /></Grid.RowDefinitions>
                         <TextBox AutomationProperties.AutomationId="SecurityReportBox" AutomationProperties.Name="Static security report" x:Name="SecurityReportBox" Grid.Row="0" Grid.Column="0" Margin="0,0,6,6" FontFamily="Consolas" FontSize="11" AcceptsReturn="True" IsReadOnly="True" TextWrapping="NoWrap" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" />

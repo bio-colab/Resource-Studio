@@ -23,6 +23,7 @@ public partial class MainWindow : Window
     private CancellationTokenSource? _cliCancellation;
     private ReadHostClient? _readHost;
     private long _requestGeneration;
+    private string? _casePath;
 
     public MainWindow()
     {
@@ -353,6 +354,7 @@ public partial class MainWindow : Window
         if (dialog.ShowDialog() != true) return;
         var result = await RunCliCaptureAsync("case", "create", _selectedPe!, "--output", dialog.FileName, "--json");
         if (result.IsStale) return;
+        if (result.ExitCode == 0) _casePath = dialog.FileName;
         CasePathBox.Text = dialog.FileName + Environment.NewLine + PrettyJson(result.StdoutOrError);
         StatusText.Text = result.ExitCode == 0 ? "Case created" : $"CLI exited with code {result.ExitCode}";
     }
@@ -367,10 +369,54 @@ public partial class MainWindow : Window
             if (dialog.ShowDialog() != true) return;
             casePath = dialog.FileName;
         }
+        _casePath = casePath;
         var result = await RunCliCaptureAsync("case", "analyze", casePath, _selectedPe!, "--json");
         if (result.IsStale) return;
+        if (result.ExitCode == 0) _casePath = casePath;
         CasePathBox.Text = casePath + Environment.NewLine + PrettyJson(result.StdoutOrError);
         StatusText.Text = result.ExitCode == 0 ? "Case analyzed" : $"CLI exited with code {result.ExitCode}";
+    }
+
+    private async void AddAnnotation_Click(object sender, RoutedEventArgs e)
+    {
+        if (!TryGetCasePath(out var casePath)) return;
+        if (string.IsNullOrWhiteSpace(AnnotationTargetKindBox.Text) || string.IsNullOrWhiteSpace(AnnotationTargetIdBox.Text))
+        {
+            MessageBox.Show("Enter an annotation target kind and id first.", "Annotation", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        var args = new List<string> { "case", "annotate", casePath, "--target-kind", AnnotationTargetKindBox.Text, "--target-id", AnnotationTargetIdBox.Text, "--actor", Environment.UserName, "--json" };
+        if (!string.IsNullOrWhiteSpace(AnnotationTagBox.Text)) args.AddRange(new[] { "--tag", AnnotationTagBox.Text });
+        if (!string.IsNullOrWhiteSpace(AnnotationNoteBox.Text)) args.AddRange(new[] { "--note", AnnotationNoteBox.Text });
+        var result = await RunCliCaptureAsync(args.ToArray());
+        if (result.IsStale) return;
+        CasePathBox.Text = casePath + Environment.NewLine + PrettyJson(result.StdoutOrError);
+        StatusText.Text = result.ExitCode == 0 ? "Annotation added" : $"CLI exited with code {result.ExitCode}";
+    }
+
+    private async void ExportSelection_Click(object sender, RoutedEventArgs e)
+    {
+        if (!TryGetCasePath(out var casePath)) return;
+        var dialog = new SaveFileDialog { Filter = "Evidence selections (*.selection.json)|*.selection.json|JSON files (*.json)|*.json", FileName = Path.GetFileNameWithoutExtension(casePath) + ".selection.json" };
+        if (dialog.ShowDialog() != true) return;
+        var args = new List<string> { "case", "select", casePath, "--output", dialog.FileName, "--json" };
+        if (!string.IsNullOrWhiteSpace(AnnotationTagBox.Text)) args.AddRange(new[] { "--tag", AnnotationTagBox.Text });
+        var result = await RunCliCaptureAsync(args.ToArray());
+        if (result.IsStale) return;
+        CasePathBox.Text = casePath + Environment.NewLine + PrettyJson(result.StdoutOrError);
+        StatusText.Text = result.ExitCode == 0 ? "Evidence selection exported" : $"CLI exited with code {result.ExitCode}";
+    }
+
+    private bool TryGetCasePath(out string casePath)
+    {
+        casePath = _casePath ?? CasePathBox.Text.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault(value => value.EndsWith(".json", StringComparison.OrdinalIgnoreCase)) ?? string.Empty;
+        if (File.Exists(casePath))
+        {
+            _casePath = casePath;
+            return true;
+        }
+        MessageBox.Show("Create or open a case first.", "Case", MessageBoxButton.OK, MessageBoxImage.Information);
+        return false;
     }
 
     private void DiffLeftBrowse_Click(object sender, RoutedEventArgs e) => ChooseDiffFile(DiffLeftBox);

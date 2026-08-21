@@ -16,6 +16,7 @@
 - تنفيذ P3 عبر Python JSONL read host طويل العمر و`ReadHostClient.cs`؛ أزيل process-per-action من مسارات القراءة الساخنة مع session cache لـ`list/search` وfallback آمن. أبقى القياس Rust وC++ خارج المسار حتى يثبت Windows baseline حاجة حقيقية. التفاصيل في `docs/P3-READ-HOST.md`.
 - تنفيذ P4 في WPF: request generation و`CliResult.IsStale` لمنع النتائج القديمة، وowned process/cancellation لمنع تداخل الطلبات. التفاصيل في `docs/P4-WPF-SESSION.md`.
 - تقييم Rust جراحيًا لمسار byte-search عبر FFI؛ تطابقت accuracy، لكن `bytes.find` كان أسرع من prototype Rust، لذلك لم يُضف أي dependency أو artifact Rust إلى المشروع. التفاصيل في `docs/RUST-EVALUATION.md`.
+- إضافة `Evidence annotations` و`evidence_selection.v1` بعد مراجعة أنماط Wireshark وOxygen: annotations append-only مربوطة بـartifact SHA-256 وgraph hash، وCLI/WPF لتصدير selection manifest انتقائي دون تعديل PE. الدراسة في `docs/FORENSIC-ANALYTICS-RESEARCH.md`.
 
 - Apache-2.0 في `LICENSE` مع توضيح نطاق كود Resource Studio واعتماديات الطرف الثالث.
 - GitHub Actions CI لـPython وWindows/WPF، وRelease workflow لإنتاج source bundle عند tags دون ملفات الأسرار أو البناء.
