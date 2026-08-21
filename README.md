@@ -176,10 +176,11 @@ python3 resource_studio_cli.py batch apply batch.json --journal batch.journal.js
 ```bash
 python3 resource_studio_cli.py report diagnostics before.dll after.dll --format markdown --output diagnostics.md
 python3 resource_studio_cli.py security sample.dll --json
+python3 resource_studio_cli.py security sample.dll --external-result defender-result.json --json
 python3 resource_studio_cli.py report security sample.dll --format markdown --output security.md
 ```
 
-توثّق [`docs/PRODUCTIZATION.md`](docs/PRODUCTIZATION.md) عقود journal/resume وPost-write Diagnostics وحدود المرحلة التالية.
+توثّق [`docs/PRODUCTIZATION.md`](docs/PRODUCTIZATION.md) عقود journal/resume وPost-write Diagnostics وحدود المرحلة التالية. وتوثّق [`docs/SECURITY-GOAL.md`](docs/SECURITY-GOAL.md) عقد `external_scan.v1`؛ الخيار `--external-result` يستورد JSON موجودًا ولا يشغّل الموفر.
 
 ينفذ `durable_commit` أيضًا post-commit readback ويعيد `verifiedSha256` للbytes المقروءة من الهدف بعد الاستبدال. ويثبت Writer determinism regression أن نفس mutation ينتج نفس SHA-256، مع تثبيت COFF timestamp الأصلي بدل تركه يتغير عشوائيًا.
 

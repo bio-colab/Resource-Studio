@@ -23,6 +23,7 @@ from .invariants import PEInvariantSnapshot, PESurgicalChangeReport, compare_sur
 from .deep_invariants import DeepPEInvariantReport, inspect_deep
 from .diagnostics import build_post_write_diagnostics
 from .security_analysis import analyze_security
+from .security_providers import ExternalScanResult, external_scan_hash, load_external_scan
 from .localization import LocalizationCatalog, LocalizedString
 from .menu_resources import MenuItem, MenuResource, MenuResourceError
 from .manifest import ManifestDocument
@@ -99,6 +100,9 @@ __all__ = [
     "DeepPEInvariantReport",
     "build_post_write_diagnostics",
     "analyze_security",
+    "ExternalScanResult",
+    "external_scan_hash",
+    "load_external_scan",
     "inspect_deep",
     "LocalizationCatalog",
     "LocalizedString",

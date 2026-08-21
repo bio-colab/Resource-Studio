@@ -279,9 +279,9 @@
 | [x] | SEC-02 | Static Security Report v1 | `core/security_analysis.py` وأمر CLI `security` و`report security` يعيدان access/parse state وPEHealth وdeep invariants وsignature/integrity وResource Graph/raw corroboration وstatic indicators وEvidence Summary؛ CI run `32444514351` نجح على Python 3.12 وWindows/WPF |
 | [~] | SEC-03 | Read-only access and lock probe | read/access classification منجزة، وWindows sharing probe مضافة؛ remediation UI وmatrix العملية للقفل لاحقان |
 | [ ] | SEC-04 | Safe malformed/corrupt classification | parse ladder وbounded reads وcorpus أوسع للملفات التالفة والامتدادات غير المدعومة |
-| [ ] | SEC-05 | Static injection/tamper indicators | توسيع مؤشرات sections/overlay/entrypoint/import/resource مع references وfalse-positive corpus |
-| [ ] | SEC-06 | Obfuscation/encryption indicators | مؤشرات typed للضغط والتشفير والـopaque payload دون فك أو تشغيل |
-| [ ] | SEC-07 | External scanner providers | Defender وYARA على staged copies مع provider contracts وtimeouts وtool/ruleset metadata |
+| [~] | SEC-05 | Static injection/tamper indicators | أضيفت مؤشرات overlay وentrypoint وexecutable+writable sections وremote-memory imports وstrings مع limitations؛ references وfalse-positive corpus الأوسع لاحقان |
+| [~] | SEC-06 | Obfuscation/encryption indicators | أضيفت مؤشرات high entropy وcrypto/network/persistence imports وstrings محدودة وopaque overlay مع confidence/limitations؛ multi-signal calibration وfalse-positive corpus لاحقان |
+| [~] | SEC-07 | External scanner providers | عقد `resource_studio.external_scan.v1` وCLI `--external-result` منجزان لاستيراد نتيجة مسبقة مع provider/status/target SHA/ruleset/exit code؛ تشغيل Defender/YARA الفعلي وtimeouts وstaged-copy runner لاحقة |
 | [ ] | SEC-08 | Security evidence ledger | ربط التقرير بـEvidenceLedger وhash-chain وprovider evidence |
 | [ ] | SEC-09 | Safe reverse-engineering workspace | read-only mode وartifact isolation وdeny-by-default execution |
 | [ ] | SEC-10 | Windows/WPF Security Center | عرض findings وlimitations وطلب صريح قبل external scan |

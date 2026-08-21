@@ -14,6 +14,7 @@ from core.compatibility import inspect_compatibility
 from core.diff import diff_image_payloads, diff_resources
 from core.diagnostics import build_post_write_diagnostics
 from core.security_analysis import analyze_security
+from core.security_providers import load_external_scan
 from core.evidence_ledger import EvidenceLedger, generate_ed25519_keypair
 from core.evidence_model import build_evidence_summary, evidence_summary_hash
 from core.forensics import ForensicBaseline
@@ -516,7 +517,8 @@ def command_image_diff(args: argparse.Namespace) -> int:
 
 
 def command_security(args: argparse.Namespace) -> int:
-    payload = analyze_security(args.input)
+    external_results = tuple(load_external_scan(path) for path in (args.external_result or []))
+    payload = analyze_security(args.input, external_results)
     _print(payload, args.json)
     return 0 if payload["parse"]["status"] in {"VALID_PE", "NOT_READ"} and not any(item.get("severity") == "HIGH" for item in payload["findings"]) else 1
 
@@ -663,6 +665,7 @@ def parser() -> argparse.ArgumentParser:
 
     security_parser = subparsers.add_parser("security", help="run a static-only PE security analysis")
     security_parser.add_argument("input", type=Path)
+    security_parser.add_argument("--external-result", type=Path, action="append", help="import a precomputed external scan JSON; never runs the provider")
     security_parser.add_argument("--json", action="store_true")
     security_parser.set_defaults(handler=command_security)
 

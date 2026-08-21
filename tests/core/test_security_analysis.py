@@ -31,6 +31,13 @@ def main() -> None:
         missing_report = analyze_security(root / "missing.exe")
         assert missing_report["parse"]["status"] == "NOT_READ"
         assert missing_report["access"]["lockStatus"] == "MISSING"
+        overlay = root / "overlay.dll"
+        overlay.write_bytes(FIXTURE.read_bytes() + b"RANSOM decrypt https://example.invalid")
+        overlay_report = analyze_security(overlay)
+        kinds = {item["kind"] for item in overlay_report["staticIndicators"]}
+        assert "OVERLAY_DATA" in kinds
+        assert "ransom-note-marker" in kinds
+        assert all(item["confidence"] in {"HIGH", "LIMITED"} for item in overlay_report["staticIndicators"])
 
         env = {**__import__("os").environ, "PYTHONPATH": str(ROOT)}
         cli = subprocess.run([sys.executable, str(ROOT / "resource_studio_cli.py"), "security", str(FIXTURE), "--json"], capture_output=True, text=True, env=env, check=False)
