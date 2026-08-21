@@ -102,6 +102,9 @@ try {
     if ((Find-ById $imageWindow 'StopCliButton').Current.IsEnabled) { throw 'Image Wizard Stop button remained enabled while idle' }
     Wait-Until { (Get-ElementValue (Find-ById $imageWindow 'ImagePePathBox')) -ieq $resolvedPe } 'Image Wizard PE path' | Out-Null
     Invoke-Element (Find-ById $imageWindow 'ImageLoadButton')
+    $entriesList = Find-ById $imageWindow 'GroupEntriesList'
+    $firstEntry = Wait-Until { $itemCondition = [System.Windows.Automation.PropertyCondition]::new([System.Windows.Automation.AutomationElement]::ControlTypeProperty, [System.Windows.Automation.ControlType]::ListItem); $entriesList.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $itemCondition) } 'image group entry' | Select-Object -First 1
+    Select-Element $firstEntry
     Wait-Until {
         $previewText = Get-ElementText (Find-ById $imageWindow 'ImagePreview')
         $statusText = Get-ElementText (Find-ById $imageWindow 'ImageStatusText')
