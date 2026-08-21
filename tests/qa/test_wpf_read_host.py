@@ -7,9 +7,8 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2]
-FIXTURE = next((ROOT / "tests" / "fixtures").glob("*.dll"), None)
-if FIXTURE is None:
-    FIXTURE = next((ROOT / "tests" / "fixtures").glob("*.exe"), None)
+FIXTURE = ROOT / "tests" / "fixtures" / "sample.dll"
+assert FIXTURE.is_file()
 
 
 def test_wpf_read_host_handles_multiple_requests_in_one_process() -> None:
