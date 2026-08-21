@@ -424,6 +424,7 @@ class LiefPEWriter:
         original_timestamp = int(getattr(binary.header, "time_date_stamps", 0))
         temporary: Path | None = None
         post_verification = None
+        pre_verification = None
         forensic_evidence = None
         before_context = None
         candidate_context = None
@@ -519,6 +520,7 @@ class LiefPEWriter:
                 "outputExistedBefore": rollback_path is not None,
                 "error": str(exc),
                 "temporaryCandidate": str(temporary) if temporary is not None else None,
+                "verification": pre_verification.to_dict() if pre_verification is not None else None,
             }
             try:
                 failure_diagnostics_path.write_text(json.dumps(diagnostics, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
