@@ -94,7 +94,7 @@ try {
 
     $previewTab = Find-ByName $main ([System.Windows.Automation.ControlType]::TabItem) 'Preview'
     Select-Element $previewTab
-    Wait-Until { Find-ById $main 'PreviewDetailsBox' } 'preview details box' | Out-Null
+    Wait-Until { Find-ById $main 'PreviewHexBox' } 'preview hex box' | Out-Null
 
     Invoke-Element (Find-ById $main 'ImageWizardButton')
     $imageWindow = Wait-Until { Find-TopWindow '^Image Wizard$' } 'Image Wizard window'
