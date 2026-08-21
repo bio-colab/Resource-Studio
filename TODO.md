@@ -271,6 +271,22 @@
 | 2026-08-20 | تنفيذ SYS-09 Job Object Containment Proof | مكتمل ومختبر | child/grandchild probe داخل `WindowsJob`، و`JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE` أنهى الشجرة؛ اختبار Windows نجح |
 | 2026-08-20 | تنفيذ SYS-10 WPF Process-State baseline | مكتمل جزئيًا ومختبر | `CliStateText` وAutomationId وحالات Idle/Running/Completed/Failed؛ build WPF بـ0 أخطاء و0 تحذيرات وUI automation مع fixture ICON نجح |
 
+## Security-goal: PE security and safe reverse-engineering
+
+| الحالة | المعرّف | المهمة | معيار الإنجاز |
+|---|---|---|---|
+| [x] | SEC-01 | تعريف النطاق الدفاعي والحدود | `docs/SECURITY-GOAL.md` يفرّق بين المؤشر والإثبات ويمنع التشغيل وunpacking وruntime verdict داخل النواة |
+| [x] | SEC-02 | Static Security Report v1 | `core/security_analysis.py` وأمر CLI `security` و`report security` يعيدان access/parse state وPEHealth وdeep invariants وsignature/integrity وResource Graph/raw corroboration وstatic indicators وEvidence Summary |
+| [~] | SEC-03 | Read-only access and lock probe | read/access classification منجزة، وWindows sharing probe مضافة؛ remediation UI وmatrix العملية للقفل لاحقان |
+| [ ] | SEC-04 | Safe malformed/corrupt classification | parse ladder وbounded reads وcorpus أوسع للملفات التالفة والامتدادات غير المدعومة |
+| [ ] | SEC-05 | Static injection/tamper indicators | توسيع مؤشرات sections/overlay/entrypoint/import/resource مع references وfalse-positive corpus |
+| [ ] | SEC-06 | Obfuscation/encryption indicators | مؤشرات typed للضغط والتشفير والـopaque payload دون فك أو تشغيل |
+| [ ] | SEC-07 | External scanner providers | Defender وYARA على staged copies مع provider contracts وtimeouts وtool/ruleset metadata |
+| [ ] | SEC-08 | Security evidence ledger | ربط التقرير بـEvidenceLedger وhash-chain وprovider evidence |
+| [ ] | SEC-09 | Safe reverse-engineering workspace | read-only mode وartifact isolation وdeny-by-default execution |
+| [ ] | SEC-10 | Windows/WPF Security Center | عرض findings وlimitations وطلب صريح قبل external scan |
+| [ ] | SEC-11 | Runtime telemetry adapter | نتائج telemetry خارجية فقط؛ لا dynamic engine داخل النواة |
+
 ## المرحلة 10: Productization backlog وفق احتياجات المطورين والهواة
 
 هذه البنود مستخلصة من تقييم الاستخدام العملي ومقارنة أدوات الموارد وPE، وليست بديلًا عن المرحلة 8 أو 9.

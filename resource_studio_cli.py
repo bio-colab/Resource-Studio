@@ -13,6 +13,7 @@ from core.batch import BatchWorkspace
 from core.compatibility import inspect_compatibility
 from core.diff import diff_image_payloads, diff_resources
 from core.diagnostics import build_post_write_diagnostics
+from core.security_analysis import analyze_security
 from core.evidence_ledger import EvidenceLedger, generate_ed25519_keypair
 from core.evidence_model import build_evidence_summary, evidence_summary_hash
 from core.forensics import ForensicBaseline
@@ -514,6 +515,12 @@ def command_image_diff(args: argparse.Namespace) -> int:
     return 0
 
 
+def command_security(args: argparse.Namespace) -> int:
+    payload = analyze_security(args.input)
+    _print(payload, args.json)
+    return 0 if payload["parse"]["status"] in {"VALID_PE", "NOT_READ"} and not any(item.get("severity") == "HIGH" for item in payload["findings"]) else 1
+
+
 def command_validate(args: argparse.Namespace) -> int:
     report = PEHealth.inspect(args.input).to_dict()
     _print(report, args.json)
@@ -535,6 +542,8 @@ def command_report(args: argparse.Namespace) -> int:
         if args.right is None:
             raise ValueError("diagnostics report requires a before and after PE")
         payload = build_post_write_diagnostics(args.input, args.right)
+    elif args.kind == "security":
+        payload = analyze_security(args.input)
     else:
         payload = _diff_payload(args.input, args.right)
     rendered = render_report(payload, args.format)
@@ -651,6 +660,11 @@ def parser() -> argparse.ArgumentParser:
     inspect_parser.add_argument("input", type=Path)
     inspect_parser.add_argument("--json", action="store_true")
     inspect_parser.set_defaults(handler=command_inspect)
+
+    security_parser = subparsers.add_parser("security", help="run a static-only PE security analysis")
+    security_parser.add_argument("input", type=Path)
+    security_parser.add_argument("--json", action="store_true")
+    security_parser.set_defaults(handler=command_security)
 
     preview_parser = subparsers.add_parser("preview", help="preview a typed resource with raw fallback")
     preview_parser.add_argument("input", type=Path)
@@ -779,7 +793,7 @@ def parser() -> argparse.ArgumentParser:
     validate_parser.set_defaults(handler=command_validate)
 
     report_parser = subparsers.add_parser("report", help="write a health or diff report")
-    report_parser.add_argument("kind", choices=("health", "inspect", "diff", "image-diff", "diagnostics"))
+    report_parser.add_argument("kind", choices=("health", "inspect", "diff", "image-diff", "diagnostics", "security"))
     report_parser.add_argument("input", type=Path)
     report_parser.add_argument("right", type=Path, nargs="?")
     report_parser.add_argument("--image-kind", choices=("bitmap", "icon", "cursor"), default="bitmap")

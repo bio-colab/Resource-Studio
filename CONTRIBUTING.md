@@ -6,7 +6,7 @@
 
 اقرأ [`README.md`](README.md)، ثم [`TODO.md`](TODO.md)، وراجع الهدف النشط في [`docs/FORENSIC-GOAL.md`](docs/FORENSIC-GOAL.md). ابحث عن مهمة ذات معرّف واضح أو أنشئ اقتراحًا يشرح أي هدف من أهداف المشروع يخدمه التغيير: منع تلف output، كشف اختلاف بين LIEF وWindows، إثبات round-trip أو invariant، تحسين العزل، أو جعل حالة CLI/WPF قابلة للتشخيص.
 
-لا تبدأ بإضافة Feature جديدة إذا كان المطلوب يمكن تحقيقه بتقوية contract موجود. لا تطور MCP في هذه الدورة، ولا تضف malware/IOC/YARA/PEiD أو أدوات تحليل خارج هوية **Forensic integrity of PE transformation**.
+لا تبدأ بإضافة Feature جديدة إذا كان المطلوب يمكن تحقيقه بتقوية contract موجود. لا تطور MCP في هذه الدورة. يرحب المشروع بإضافات Security-goal الدفاعية الساكنة فقط وفق [`docs/SECURITY-GOAL.md`](docs/SECURITY-GOAL.md)؛ لا تضف malware/IOC engine أو تشغيلًا أو unpacking أو decryption أو process injection داخل النواة. أي Defender/YARA integration يجب أن يكون موفرًا اختياريًا على staged copy مع evidence وlimitations واضحة.
 
 ## بيئة التطوير
 

@@ -22,6 +22,7 @@ from .hex_view import HexSlice, HexViewer
 from .invariants import PEInvariantSnapshot, PESurgicalChangeReport, compare_surgical_change, snapshot
 from .deep_invariants import DeepPEInvariantReport, inspect_deep
 from .diagnostics import build_post_write_diagnostics
+from .security_analysis import analyze_security
 from .localization import LocalizationCatalog, LocalizedString
 from .menu_resources import MenuItem, MenuResource, MenuResourceError
 from .manifest import ManifestDocument
@@ -97,6 +98,7 @@ __all__ = [
     "snapshot",
     "DeepPEInvariantReport",
     "build_post_write_diagnostics",
+    "analyze_security",
     "inspect_deep",
     "LocalizationCatalog",
     "LocalizedString",

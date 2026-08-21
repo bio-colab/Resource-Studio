@@ -6,7 +6,7 @@
 
 ### الاتجاه النشط
 
-تتركز الدورة النشطة على **Forensic-goal**: إثبات سلامة تحويل PE عبر baseline وindependent differential verification وmutation attribution وevidence report. لا تشمل هذه الدورة إعادة بناء navigation أو إضافة malware/IOC/YARA/PEiD أو timeline عام أو hex forensic viewer.
+تتركز الدفعة التالية على **Security-goal** فوق Forensic-goal وVerification Engine: تحليل PE ساكن، تصنيف الفساد والوصول والقفل، مؤشرات العبث والتمويه، وفصل نتائج Defender/YARA الخارجية عن verdict الداخلي. لا تشمل تشغيل الملفات أو unpacking أو decryption أو process injection أو dynamic malware engine داخل النواة.
 
 ### أُضيف
 
@@ -32,6 +32,8 @@
 - اختبار `tests/core/test_forensics.py` الذي يثبت baseline contract وno-op attribution وغياب unintended changes.
 - `FORENSIC-GOAL.md` الذي يحدد الهوية والحدود ومعايير FR-00 إلى FR-09.
 - `CONTRIBUTING.md` الذي يشرح السلامة والاختبارات والتوثيق وقواعد المساهمات.
+- إنشاء `docs/SECURITY-GOAL.md` كخطة دفاعية للتحليل الساكن، وفصل المؤشرات عن verdicts، وتحديد حدود Defender/YARA وruntime telemetry.
+- إضافة `core/security_analysis.py` وأوامر CLI `security` و`report security` لإنتاج `resource_studio.security_report.v1` مع access/parse state وPEHealth وdeep invariants وsignature/integrity وResource Graph/raw corroboration وstatic indicators وEvidence Summary؛ لا يشغّل الملف ولا يفك payloadات.
 - `core/evidence_model.py` بصيغة `resource_studio.evidence_summary.v1` لتطبيع observations وraw ranges وstatistics وprovenance وExpert Findings.
 - إضافة `evidence` و`evidenceHash` و`rawResourceComparison` إلى CLI `inspect --json`، وإضافة Evidence Summary إلى `ForensicEvidence`.
 - وثيقة `docs/PE-EVIDENCE-MODEL.md` التي تحدد المصادر والـconfidence والحدود وعدم تحويل entropy إلى verdict.

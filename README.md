@@ -175,6 +175,8 @@ python3 resource_studio_cli.py batch apply batch.json --journal batch.journal.js
 
 ```bash
 python3 resource_studio_cli.py report diagnostics before.dll after.dll --format markdown --output diagnostics.md
+python3 resource_studio_cli.py security sample.dll --json
+python3 resource_studio_cli.py report security sample.dll --format markdown --output security.md
 ```
 
 توثّق [`docs/PRODUCTIZATION.md`](docs/PRODUCTIZATION.md) عقود journal/resume وPost-write Diagnostics وحدود المرحلة التالية.
@@ -213,13 +215,13 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tests\windows\Invoke-Resourc
 
 ## حدود مقصودة
 
-لا يهدف Forensic-goal إلى بناء malware scanner أو IOC engine أو YARA أو PEiD أو entropy maps أو timeline عام أو hex forensic viewer جديد. كما أن MCP مؤجل في هذه الدورة. تُنفذ تغييرات UX فقط عندما تجعل الدليل أو حالة العملية أو accessibility أو reliability أوضح.
+لا يهدف Forensic-goal إلى بناء malware scanner أو IOC engine أو YARA أو PEiD أو entropy maps أو timeline عام أو hex forensic viewer جديد. أصبح Security-goal مسارًا مستقلًا للتحليل الساكن الدفاعي؛ لا يشغّل الملفات ولا يفك payloadات ولا يعلن أن heuristic واحدة تعني malware. أما Defender وYARA فهما موفّران خارجيان اختياريان على staged copies، وليسَا جزءًا من writer أو verdict داخلي. كما أن MCP مؤجل في هذه الدورة.
 
 تبقى بعض الطبقات قيد التطوير: provenance طويل المدى يربط كل mutation تلقائيًا بledger واحد، تقرير forensic متعدد الصيغ، forensic viewer تفاعلي كامل، raw parser coverage لكل امتدادات PE غير القياسية، coverage-guided fuzzing طويل التشغيل مع corpus دائم، similarity hashing، وF6/TabIndex/screen-reader وfailure/resize matrix الأوسع. لا تُضاف entropy أوssdeep أوTLSH أوrecursive payload analysis لأن ذلك يخرج Forensic-goal إلى malware/steganography analytics خارج النطاق.
 
 ## المساهمة والتوثيق
 
-ابدأ بقراءة [`CONTRIBUTING.md`](CONTRIBUTING.md)، ثم [`docs/FORENSIC-GOAL.md`](docs/FORENSIC-GOAL.md)، و[`TODO.md`](TODO.md)، و[`CHANGELOG.md`](CHANGELOG.md). يصف `TODO.md` كل مهمة بمعرّف وحالة ومعيار إنجاز، بينما يسجل `CHANGELOG.md` ما تم تسليمه وما بقي.
+ابدأ بقراءة [`CONTRIBUTING.md`](CONTRIBUTING.md)، ثم [`docs/FORENSIC-GOAL.md`](docs/FORENSIC-GOAL.md)، و[`docs/SECURITY-GOAL.md`](docs/SECURITY-GOAL.md)، و[`TODO.md`](TODO.md)، و[`CHANGELOG.md`](CHANGELOG.md). يصف `TODO.md` كل مهمة بمعرّف وحالة ومعيار إنجاز، بينما يسجل `CHANGELOG.md` ما تم تسليمه وما بقي.
 
 ## الترخيص والاعتماديات
 
@@ -233,6 +235,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tests\windows\Invoke-Resourc
 - [TODO and execution ledger](TODO.md)
 - [PE Evidence model](docs/PE-EVIDENCE-MODEL.md)
 - [Productization backlog](docs/PRODUCTIZATION.md)
+- [Security-goal](docs/SECURITY-GOAL.md)
 - [Changelog](CHANGELOG.md)
 - [Contributing guide](CONTRIBUTING.md)
 - [GitHub repository](https://github.com/bio-colab/Resource-Studio)
