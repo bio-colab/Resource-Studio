@@ -30,6 +30,8 @@
 
 القياس الحالي baseline وليس benchmark إحصائيًا. لم تُستخدم بيانات مصطنعة لتضخيم الحجم، ولم تُقرأ النسخة الأصلية Resource Hacker. لا يجوز استنتاج عشرات الثواني لملفات كبيرة من هذه العينة الصغيرة، كما لا يجوز استنتاج أن كل parse في Writer يمكن حذفه قبل مقارنة verdicts وevidence hashes.
 
-## القرار بعد P0
+## حالة ما بعد P1
 
-البيانات تكفي للبدء بـP1: فصل `list` و`extract` عن `Project.open_pe` وإنشاء reader read-only. وتكفي أيضًا لتثبيت P2 كتحسين لاحق: إعادة استخدام snapshots وgraphs داخل Writer. أما Python host طويل العمر لـWPF فيبقى P3 بعد أن يثبت عقد reader، وraw-surgical writer يبقى قرارًا مؤجلًا حتى يثبت القياس الحاجة إليه.
+نُفذ P1 عبر `core/resource_reader.py`. بعد الإصلاح أصبحت `list` و`extract` و`search` وقراءة طرفي `diff` تستخدم parse واحدًا دون `Project.open_pe`. على نفس fixture انخفضت counters لمسارات القراءة إلى `fullFileReads=0` و`temporaryDirectories=0` و`temporaryFiles=0`، مع بقاء `liefParse=1`. النتيجة التفصيلية محفوظة في [`P1-READONLY-READER.md`](P1-READONLY-READER.md).
+
+القرار التالي هو P2: دراسة إعادة استخدام snapshots وgraphs داخل Writer دون تغيير Writer أو Verification Engine قبل ظهور قياس جديد. أما Python host طويل العمر لـWPF فيبقى P3، وraw-surgical writer يبقى قرارًا مؤجلًا حتى يثبت القياس الحاجة إليه.

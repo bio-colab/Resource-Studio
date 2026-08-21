@@ -276,7 +276,7 @@
 | الحالة | المعرّف | المهمة | النتيجة |
 |---|---|---|---|
 | [x] | PERF-00 | P0 baseline telemetry | إضافة `resource_studio.p0_telemetry.v1` و`tools/p0_baseline.py`؛ القياس اختياري ولا يغير السلوك، وbaseline محفوظ في `docs/P0-PERFORMANCE-BASELINE.md` |
-| [ ] | PERF-01 | P1 read-only ResourceReader | فصل `list/extract/search` عن `Project.open_pe` وإلغاء workspace/audit لمسارات القراءة |
+| [x] | PERF-01 | P1 read-only ResourceReader | `core/resource_reader.py` فصل `list/extract/search` وقراءة طرفي `diff` عن `Project.open_pe`؛ baseline أثبت `temporaryDirectories=0` و`temporaryFiles=0` و`fullFileReads=0` لمسارات القراءة |
 | [ ] | PERF-02 | P2 VerificationContext | إعادة استخدام snapshots/graphs/integrity داخل Save دون تخفيف الحواجز |
 | [ ] | PERF-03 | P3 WPF long-lived host | host stdio/JSONL وجلسة PE مستمرة لمسارات القراءة |
 | [ ] | PERF-04 | P4 WPF session/cache | إلغاء stale results وإدارة cancellation/session identity |

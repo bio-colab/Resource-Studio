@@ -36,7 +36,7 @@
 
 نستخرج reader مشتركًا منطقُه هو: parse واحد، استخراج entries/index مرة واحدة، ثم تنفيذ `list` و`extract` و`search` وقراءة جانب diff منه. هذا reader لا ينشئ `Project` ولا workspace ولا audit ولا outputs. يبقى `Project.open_pe` لمسار التحرير وإدارة المشروع فقط.
 
-معايير القبول هي أن `list` و`extract` لا ينشئان مجلدًا مؤقتًا أو `project.json` أو audit، وأن النتيجة وSHA-256 وتعدد اللغات تطابق المسار القديم، وأن الملف الأصلي لا يتغير. هذه المرحلة هي أعلى إصلاح مؤكد الأثر وأقلها مخاطرة.
+معايير القبول هي أن `list` و`extract` لا ينشئان مجلدًا مؤقتًا أو `project.json` أو audit، وأن النتيجة وSHA-256 وتعدد اللغات تطابق المسار القديم، وأن الملف الأصلي لا يتغير. نُفذت هذه المرحلة في commit `P1` عبر `core/resource_reader.py`، وأثبت baseline بعد الإصلاح أن `list` و`extract` أصبحا عند `temporaryDirectories=0` و`temporaryFiles=0` و`fullFileReads=0` مع `liefParse=1`. بقي زمن process startup الخارجي قائمًا، لذلك لا ننسب انخفاضه إلى reader.
 
 ### المرحلة C — جلسة WPF طويلة العمر
 
@@ -71,7 +71,7 @@
 | الأولوية | التغيير | المخاطر | القيمة |
 |---|---|---:|---:|
 | P0 | benchmark/trace بلا تغيير سلوك | منخفضة | يزيل الجدل ويحدد عنق الزجاجة الحقيقي |
-| P1 | read-only ResourceReader للـCLI | منخفضة | يعالج هدر workspace المؤكد فورًا |
+| P1 | read-only ResourceReader للـCLI | منخفضة | مكتمل؛ أزال workspace وtemporary I/O من list/extract/search |
 | P2 | VerificationContext وإزالة إعادة التحليل المكرر | متوسطة | يحسن الكتابة دون تقليل الضمانات |
 | P3 | Python host طويل العمر للقراءة في WPF | متوسطة | يزيل process-per-action ويضيف state persistence |
 | P4 | WPF session/cache/cancellation | متوسطة | يحول الواجهة إلى تطبيق مستمر فعليًا |
@@ -87,4 +87,4 @@
 
 ## القرار المقترح
 
-أوصي بالبدء فورًا بـ**P0 ثم P1 ثم P2**. هذه الخطوات تعالج الجزء الصحيح من النقد بأقل مخاطرة. بعد ظهور أرقام P0، نقرر هل يحتاج المشروع P3 قبل P4، ولا نبدأ P5 إلا إذا أثبتت القياسات أن إعادة serialization هي عنق الزجاجة الذي لا يكفيه context reuse.
+أوصي بالانتقال إلى **P2** بعد تثبيت P1. عولجت كلفة materialization القرائية المؤكدة بأقل تغيير، ولا يزال Writer وVerification Engine دون تعديل. لا يبدأ P2 بإزالة فحوص؛ يبدأ بقياس وإعادة استخدام snapshots متطابقة فقط، مع إبقاء verdict وevidence hashes بوابة قبول.

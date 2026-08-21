@@ -230,6 +230,8 @@ PYTHONPATH=. python3 tools/p0_baseline.py
 
 يعرض التقرير زمن العملية الخارجية، وزمن داخل CLI، وعدد LIEF parses والقراءات الكاملة والملفات والمجلدات المؤقتة والعمليات الفرعية. النتائج الموثقة للعينة الحالية موجودة في [`docs/P0-PERFORMANCE-BASELINE.md`](docs/P0-PERFORMANCE-BASELINE.md)، مع التنبيه إلى أن زمن process startup في بيئة القياس ليس latency التطبيق الفعلية على Windows.
 
+أُنجز P1 عبر [`core/resource_reader.py`](core/resource_reader.py): تستخدم `list` و`extract` و`search` وقراءة طرفي `diff` parse واحدًا دون إنشاء `Project` أو workspace أو audit. على fixture baseline نفسه أصبحت هذه المسارات عند `temporaryDirectories=0` و`temporaryFiles=0` و`fullFileReads=0`. لا يشمل P1 Writer أو Verification Engine أو resource mode في `hex`; التفاصيل في [`docs/P1-READONLY-READER.md`](docs/P1-READONLY-READER.md).
+
 ## حدود مقصودة
 
 لا يهدف Forensic-goal إلى بناء malware scanner أو IOC engine أو YARA أو PEiD أو entropy maps أو timeline عام أو hex forensic viewer جديد. أصبح Security-goal مسارًا مستقلًا للتحليل الساكن الدفاعي؛ لا يشغّل الملفات ولا يفك payloadات ولا يعلن أن heuristic واحدة تعني malware. أما Defender وYARA فهما موفّران خارجيان اختياريان على staged copies، وليسَا جزءًا من writer أو verdict داخلي. كما أن MCP مؤجل في هذه الدورة.

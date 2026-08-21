@@ -33,6 +33,7 @@ from core.pe_integrity import inspect_integrity
 from core.pe_metadata import PEMetadataInspector
 from core.preview import PreviewEngine
 from core.project import Project, ResourceEntry
+from core.resource_reader import ResourceReader
 from core.reports import FORMATS, render_report
 from core.rc_format import compile_rc, decompile_res
 from core.raw_resource_parser import compare_with_graph, parse_raw_resources
@@ -47,9 +48,7 @@ from core.verification import ResourceGraph
 
 
 def _entries(path: Path) -> list[ResourceEntry]:
-    with tempfile.TemporaryDirectory(prefix="resource-studio-cli-") as temporary:
-        project = Project.open_pe(path, Path(temporary) / "project")
-        return list(project.entries.values())
+    return ResourceReader(path).entries
 
 
 def _entry_record(entry: ResourceEntry) -> dict[str, Any]:
