@@ -3,6 +3,8 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import shutil
+import tempfile
 
 import lief
 from dataclasses import dataclass
@@ -341,8 +343,20 @@ def _windows_validation(
         return {"status": "SKIPPED", "reason": "Windows-only oracle"}
     from .windows_resource_oracle import compare_with_lief, inspect
 
-    before = inspect(before_path)
-    after = inspect(candidate_path)
+    oracle_before_path = before_path
+    staged_before_path: Path | None = None
+    if before_path.parent != candidate_path.parent:
+        descriptor, staged_name = tempfile.mkstemp(dir=candidate_path.parent, prefix="resource-studio-oracle-before-", suffix=before_path.suffix)
+        os.close(descriptor)
+        staged_before_path = Path(staged_name)
+        shutil.copy2(before_path, staged_before_path)
+        oracle_before_path = staged_before_path
+    try:
+        before = inspect(oracle_before_path)
+        after = inspect(candidate_path)
+    finally:
+        if staged_before_path is not None:
+            staged_before_path.unlink(missing_ok=True)
     before_map = {item.key: item.sha256 for item in before.resources}
     after_map = {item.key: item.sha256 for item in after.resources}
     oracle_added = sorted(set(after_map) - set(before_map))
@@ -395,6 +409,7 @@ def _windows_validation(
         "unexpectedChanged": [list(item) for item in unexpected_changed],
         "liefComparison": comparison.to_dict(),
         "liefVisibility": "MATCHED" if comparison.matches else "WINDOWS_LOADER_SUBSET",
+        "pathScoped": staged_before_path is not None,
     }
 
 
