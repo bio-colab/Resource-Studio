@@ -188,7 +188,16 @@ def _tls(binary: Any) -> dict[str, Any] | None:
     value = getattr(binary, "tls", None)
     if value is None:
         return None
-    return {"callbacks": int(getattr(value, "addressof_callbacks", 0)), "index": int(getattr(value, "addressof_index", 0)), "rawData": int(getattr(value, "addressof_raw_data", 0)), "zeroFill": int(getattr(value, "sizeof_zero_fill", 0)), "characteristics": int(getattr(value, "characteristics", 0))}
+    return {"callbacks": _numeric(getattr(value, "addressof_callbacks", 0)), "index": _numeric(getattr(value, "addressof_index", 0)), "rawData": _numeric(getattr(value, "addressof_raw_data", 0)), "zeroFill": _numeric(getattr(value, "sizeof_zero_fill", 0)), "characteristics": _numeric(getattr(value, "characteristics", 0))}
+
+
+def _numeric(value: Any, default: int = 0) -> int:
+    if isinstance(value, (tuple, list)):
+        return _numeric(value[0], default) if value else default
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
 
 
 def _load_config(binary: Any) -> dict[str, Any] | None:
