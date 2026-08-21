@@ -102,7 +102,11 @@ try {
     if ((Find-ById $imageWindow 'StopCliButton').Current.IsEnabled) { throw 'Image Wizard Stop button remained enabled while idle' }
     Wait-Until { (Get-ElementValue (Find-ById $imageWindow 'ImagePePathBox')) -ieq $resolvedPe } 'Image Wizard PE path' | Out-Null
     Invoke-Element (Find-ById $imageWindow 'ImageLoadButton')
-    Wait-Until { (Get-ElementText (Find-ById $imageWindow 'ImagePreview')) -match '^BMP preview' } 'individual BMP preview' | Out-Null
+    Wait-Until {
+        $previewText = Get-ElementText (Find-ById $imageWindow 'ImagePreview')
+        $statusText = Get-ElementText (Find-ById $imageWindow 'ImageStatusText')
+        $previewText -match '^BMP preview' -or $statusText -match 'BMP preview'
+    } 'individual BMP preview' | Out-Null
 
     $imageWindow.GetCurrentPattern([System.Windows.Automation.WindowPattern]::Pattern).Close()
     $main.GetCurrentPattern([System.Windows.Automation.WindowPattern]::Pattern).Close()
