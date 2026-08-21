@@ -36,6 +36,12 @@
 | Testing | اختبارات core/CLI/QA، PE corpus matrix متعدد المعمارية والprofiles، bounded وstructure-aware fuzzing، crash consistency، Win32 oracles، Job Object، WPF build وUI automation |
 | الوثائق | `CONTRIBUTING.md`، `CHANGELOG.md`، `TODO.md`، وملفات الأهداف والتقارير في `docs/`، ومنها [`docs/PE-CORPUS.md`](docs/PE-CORPUS.md) |
 
+## لقطة WPF محلية
+
+توضح اللقطة التالية نسخة WPF المبنية والمشغلة على Windows المحلي مع طبقة Preview/triage الجديدة:
+
+![Local WPF hex template and evidence triage](assets/screenshots/hex-triage-local.png)
+
 ## المسار المفاهيمي
 
 ```text
