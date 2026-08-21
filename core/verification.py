@@ -348,23 +348,30 @@ def _windows_validation(
     oracle_added = sorted(set(after_map) - set(before_map))
     oracle_removed = sorted(set(before_map) - set(after_map))
     oracle_changed = sorted(key for key in set(before_map) & set(after_map) if before_map[key] != after_map[key])
-    target = (str(resource_type), str(resource_name), int(language or 0))
-    target_added = target in oracle_added
-    target_removed = target in oracle_removed
-    target_changed = target in oracle_changed
+    target_type = str(resource_type)
+    target_name = str(resource_name)
+
+    def is_target(item: tuple[str, str, int]) -> bool:
+        return item[0] == target_type and item[1] == target_name and (language is None or item[2] == int(language))
+
+    target_candidates = sorted(item for item in (*oracle_added, *oracle_removed, *oracle_changed) if is_target(item))
+    target = list(target_candidates[0]) if target_candidates else [target_type, target_name, int(language or 0)]
+    target_added = any(is_target(item) for item in oracle_added)
+    target_removed = any(is_target(item) for item in oracle_removed)
+    target_changed = any(is_target(item) for item in oracle_changed)
     if operation == "add":
         target_ok = target_added or target_changed
         unexpected_removed = oracle_removed
     elif operation == "delete":
         target_ok = target_removed
-        unexpected_removed = [item for item in oracle_removed if item != target]
+        unexpected_removed = [item for item in oracle_removed if not is_target(item)]
     elif operation == "change-language":
         target_ok = target_added or target_removed
-        unexpected_removed = [item for item in oracle_removed if item != target]
+        unexpected_removed = [item for item in oracle_removed if not is_target(item)]
     else:
         target_ok = target_changed
-        unexpected_removed = oracle_removed
-    unexpected_changed = [item for item in oracle_changed if item != target]
+        unexpected_removed = [item for item in oracle_removed if not is_target(item)]
+    unexpected_changed = [item for item in oracle_changed if not is_target(item)]
     comparison = compare_with_lief(candidate_path)
     passed = (
         not before.warnings
