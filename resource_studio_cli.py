@@ -15,6 +15,7 @@ from core.diff import diff_image_payloads, diff_resources
 from core.diagnostics import build_post_write_diagnostics
 from core.security_analysis import analyze_security
 from core.security_providers import load_external_scan
+from core.security_workspace import stage_readonly_copy
 from core.evidence_ledger import EvidenceLedger, generate_ed25519_keypair
 from core.evidence_model import build_evidence_summary, evidence_summary_hash
 from core.forensics import ForensicBaseline
@@ -518,7 +519,13 @@ def command_image_diff(args: argparse.Namespace) -> int:
 
 def command_security(args: argparse.Namespace) -> int:
     external_results = tuple(load_external_scan(path) for path in (args.external_result or []))
+    staged = stage_readonly_copy(args.input, args.stage_root) if args.stage_root else None
     payload = analyze_security(args.input, external_results)
+    if staged:
+        payload["stagedArtifact"] = staged.to_dict()
+    if args.ledger:
+        record = EvidenceLedger(args.ledger).append(payload)
+        payload["ledger"] = {"path": str(args.ledger), "entrySha256": record["entrySha256"], "evidenceSha256": record["evidenceSha256"]}
     _print(payload, args.json)
     return 0 if payload["parse"]["status"] in {"VALID_PE", "NOT_READ"} and not any(item.get("severity") == "HIGH" for item in payload["findings"]) else 1
 
@@ -666,6 +673,8 @@ def parser() -> argparse.ArgumentParser:
     security_parser = subparsers.add_parser("security", help="run a static-only PE security analysis")
     security_parser.add_argument("input", type=Path)
     security_parser.add_argument("--external-result", type=Path, action="append", help="import a precomputed external scan JSON; never runs the provider")
+    security_parser.add_argument("--stage-root", type=Path, help="create a read-only staged copy and report its hash")
+    security_parser.add_argument("--ledger", type=Path, help="append the report to a local tamper-evident EvidenceLedger")
     security_parser.add_argument("--json", action="store_true")
     security_parser.set_defaults(handler=command_security)
 

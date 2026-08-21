@@ -58,7 +58,8 @@ EVIDENCE SUMMARY + FINDINGS + LIMITATIONS
 AUDIT LEDGER
 ```
 
-يجب أن يكون كل فحص read-only افتراضيًا. عند طلب Defender أو YARA، ينسخ التطبيق الملف إلى staging مع hash معلوم، ويعرض نتيجة الأداة الخارجية كدليل مستقل. توثق Microsoft أن `MpCmdRun.exe` أداة سطر أوامر للفحص والأتمتة، وقد تحتاج إلى نافذة مرتفعة الصلاحيات وقد توجد في مسارات مختلفة على Windows؛ لذلك لا يجوز افتراض وجودها أو اعتبار فشلها نتيجة نظيفة.[5] أما YARA فهو محرك مطابقة وتصنيف يعتمد على rules، ونتيجته مرتبطة بقاعدة القواعد المستخدمة وليست حكمًا عالميًا.[6]
+يجب أن يكون كل فحص read-only افتراضيًا. عند طلب Defender أو YARA مستقبلًا، ينسخ التطبيق الملف إلى staging مع hash معلوم، ويعرض نتيجة الأداة الخارجية كدليل مستقل. حاليًا يتيح `security --stage-root` إنشاء النسخة المعزولة، بينما يظل تشغيل أي موفر خارجي خارج المشروع ومؤجلًا.
+ توثق Microsoft أن `MpCmdRun.exe` أداة سطر أوامر للفحص والأتمتة، وقد تحتاج إلى نافذة مرتفعة الصلاحيات وقد توجد في مسارات مختلفة على Windows؛ لذلك لا يجوز افتراض وجودها أو اعتبار فشلها نتيجة نظيفة.[5] أما YARA فهو محرك مطابقة وتصنيف يعتمد على rules، ونتيجته مرتبطة بقاعدة القواعد المستخدمة وليست حكمًا عالميًا.[6]
 
 ## عقد الحالة والنتيجة
 
@@ -86,9 +87,9 @@ AUDIT LEDGER
 | [ ] | `SEC-05` | Static injection/tamper indicators | sections/overlay/entrypoint/import/resource anomalies مع references وfalse-positive limits |
 | [ ] | `SEC-06` | Obfuscation/encryption indicators | مؤشرات typed لا verdict، مع عدم فك أو تشغيل payload |
 | [~] | `SEC-07` | External scanner providers | عقد `resource_studio.external_scan.v1` وCLI `--external-result` منجزان لاستيراد نتيجة مسبقة مع SHA/provider/status/ruleset/exit code؛ تشغيل Defender/YARA الفعلي وtimeouts وstaged-copy runner لاحقة |
-| [ ] | `SEC-08` | Security evidence ledger | ربط نتيجة الفحص بـEvidenceLedger، hash-chain، provider metadata، وreproducible JSON |
-| [ ] | `SEC-09` | Safe reverse-engineering workspace | read-only project mode، extracted artifacts directory، deny-by-default execution، وحماية الملفات الأصلية |
-| [ ] | `SEC-10` | Windows/WPF Security Center | عرض findings والحدود ومصدر الدليل وطلب المستخدم قبل أي external scan |
+| [~] | `SEC-08` | Security evidence ledger | أمر `security --ledger` يضيف التقرير إلى EvidenceLedger ويعيد entry/evidence hashes؛ signed ledger وcase lifecycle لاحقان |
+| [~] | `SEC-09` | Safe reverse-engineering workspace | `security --stage-root` ينشئ نسخة staged ذات hash ثابت وقراءة فقط دون استبدال الموجود؛ read-only project mode وartifact policy الأوسع لاحقان |
+| [ ] | `SEC-10` | Windows/WPF Security Center | عرض findings والحدود ومصدر الدليل وطلب المستخدم قبل أي external scan؛ لا تغيير في WPF بهذه الدفعة |
 | [ ] | `SEC-11` | Runtime telemetry adapter | adapter اختياري لنتائج خارجية فقط؛ لا dynamic engine داخل النواة |
 
 ## ما سيُنفذ أولًا

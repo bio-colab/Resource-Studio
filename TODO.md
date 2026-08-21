@@ -281,9 +281,9 @@
 | [ ] | SEC-04 | Safe malformed/corrupt classification | parse ladder وbounded reads وcorpus أوسع للملفات التالفة والامتدادات غير المدعومة |
 | [~] | SEC-05 | Static injection/tamper indicators | أضيفت مؤشرات overlay وentrypoint وexecutable+writable sections وremote-memory imports وstrings مع limitations؛ references وfalse-positive corpus الأوسع لاحقان |
 | [~] | SEC-06 | Obfuscation/encryption indicators | أضيفت مؤشرات high entropy وcrypto/network/persistence imports وstrings محدودة وopaque overlay مع confidence/limitations؛ multi-signal calibration وfalse-positive corpus لاحقان |
-| [~] | SEC-07 | External scanner providers | عقد `resource_studio.external_scan.v1` وCLI `--external-result` منجزان لاستيراد نتيجة مسبقة مع provider/status/target SHA/ruleset/exit code؛ CI run `32445879114` نجح على Python 3.12 وWindows/WPF؛ تشغيل Defender/YARA الفعلي وtimeouts وstaged-copy runner لاحقة |
-| [ ] | SEC-08 | Security evidence ledger | ربط التقرير بـEvidenceLedger وhash-chain وprovider evidence |
-| [ ] | SEC-09 | Safe reverse-engineering workspace | read-only mode وartifact isolation وdeny-by-default execution |
+| [~] | SEC-07 | External scanner providers | عقد `resource_studio.external_scan.v1` وCLI `--external-result` منجزان لاستيراد نتيجة مسبقة مع provider/status/target SHA/ruleset/exit code؛ تشغيل Defender/YARA وrunner مؤجلان بطلب المستخدم |
+| [~] | SEC-08 | Security evidence ledger | `security --ledger` يضيف التقرير إلى EvidenceLedger ويعيد entry/evidence hashes؛ signed ledger وcase lifecycle لاحقان |
+| [~] | SEC-09 | Safe reverse-engineering workspace | `security --stage-root` ينسخ bytes إلى artifact معزول read-only ويثبت SHA-256 ويمنع استبدال الموجود؛ read-only project mode والسياسات الأوسع لاحقان |
 | [ ] | SEC-10 | Windows/WPF Security Center | عرض findings وlimitations وطلب صريح قبل external scan |
 | [ ] | SEC-11 | Runtime telemetry adapter | نتائج telemetry خارجية فقط؛ لا dynamic engine داخل النواة |
 
