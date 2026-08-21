@@ -62,6 +62,20 @@ def main() -> None:
         hex_result = run_cli("hex", str(FIXTURE), "--type", indexed["type"], "--name", indexed["name"], "--language", str(indexed["language"]), "--length", "8", "--json")
         assert hex_result.returncode == 0, hex_result.stderr
         assert json.loads(hex_result.stdout)["size"] <= 8
+        raw_hex = run_cli("hex", str(FIXTURE), "--offset", "0", "--length", "4", "--json")
+        assert raw_hex.returncode == 0, raw_hex.stderr
+        assert json.loads(raw_hex.stdout)["source"] == "file"
+        assert json.loads(raw_hex.stdout)["size"] == 4
+
+        rc_input = temporary_path / "sample.rc"
+        rc_input.write_text('STRINGTABLE\nBEGIN\n  1 "Hello"\nEND\n', encoding="utf-8")
+        res_output = temporary_path / "sample.res"
+        rc_compile = run_cli("rc", "compile", str(rc_input), "--output", str(res_output), "--json")
+        assert rc_compile.returncode == 0, rc_compile.stderr
+        rc_output = temporary_path / "roundtrip.rc"
+        rc_decompile = run_cli("rc", "decompile", str(res_output), "--output", str(rc_output), "--json")
+        assert rc_decompile.returncode == 0, rc_decompile.stderr
+        assert '1 "Hello"' in rc_output.read_text(encoding="utf-8")
 
         version_rc = temporary_path / "version.rc"
         version_rc.write_text(VersionInfo(strings={"FileDescription": "CLI"}, translations=[0x0409]).to_rc(), encoding="utf-8")

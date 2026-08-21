@@ -36,7 +36,7 @@ from .project import Project, ResourceEntry
 from .provenance import build_provenance, write_provenance
 from .reports import render_report
 from .roundtrip_contracts import RoundTripContract, RoundTripContractRegistry, RoundTripResult, default_registry
-from .rc_format import RCDocument, RCMenus, RCStringTable
+from .rc_format import RC_DEFAULT_LANGUAGE, RCDocument, RCMenus, RCStringTable, compile_rc, decompile_res
 from .signature import PESignatureReport, SignatureOperationResult, SignatureToolError, create_test_certificate, find_signtool, inspect_signature, resign_authenticode, strip_authenticode
 from .search import SearchHit, search_resources
 from .res_format import ResFile, ResRecord
@@ -135,6 +135,9 @@ __all__ = [
     "RCDocument",
     "RCMenus",
     "RCStringTable",
+    "RC_DEFAULT_LANGUAGE",
+    "compile_rc",
+    "decompile_res",
     "PESignatureReport",
     "SignatureOperationResult",
     "SignatureToolError",

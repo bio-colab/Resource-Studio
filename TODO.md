@@ -522,3 +522,23 @@
 | 2026-08-21 | Original SHA guard | مكتمل ومختبر | `ResourceHacker.exe` بقي SHA-256: `14A44FE31B04FBCC65E94E80016138A2E9FC9BB6DFCEA09B98DE57F8A22A1240` |
 
 الحدود المقصودة لهذه الدفعة: لا Job Object/named-pipe telemetry إضافي لنداء Win32 غير المنفذ، ولا entropy/ssdeep/TLSH ولا recursive MZ/steganography analytics. هذه البنود خارج نطاق Forensic-goal الحالي ومثبتة في تقرير المراجعة.
+
+
+## GitHub and Tooling Foundation — 2026-08-21
+
+| ID | المهمة | الحالة | معيار الإنجاز |
+|---|---|---|---|
+| GH-01 | ترخيص المستودع | [x] | `LICENSE` رسمي Apache-2.0، README وCONTRIBUTING يوضحان نطاقه وعدم شموله ResourceHacker.exe أو اعتماديات الطرف الثالث |
+| GH-02 | GitHub discoverability | [x] | وصف المستودع وhomepage وtopics وIssues وDiscussions مفعّلة |
+| GH-03 | CI/CD | [x] | `.github/workflows/ci.yml` لبوابات Python/Windows/WPF و`release.yml` لإنتاج source bundle عند tags مع استبعاد الملفات المحظورة |
+| GH-04 | Community health | [x] | `CODE_OF_CONDUCT.md` و`SUPPORT.md` و`SECURITY.md` وbug/feature issue forms |
+| GH-05 | First community entry points | [~] | Issue افتتاحي أُنشئ برقم `#1`؛ `gh discussion create` رفضته صلاحية GitHub integration (`createDiscussion`)، ويمكن إنشاؤه يدويًا من واجهة Discussions أو بعد منح scope المناسب |
+| HEX-01 | Raw Hex Viewer | [x] | `hex` CLI يدعم file offset وresource slice ويعرض hex/ASCII/base64/C-array مع JSON |
+| HEX-02 | WPF Hex surface | [ ] | ربط viewer الخام بواجهة WPF بعد تحديد workflow وacceptance على Windows؛ CLI الحالي يحقق الحد الأدنى المطلوب |
+| RC-01 | RC subset compiler | [x] | `rc compile` يحول STRINGTABLE وMENU/MENUEX وVERSIONINFO إلى RES |
+| RC-02 | RC subset decompiler | [x] | `rc decompile` يعيد RES المدعوم إلى RC ويحافظ على unsupported records كتعليقات |
+| RC-03 | RC expansion | [ ] | DIALOG/ICON/ACCELERATORS وfixtures حقيقية فقط بعد round-trip contracts مستقلة |
+
+### ملاحظة الترخيص
+
+اختيار Apache-2.0 هنا قرار هندسي/مجتمعي عملي لتوفير ترخيص permissive مع patent grant؛ يجب مراجعة محامٍ قبل اعتماد النص كقرار قانوني نهائي في منتج أو مؤسسة، خصوصًا عند خلط الكود باعتماديات أو ملفات خارجية.

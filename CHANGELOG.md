@@ -10,6 +10,11 @@
 
 ### أُضيف
 
+- Apache-2.0 في `LICENSE` مع توضيح الفصل القانوني بين Resource Studio وResource Hacker واعتماديات الطرف الثالث.
+- GitHub Actions CI لـPython وWindows/WPF، وRelease workflow لإنتاج source bundle عند tags دون `ResourceHacker.exe` أو ملفات الأسرار والبناء.
+- community files: `CODE_OF_CONDUCT.md` و`SUPPORT.md` و`SECURITY.md` وIssue templates.
+- توسيع `hex` CLI ليعرض raw file slices أو resource slices مع hex/ASCII/base64/C-array JSON.
+- إضافة `rc compile` و`rc decompile` لـSTRINGTABLE وMENU/MENUEX وVERSIONINFO ضمن RC subset حتمي قابل للاختبار.
 - `core/forensics.py` مع `ForensicBaseline` الذي يلتقط hash والحجم وPE invariant snapshot وResource Graph وdeep invariants وintegrity diagnostics.
 - `ForensicEvidence` و`verify_transformation` لإنتاج `resource_studio.forensic_evidence.v1` وربط operation ID وoperation وtarget بالفرق المرصود.
 - ربط `forensic_evidence` بـ`WriteResult` بعد commit مستقل، وتمريره إلى Project Audit وBatch operation payload.

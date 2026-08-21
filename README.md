@@ -15,6 +15,12 @@
 | **UI/UX-goal** | جعل تجربة الهاوي والمطور مفهومة: Workspace context، Preview، Verification summary، حالة تشغيل واضحة، Save As، accessibility surfaces، وasync Stop |
 | **Forensic-goal** | بناء baseline/result evidence، forensic diff، mutation attribution، independent corroboration، وevidence report فوق اللبنات الموجودة، لا كـmodule موازٍ |
 
+## لقطة من الواجهة
+
+هذه لقطة من نسخة Windows بعد فتح fixture عام؛ تعرض Workspace ومسار `Save As only` وفهرس الموارد وSHA-256 لكل مورد. لا تُستخدم اللقطة كبديل عن UI automation أو اختبارات السلوك.
+
+![Resource Studio WPF workspace](assets/screenshots/resource-studio-main.png)
+
 ## الحالة الحالية
 
 المشروع في مرحلة **Forensic-goal — baseline/evidence pass**. توجد نواة Python قابلة للاختبار، وCLI JSON، وWPF shell مستقل، وطبقات Verification وUI/UX مطبقة جزئيًا ومختبرة على Manus وWindows في الدورات السابقة.
@@ -88,6 +94,20 @@ python3 resource_studio_cli.py inspect tests/fixtures/sample.dll --json
 python3 resource_studio_cli.py validate tests/fixtures/sample.dll --json
 python3 resource_studio_cli.py signature inspect tests/fixtures/sample.dll --json
 ```
+
+للمشاهدة الخام وRC subset:
+
+```bash
+# Hex Viewer على بداية الملف أو على مورد محدد
+python3 resource_studio_cli.py hex tests/fixtures/sample.dll --offset 0 --length 128 --json
+python3 resource_studio_cli.py hex tests/fixtures/sample.dll --type MANIFEST --name 1 --language 1033 --length 256 --json
+
+# RC subset إلى RES ثم العودة إلى RC
+python3 resource_studio_cli.py rc compile sample.rc --output sample.res --language 1033 --json
+python3 resource_studio_cli.py rc decompile sample.res --output roundtrip.rc --json
+```
+
+يدعم RC compiler/decompiler الحالي `STRINGTABLE` و`MENU/MENUEX` القياسي و`VERSIONINFO`، ويحافظ على الموارد غير المدعومة كتعليقات عند decompile بدل إسقاطها بصمت. لا يدعي أنه بديل كامل لـMicrosoft `rc.exe`؛ التوسعة إلى DIALOG وICON وACCELERATORS ستأتي فقط مع fixtures وعقود round-trip مستقلة.
 
 لعمليات Save As typed resources:
 
@@ -185,7 +205,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tests\windows\Invoke-Resourc
 
 ## الترخيص والاعتماديات
 
-Resource Studio كود مستقل. يعتمد backend PE على [LIEF](https://lief.re/) المرخص تحت Apache-2.0، وتوجد إشعارات الطرف الثالث في [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md). ResourceHacker.exe ليس جزءًا من المشروع ولا يُعاد توزيعه.
+كود Resource Studio في هذا المستودع مرخص تحت [Apache License 2.0](LICENSE)، ما يسمح بالاستخدام والتعديل وإعادة التوزيع وفق شروط الترخيص، مع بقاء إشعار الحقوق والضمانات والقيود القانونية كما هي في `LICENSE`. هذا توصيف للمستودع وليس استشارة قانونية؛ راجع محاميًا عند دمجه في منتج تجاري أو عند خلطه بكود ذي شروط مختلفة. يعتمد backend PE على [LIEF](https://lief.re/) المرخص تحت Apache-2.0، وتوجد إشعارات الطرف الثالث في [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md). ResourceHacker.exe ليس جزءًا من المشروع ولا يُعاد توزيعه، ولا يمنح ترخيص Resource Studio أي حق في أصوله أو علامته أو ملفاته.
 
 ## روابط المشروع
 
@@ -196,3 +216,6 @@ Resource Studio كود مستقل. يعتمد backend PE على [LIEF](https://l
 - [Changelog](CHANGELOG.md)
 - [Contributing guide](CONTRIBUTING.md)
 - [GitHub repository](https://github.com/bio-colab/Resource-Studio)
+- [License](LICENSE)
+- [Security policy](SECURITY.md)
+- [Code of Conduct](CODE_OF_CONDUCT.md)

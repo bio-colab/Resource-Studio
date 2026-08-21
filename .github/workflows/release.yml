@@ -1,0 +1,48 @@
+name: Release
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*.*.*']
+
+permissions:
+  contents: write
+
+jobs:
+  source-release:
+    name: Build and publish source bundle
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+      - name: Create source bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf staging
+          mkdir staging
+          cp -a . staging/resource-studio
+          rm -rf staging/resource-studio/.git staging/resource-studio/.github
+          find staging/resource-studio -type f \( \
+            -iname 'ResourceHacker.exe' -o -iname '*.pdb' -o -iname '*.bak' -o \
+            -iname '*.provenance.json' -o -iname '*.forensic-baseline.json' -o \
+            -iname '*.key' -o -iname '*.pub' \
+          \) -delete
+          find staging/resource-studio -type d \( -name bin -o -name obj -o -name outputs -o -name snapshots -o -name __pycache__ \) -prune -exec rm -rf {} +
+          tar -czf resource-studio-${GITHUB_REF_NAME:-manual}.tar.gz -C staging resource-studio
+          sha256sum resource-studio-${GITHUB_REF_NAME:-manual}.tar.gz > resource-studio-${GITHUB_REF_NAME:-manual}.sha256
+      - name: Publish GitHub release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            resource-studio-*.tar.gz
+            resource-studio-*.sha256
+      - name: Upload workflow artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: source-bundle-${{ github.run_id }}
+          path: |
+            resource-studio-*.tar.gz
+            resource-studio-*.sha256

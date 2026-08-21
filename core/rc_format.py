@@ -5,7 +5,76 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from .menu_resources import MF_POPUP, MF_SEPARATOR, MenuItem, MenuResource
+from .res_format import ResFile, ResRecord
+from .string_table import StringTableBlock, string_table_block_id
 from .version_info import VersionInfo
+
+
+RC_DEFAULT_LANGUAGE = 1033
+
+
+def compile_rc(text: str, *, language: int = RC_DEFAULT_LANGUAGE) -> ResFile:
+    """Compile the supported RC subset into a RES file."""
+    if not 0 <= language <= 0xFFFF:
+        raise ValueError("RC language must fit WORD")
+    document = RCDocument.from_text(text)
+    records: list[ResRecord] = []
+    for table in document.string_tables:
+        blocks: dict[int, list[str]] = {}
+        for raw_id, value in table.entries.items():
+            try:
+                string_id = int(raw_id, 0)
+            except ValueError as exc:
+                raise ValueError(f"STRINGTABLE id must be numeric: {raw_id}") from exc
+            block_id = string_table_block_id(string_id)
+            slots = blocks.setdefault(block_id, [""] * StringTableBlock.SLOT_COUNT)
+            slots[(string_id - 1) % StringTableBlock.SLOT_COUNT] = value
+        records.extend(ResRecord(6, block_id, language, StringTableBlock(block_id, tuple(slots)).to_bytes()) for block_id, slots in sorted(blocks.items()))
+    for menu in document.menus:
+        name: int | str = _parse_rc_id(menu.resource_id)
+        records.append(ResRecord(4, name, language, MenuResource(menu.items).to_bytes()))
+    for version in document.versions:
+        records.append(ResRecord(16, 1, language, version.to_bytes()))
+    return ResFile(records)
+
+
+def decompile_res(data: bytes) -> str:
+    """Decompile supported RES records into a loss-aware RC subset."""
+    resource_file = ResFile.from_bytes(data)
+    chunks: list[str] = []
+    for record in resource_file.records:
+        resource_type = _resource_type_name(record.resource_type)
+        name = _rc_id(record.name)
+        if resource_type == "STRING":
+            block = StringTableBlock.from_bytes(int(record.name), record.data)
+            lines = ["STRINGTABLE", "BEGIN"]
+            for index, value in enumerate(block.strings):
+                if value:
+                    lines.append(f'  {block.first_string_id + index} "{_escape(value)}"')
+            lines.extend(["END", ""])
+            chunks.append("\n".join(lines))
+        elif resource_type == "MENU":
+            chunks.append(RCMenus(name, MenuResource.parse(record.data).items).to_rc())
+        elif resource_type == "VERSION":
+            chunks.append(VersionInfo.from_bytes(record.data).to_rc())
+        else:
+            chunks.append(f"// UNSUPPORTED RES {resource_type}:{name}:{record.language} size={len(record.data)}\n")
+    return "".join(chunks)
+
+
+def _parse_rc_id(value: str) -> int | str:
+    try:
+        return int(value, 0)
+    except ValueError:
+        return value
+
+
+def _rc_id(value: int | str) -> str:
+    return str(value)
+
+
+def _resource_type_name(value: int | str) -> str:
+    return {4: "MENU", 6: "STRING", 16: "VERSION"}.get(value, str(value))
 
 
 @dataclass

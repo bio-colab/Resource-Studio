@@ -25,6 +25,7 @@ from core.pe_metadata import PEMetadataInspector
 from core.preview import PreviewEngine
 from core.project import Project, ResourceEntry
 from core.reports import FORMATS, render_report
+from core.rc_format import compile_rc, decompile_res
 from core.search import search_resources
 from core.string_table import StringTableBlock
 from core.localization import LocalizationCatalog
@@ -441,14 +442,38 @@ def command_version_info(args: argparse.Namespace) -> int:
 
 
 def command_hex(args: argparse.Namespace) -> int:
-    with tempfile.TemporaryDirectory(prefix="resource-studio-cli-hex-") as temporary:
-        project = Project.open_pe(args.input, Path(temporary) / "project")
-        item = project.index_resources().find(args.type, args.name, args.language)
-        if item is None:
-            raise ValueError("resource was not found")
-        viewer = HexViewer(args.input.read_bytes())
-        chunk = viewer.resource_slice(project.index_resources(), args.type, args.name, args.language, args.length)
-    _print({"type": args.type, "name": args.name, "language": args.language, "offset": chunk.offset, "size": len(chunk.data), "hex": chunk.hex(), "ascii": chunk.ascii()}, args.json)
+    viewer = HexViewer(args.input.read_bytes())
+    if args.offset is not None:
+        chunk = viewer.slice(args.offset, args.length)
+        source = "file"
+        resource = None
+    else:
+        with tempfile.TemporaryDirectory(prefix="resource-studio-cli-hex-") as temporary:
+            project = Project.open_pe(args.input, Path(temporary) / "project")
+            index = project.index_resources()
+            item = index.find(args.type, args.name, args.language)
+            if item is None:
+                raise ValueError("resource was not found")
+            chunk = viewer.resource_slice(index, args.type, args.name, args.language, args.length)
+        source = "resource"
+        resource = {"type": args.type, "name": args.name, "language": args.language}
+    payload = {"source": source, "resource": resource, "offset": chunk.offset, "size": len(chunk.data), "hex": chunk.hex(), "ascii": chunk.ascii(), "base64": chunk.base64(), "cArray": chunk.as_c_array()}
+    _print(payload, args.json)
+    return 0
+
+
+def command_rc(args: argparse.Namespace) -> int:
+    output = args.output.expanduser().resolve()
+    output.parent.mkdir(parents=True, exist_ok=True)
+    if args.action == "compile":
+        resource_file = compile_rc(args.input.read_text(encoding="utf-8"), language=args.language)
+        output.write_bytes(resource_file.to_bytes())
+        payload = {"output": str(output), "format": "res", "recordCount": len(resource_file.records), "size": output.stat().st_size}
+    else:
+        content = decompile_res(args.input.read_bytes())
+        output.write_text(content, encoding="utf-8")
+        payload = {"output": str(output), "format": "rc", "size": output.stat().st_size}
+    _print(payload, args.json)
     return 0
 
 
@@ -686,14 +711,23 @@ def parser() -> argparse.ArgumentParser:
     version_parser.add_argument("--json", action="store_true")
     version_parser.set_defaults(handler=command_version_info)
 
-    hex_parser = subparsers.add_parser("hex", help="show raw file bytes at a resource offset")
+    hex_parser = subparsers.add_parser("hex", help="view raw file bytes or a resource slice")
     hex_parser.add_argument("input", type=Path)
-    hex_parser.add_argument("--type", required=True)
-    hex_parser.add_argument("--name", required=True)
-    hex_parser.add_argument("--language", type=int, required=True)
+    hex_parser.add_argument("--offset", type=int)
+    hex_parser.add_argument("--type")
+    hex_parser.add_argument("--name")
+    hex_parser.add_argument("--language", type=int)
     hex_parser.add_argument("--length", type=int, default=256)
     hex_parser.add_argument("--json", action="store_true")
     hex_parser.set_defaults(handler=command_hex)
+
+    rc_parser = subparsers.add_parser("rc", help="compile the supported RC subset to RES or decompile RES to RC")
+    rc_parser.add_argument("action", choices=("compile", "decompile"))
+    rc_parser.add_argument("input", type=Path)
+    rc_parser.add_argument("--output", required=True, type=Path)
+    rc_parser.add_argument("--language", type=int, default=1033)
+    rc_parser.add_argument("--json", action="store_true")
+    rc_parser.set_defaults(handler=command_rc)
 
     image_diff_parser = subparsers.add_parser("image-diff", help="compare two image payload files")
     image_diff_parser.add_argument("left", type=Path)
@@ -726,6 +760,14 @@ def main(argv: list[str] | None = None) -> int:
             parser().error("evidence-ledger append requires --input")
         if arguments.action == "keygen" and (arguments.private_key is None or arguments.public_key is None):
             parser().error("evidence-ledger keygen requires --private-key and --public-key")
+    if arguments.command == "hex":
+        resource_mode = all(value is not None for value in (arguments.type, arguments.name, arguments.language))
+        if arguments.offset is None and not resource_mode:
+            parser().error("hex requires --offset or --type/--name/--language")
+        if arguments.offset is not None and resource_mode:
+            parser().error("hex cannot combine --offset with resource selectors")
+        if arguments.offset is not None and arguments.offset < 0:
+            parser().error("hex --offset must be non-negative")
     if arguments.command == "report" and arguments.kind in {"diff", "image-diff"} and arguments.right is None:
         parser().error(f"report {arguments.kind} requires LEFT and RIGHT inputs")
     if arguments.command in {"string-table", "version-resource", "manifest-resource", "menu-resource", "image-resource"} and arguments.action == "apply" and arguments.model is None:
