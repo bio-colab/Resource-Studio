@@ -296,7 +296,7 @@
 
 **دفعة Productization الحالية:** `docs/PRODUCTIZATION.md`؛ تثبت هذه الدفعة أن الأولوية العملية هي إعادة التشغيل والتشخيص القابل للفهم قبل إضافة محررات أو adapters جديدة.
 
-**التحقق:** CI run `32442901962` نجح على commit `60ffe5d`، مع نجاح Python 3.12 وWindows/WPF وفحص artifacts المحظورة.
+**التحقق:** CI run `32442901962` نجح على commit `60ffe5d`، مع نجاح Python 3.12 وWindows/WPF وفحص artifacts المحظورة. Release run `32443264983` أنشأ source bundle نظيفًا واجتاز فحص الملفات المحظورة.
 
 
 ## سجل بوابة main-goal النهائية

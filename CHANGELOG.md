@@ -52,6 +52,7 @@
 - إضافة journal JSONL لكل Batch job وخيار `--resume` الذي يتحقق من hash الناتج ويخطي العناصر المكتملة بأمان، مع اختبارات core وCLI.
 - إضافة `docs/PRODUCTIZATION.md` وتحديث المرحلة 10 لتحديد ما اكتمل وما بقي مؤجلًا حسب احتياجات المطورين والهواة.
 - نجاح GitHub Actions run `32442901962` على commit `60ffe5d`، مع اجتياز Python 3.12 وWindows/WPF وفحص الملفات المحظورة.
+- نجاح release workflow run `32443264983` على commit `c5ec854` في إنشاء source bundle وSHA-256، مع اجتياز فحص غياب الملفات المحظورة.
 
 ### ما يزال قيد التنفيذ
 
