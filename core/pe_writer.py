@@ -521,6 +521,7 @@ class LiefPEWriter:
                 "error": str(exc),
                 "temporaryCandidate": str(temporary) if temporary is not None else None,
                 "verification": pre_verification.to_dict() if pre_verification is not None else None,
+                "postVerification": post_verification.to_dict() if post_verification is not None else None,
                 "forensicEvidence": forensic_evidence,
             }
             try:
