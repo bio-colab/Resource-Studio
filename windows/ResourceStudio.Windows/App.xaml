@@ -65,8 +65,38 @@
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="Padding" Value="6,4" />
         </Style>
+        <Style TargetType="PasswordBox">
+            <Setter Property="Background" Value="{DynamicResource SlateInputBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource PaperBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource DividerBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="6,4" />
+        </Style>
         <Style TargetType="CheckBox">
             <Setter Property="Foreground" Value="{DynamicResource PaperBrush}" />
+        </Style>
+        <Style TargetType="ComboBox">
+            <Setter Property="Background" Value="{DynamicResource SlateInputBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource PaperBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource DividerBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="6,4" />
+        </Style>
+        <Style TargetType="ComboBoxItem">
+            <Setter Property="Background" Value="{DynamicResource SlatePanelBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource PaperBrush}" />
+            <Setter Property="Padding" Value="6,4" />
+        </Style>
+        <Style TargetType="ListBox">
+            <Setter Property="Background" Value="{DynamicResource SlateInputBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource PaperBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource DividerBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+        </Style>
+        <Style TargetType="ListBoxItem">
+            <Setter Property="Background" Value="{DynamicResource SlatePanelBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource PaperBrush}" />
+            <Setter Property="Padding" Value="6,4" />
         </Style>
         <Style TargetType="TabControl">
             <Setter Property="Background" Value="{DynamicResource DeepSlateBrush}" />

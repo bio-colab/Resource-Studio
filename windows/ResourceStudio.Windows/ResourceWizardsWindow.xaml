@@ -1,11 +1,11 @@
 <Window x:Class="ResourceStudio.Windows.ResourceWizardsWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Resource Wizards" Height="760" Width="1000" MinHeight="560" MinWidth="760">
-    <Grid Margin="12">
+        Title="Resource Wizards" Height="760" Width="1000" MinHeight="560" MinWidth="760" Background="{DynamicResource DeepSlateBrush}" Foreground="{DynamicResource PaperBrush}">
+    <Grid Margin="12" Background="{DynamicResource DeepSlateBrush}">
         <TabControl>
             <TabItem Header="VersionInfo">
-                <Grid Margin="8">
+                <Grid Margin="8" Background="{DynamicResource SlatePanelBrush}">
                     <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                     <WrapPanel Margin="0,0,0,8">
                         <TextBlock Text="PE" VerticalAlignment="Center" Margin="0,0,6,0" />
@@ -20,7 +20,7 @@
                 </Grid>
             </TabItem>
             <TabItem Header="Manifest">
-                <Grid Margin="8">
+                <Grid Margin="8" Background="{DynamicResource SlatePanelBrush}">
                     <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                     <WrapPanel Margin="0,0,0,8"><TextBlock Text="PE" VerticalAlignment="Center" Margin="0,0,6,0" /><TextBox x:Name="ManifestPeBox" Width="500" Margin="0,0,8,0" /><TextBlock Text="Lang" VerticalAlignment="Center" Margin="0,0,6,0" /><TextBox x:Name="ManifestLanguageBox" Width="70" Text="1033" /></WrapPanel>
                     <TextBox x:Name="ManifestXmlBox" Grid.Row="1" FontFamily="Consolas" FontSize="12" AcceptsReturn="True" TextWrapping="NoWrap" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" />
@@ -28,7 +28,7 @@
                 </Grid>
             </TabItem>
             <TabItem Header="Menu">
-                <Grid Margin="8">
+                <Grid Margin="8" Background="{DynamicResource SlatePanelBrush}">
                     <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                     <WrapPanel Margin="0,0,0,8"><TextBlock Text="PE" VerticalAlignment="Center" Margin="0,0,6,0" /><TextBox x:Name="MenuPeBox" Width="360" Margin="0,0,8,0" /><TextBlock Text="ID" VerticalAlignment="Center" Margin="0,0,6,0" /><TextBox x:Name="MenuNameBox" Width="55" Text="1" Margin="0,0,8,0" /><TextBlock Text="Lang" VerticalAlignment="Center" Margin="0,0,6,0" /><TextBox x:Name="MenuLanguageBox" Width="70" Text="1033" /></WrapPanel>
                     <Grid Grid.Row="1"><Grid.ColumnDefinitions><ColumnDefinition Width="2*" /><ColumnDefinition Width="3*" /><ColumnDefinition Width="2*" /></Grid.ColumnDefinitions>
@@ -39,7 +39,7 @@
                             <TextBlock Text="ID" /><TextBox x:Name="MenuItemIdBox" Margin="0,2" LostFocus="MenuItemProperty_LostFocus" />
                             <TextBlock Text="Text" /><TextBox x:Name="MenuItemTextBox" Margin="0,2" LostFocus="MenuItemProperty_LostFocus" />
                             <TextBlock Text="Flags (hex)" /><TextBox x:Name="MenuItemFlagsBox" Margin="0,2" LostFocus="MenuItemProperty_LostFocus" ToolTip="MF_CHECKED, MF_DISABLED, MF_SEPARATOR and other Win32 flags" />
-                            <TextBlock x:Name="MenuItemKindText" Text="No item selected" Margin="0,4,0,8" Foreground="Gray" />
+                            <TextBlock x:Name="MenuItemKindText" Text="No item selected" Margin="0,4,0,8" Foreground="{DynamicResource MistBrush}" />
                             <WrapPanel><Button Content="Add root" Click="MenuAddRoot_Click" Margin="0,0,4,4" /><Button Content="Add child" Click="MenuAddChild_Click" Margin="0,0,4,4" /><Button Content="Add separator" Click="MenuAddSeparator_Click" Margin="0,0,4,4" /><Button Content="Delete" Click="MenuDelete_Click" Margin="0,0,4,4" /></WrapPanel>
                             <WrapPanel><Button Content="Move up" Click="MenuMoveUp_Click" Margin="0,0,4,4" /><Button Content="Move down" Click="MenuMoveDown_Click" Margin="0,0,4,4" /><Button Content="Validate" Click="MenuValidate_Click" /></WrapPanel>
                         </StackPanel></ScrollViewer>

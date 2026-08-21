@@ -1,8 +1,8 @@
 <Window x:Class="ResourceStudio.Windows.StringTableEditorWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="StringTable Editor" Height="680" Width="820" MinHeight="500" MinWidth="650">
-    <Grid Margin="12">
+        Title="StringTable Editor" Height="680" Width="820" MinHeight="500" MinWidth="650" Background="{DynamicResource DeepSlateBrush}" Foreground="{DynamicResource PaperBrush}">
+    <Grid Margin="12" Background="{DynamicResource DeepSlateBrush}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
