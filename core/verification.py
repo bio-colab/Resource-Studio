@@ -398,6 +398,8 @@ def _windows_validation(
         "status": "PASSED" if passed else "FAILED",
         "beforeResourceCount": before.resource_count,
         "afterResourceCount": after.resource_count,
+        "beforeWarnings": list(before.warnings),
+        "afterWarnings": list(after.warnings),
         "added": [list(item) for item in oracle_added],
         "removed": [list(item) for item in oracle_removed],
         "changed": [list(item) for item in oracle_changed],
