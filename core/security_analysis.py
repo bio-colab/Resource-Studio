@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from .deep_invariants import inspect_deep
+from .evidence_triage import build_triage_map
 from .evidence_model import build_evidence_summary, evidence_summary_hash
 from .health import PEHealth
 from .invariants import snapshot
@@ -58,6 +59,7 @@ def analyze_security(path: Path, external_results: tuple[ExternalScanResult, ...
         "externalScans": [result.to_dict() for result in external_results],
         "runtimeEvidence": [dict(item) for item in runtime_evidence],
         "runtime": {"status": "EXTERNAL_EVIDENCE_IMPORTED" if runtime_evidence else "RUNTIME_NOT_ASSESSED", "executed": False, "evidenceCount": len(runtime_evidence)},
+        "resourceTriage": None,
         "findings": [],
         "limitations": [
             "Static PE analysis cannot prove that a file is malware or that process injection occurred.",
@@ -68,6 +70,7 @@ def analyze_security(path: Path, external_results: tuple[ExternalScanResult, ...
     if not access["exists"] or not access["readable"]:
         base["parse"] = {"status": "NOT_READ", "errors": [access["error"] or "file is not readable"]}
         base["findings"].append(_finding("HIGH", "HIGH", "ACCESS", "File could not be read", access["error"] or "unknown read failure"))
+        base["resourceTriage"] = build_triage_map(base)
         return base
 
     try:
@@ -81,6 +84,7 @@ def analyze_security(path: Path, external_results: tuple[ExternalScanResult, ...
         base["access"].update({"readable": False, "error": str(exc)})
         base["parse"] = {"status": "NOT_READ", "errors": [str(exc)]}
         base["findings"].append(_finding("HIGH", "HIGH", "ACCESS", "File read failed", str(exc)))
+        base["resourceTriage"] = build_triage_map(base)
         return base
 
     try:
@@ -128,10 +132,12 @@ def analyze_security(path: Path, external_results: tuple[ExternalScanResult, ...
         )
         base["evidence"] = evidence
         base["evidenceHash"] = evidence_summary_hash(evidence)
+        base["resourceTriage"] = build_triage_map(base)
     except Exception as exc:
         base["parse"] = {"status": "CORRUPT_OR_UNSUPPORTED", "errors": [str(exc)]}
         base["findings"].append(_finding("HIGH", "HIGH", "CORRUPTION", "PE parsing failed", str(exc)))
         base["limitations"].append("A parse failure is not proof of malware; the file may be unsupported, truncated, encrypted, or malformed.")
+        base["resourceTriage"] = build_triage_map(base)
     return base
 
 

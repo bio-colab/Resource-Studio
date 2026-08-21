@@ -24,6 +24,7 @@ public partial class MainWindow : Window
     private ReadHostClient? _readHost;
     private long _requestGeneration;
     private string? _casePath;
+    private readonly Dictionary<string, TriageStyle> _resourceTriage = new(StringComparer.Ordinal);
 
     public MainWindow()
     {
@@ -206,6 +207,19 @@ public partial class MainWindow : Window
 
     private void ResourceFilterBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e) => ApplyResourceFilter();
 
+    private void ResourceGrid_LoadingRow(object sender, DataGridRowEventArgs e)
+    {
+        if (e.Row.Item is not ResourceRow row || !_resourceTriage.TryGetValue(ResourceTriageKey(row), out var triage))
+        {
+            e.Row.ClearValue(DataGridRow.BackgroundProperty);
+            e.Row.ClearValue(DataGridRow.ForegroundProperty);
+            return;
+        }
+        e.Row.Background = triage.Brush;
+        e.Row.Foreground = triage.Level == "HIGH" ? Brushes.White : Brushes.Black;
+        e.Row.ToolTip = $"Triage {triage.Level}: {triage.Reason} — visual cue only";
+    }
+
     private void ResourceGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (ResourceGrid.SelectedItem is not ResourceRow row) return;
@@ -216,6 +230,7 @@ public partial class MainWindow : Window
             new PropertyRow("Language", row.Language?.ToString() ?? ""),
             new PropertyRow("Size", row.Size.ToString()),
             new PropertyRow("SHA-256", row.Sha256),
+            new PropertyRow("Triage", _resourceTriage.TryGetValue(ResourceTriageKey(row), out var triage) ? $"{triage.Level}: {triage.Reason}" : "NONE"),
         };
         PreviewHeader.Text = $"{row.Type} / {row.Name} / language {row.Language}: typed preview with raw fallback";
         PreviewResource(row);
@@ -321,8 +336,58 @@ public partial class MainWindow : Window
         var result = await RunCliCaptureAsync("security", _selectedPe!, "--json");
         if (result.IsStale) return;
         SecurityReportBox.Text = PrettyJson(result.StdoutOrError);
+        ApplyTriage(result.StdoutOrError);
         StatusText.Text = result.ExitCode == 0 ? "Static security analysis completed" : $"CLI exited with code {result.ExitCode}";
     }
+
+    private void ApplyTriage(string json)
+    {
+        _resourceTriage.Clear();
+        try
+        {
+            using var document = JsonDocument.Parse(json);
+            if (!document.RootElement.TryGetProperty("resourceTriage", out var triage) || triage.ValueKind != JsonValueKind.Object)
+            {
+                TriageBannerText.Text = "Triage: not available";
+                TriageBanner.Background = new SolidColorBrush(Color.FromRgb(229, 231, 235));
+                ApplyResourceFilter();
+                return;
+            }
+            var global = triage.TryGetProperty("global", out var globalValue) ? globalValue : default;
+            var level = global.ValueKind == JsonValueKind.Object && global.TryGetProperty("level", out var levelValue) ? levelValue.GetString() ?? "NONE" : "NONE";
+            var color = global.ValueKind == JsonValueKind.Object && global.TryGetProperty("color", out var colorValue) ? colorValue.GetString() ?? "#E5E7EB" : "#E5E7EB";
+            var reason = global.ValueKind == JsonValueKind.Object && global.TryGetProperty("reasons", out var reasons) && reasons.ValueKind == JsonValueKind.Array ? string.Join(", ", reasons.EnumerateArray().Select(item => item.ToString()).Take(2)) : "visual cue only";
+            TriageBannerText.Text = $"Triage: {level} — {reason}";
+            TriageBanner.Background = ParseBrush(color, Color.FromRgb(229, 231, 235));
+            if (triage.TryGetProperty("resources", out var resources) && resources.ValueKind == JsonValueKind.Object)
+            {
+                foreach (var item in resources.EnumerateObject())
+                {
+                    var levelValue = item.Value.TryGetProperty("level", out var itemLevel) ? itemLevel.GetString() ?? "NONE" : "NONE";
+                    var itemColor = item.Value.TryGetProperty("color", out var itemColorValue) ? itemColorValue.GetString() ?? "#6B7280" : "#6B7280";
+                    var itemReason = item.Value.TryGetProperty("reasons", out var itemReasons) && itemReasons.ValueKind == JsonValueKind.Array ? string.Join(", ", itemReasons.EnumerateArray().Select(value => value.ToString()).Take(2)) : "visual cue only";
+                    _resourceTriage[item.Name] = new TriageStyle(levelValue, ParseBrush(itemColor, Colors.Gray), itemReason);
+                }
+            }
+            ApplyResourceFilter();
+        }
+        catch (JsonException)
+        {
+            TriageBannerText.Text = "Triage: invalid report";
+            TriageBanner.Background = new SolidColorBrush(Color.FromRgb(254, 226, 226));
+            ApplyResourceFilter();
+        }
+    }
+
+    private static SolidColorBrush ParseBrush(string value, Color fallback)
+    {
+        try { return new SolidColorBrush((Color)ColorConverter.ConvertFromString(value)!); }
+        catch { return new SolidColorBrush(fallback); }
+    }
+
+    private static string ResourceTriageKey(ResourceRow row) => $"resource:{row.Type}/{row.Name}/{row.Language?.ToString() ?? "None"}";
+
+    private sealed record TriageStyle(string Level, SolidColorBrush Brush, string Reason);
 
     private async void EvidenceGraph_Click(object sender, RoutedEventArgs e)
     {
@@ -496,11 +561,42 @@ public partial class MainWindow : Window
             try
             {
                 using var document = JsonDocument.Parse(result.StdoutOrError);
+                ApplyHexTemplate(document.RootElement);
                 RenderVisualPreview(document.RootElement, bitmapOutput);
             }
             catch (Exception exc) { PreviewVisualPanel.Children.Add(new TextBlock { Text = $"Visual preview unavailable: {exc.Message}", TextWrapping = TextWrapping.Wrap }); }
         }
         if (bitmapOutput is not null) File.Delete(bitmapOutput);
+    }
+
+    private void ApplyHexTemplate(JsonElement root)
+    {
+        PreviewFieldsGrid.ItemsSource = null;
+        PreviewHexBox.Text = string.Empty;
+        if (!root.TryGetProperty("raw", out var raw) || raw.ValueKind != JsonValueKind.Object) return;
+        if (raw.TryGetProperty("hex", out var hex)) PreviewHexBox.Text = hex.ToString();
+        if (!raw.TryGetProperty("template", out var template) || template.ValueKind != JsonValueKind.Object) return;
+        if (!template.TryGetProperty("fields", out var fields) || fields.ValueKind != JsonValueKind.Array) return;
+        var rows = new List<HexFieldRow>();
+        foreach (var field in fields.EnumerateArray())
+        {
+            rows.Add(new HexFieldRow(
+                field.TryGetProperty("name", out var name) ? name.ToString() : "field",
+                field.TryGetProperty("offset", out var offset) ? offset.GetInt32() : 0,
+                field.TryGetProperty("length", out var length) ? length.GetInt32() : 0,
+                field.TryGetProperty("value", out var value) ? value.ToString() : "",
+                field.TryGetProperty("hex", out var bytes) ? bytes.ToString() : ""));
+        }
+        PreviewFieldsGrid.ItemsSource = rows;
+    }
+
+    private void PreviewFieldsGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (PreviewFieldsGrid.SelectedItem is not HexFieldRow field || string.IsNullOrEmpty(PreviewHexBox.Text)) return;
+        var start = Math.Min(PreviewHexBox.Text.Length, field.Offset * 3);
+        var length = Math.Min(Math.Max(0, PreviewHexBox.Text.Length - start), Math.Max(0, field.Length * 3 - (field.Length > 0 ? 1 : 0)));
+        PreviewHexBox.Focus();
+        PreviewHexBox.Select(start, length);
     }
 
     private void RenderVisualPreview(JsonElement root, string? bitmapOutput)
@@ -770,6 +866,8 @@ public partial class MainWindow : Window
         public int Size { get; set; }
         public string Sha256 { get; set; } = "";
     }
+
+    private sealed record HexFieldRow(string Name, int Offset, int Length, string Value, string Hex);
 
     private sealed class SearchRow
     {

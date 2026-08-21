@@ -18,10 +18,12 @@ from .commands import (
 from .health import HealthReport, PEHealth
 from .fuzz_harness import FuzzOutcome, assert_no_unexpected_failures, run_parser_cases, run_structure_aware_cases, structure_aware_cases
 from .image_resources import BitmapResource, IconCursorEntry, IconCursorGroup, ImageResourceError, icon_cursor_bmp_to_payload, icon_cursor_payload_to_bmp
+from .hex_templates import HexField, build_hex_template
 from .hex_view import HexSlice, HexViewer
 from .invariants import PEInvariantSnapshot, PESurgicalChangeReport, compare_surgical_change, snapshot
 from .deep_invariants import DeepPEInvariantReport, inspect_deep
 from .diagnostics import build_post_write_diagnostics
+from .evidence_triage import build_triage_map
 from .security_analysis import analyze_security
 from .security_providers import ExternalScanResult, external_scan_hash, load_external_scan
 from .security_workspace import StagedArtifact, stage_readonly_copy
@@ -97,6 +99,8 @@ __all__ = [
     "ImageResourceError",
     "icon_cursor_payload_to_bmp",
     "icon_cursor_bmp_to_payload",
+    "HexField",
+    "build_hex_template",
     "HexSlice",
     "HexViewer",
     "PEInvariantSnapshot",
@@ -106,6 +110,7 @@ __all__ = [
     "DeepPEInvariantReport",
     "build_post_write_diagnostics",
     "analyze_security",
+    "build_triage_map",
     "ExternalScanResult",
     "external_scan_hash",
     "load_external_scan",

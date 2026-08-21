@@ -49,7 +49,7 @@
                         <TextBox x:Name="ResourceFilterBox" Width="260" TextChanged="ResourceFilterBox_TextChanged" />
                         <TextBlock AutomationProperties.AutomationId="ResourceCountText" x:Name="ResourceCountText" Text="0 resources" VerticalAlignment="Center" Margin="12,0,0,0" Foreground="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}" />
                     </DockPanel>
-                    <DataGrid AutomationProperties.AutomationId="ResourceGrid" AutomationProperties.Name="Resource list" x:Name="ResourceGrid" Grid.Row="1" Grid.Column="0" AutoGenerateColumns="True" IsReadOnly="True" SelectionChanged="ResourceGrid_SelectionChanged" />
+                    <DataGrid AutomationProperties.AutomationId="ResourceGrid" AutomationProperties.Name="Resource list" x:Name="ResourceGrid" Grid.Row="1" Grid.Column="0" AutoGenerateColumns="True" IsReadOnly="True" SelectionChanged="ResourceGrid_SelectionChanged" LoadingRow="ResourceGrid_LoadingRow" />
                     <Grid Grid.Row="1" Grid.Column="1" Margin="8,0,0,0">
                         <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
                         <TextBlock Text="Properties" FontWeight="Bold" Margin="0,0,0,6" />
@@ -61,7 +61,7 @@
                 <Grid Margin="6">
                     <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
                     <TextBlock x:Name="PreviewHeader" Text="Select a resource to preview." Margin="0,0,0,6" />
-                    <Grid Grid.Row="1"><Grid.ColumnDefinitions><ColumnDefinition Width="2*" /><ColumnDefinition Width="3*" /></Grid.ColumnDefinitions><ScrollViewer AutomationProperties.Name="Visual preview" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"><StackPanel x:Name="PreviewVisualPanel" Margin="4" /></ScrollViewer><TextBox AutomationProperties.AutomationId="PreviewDetailsBox" AutomationProperties.Name="Preview details" x:Name="PreviewBox" Grid.Column="1" Margin="8,0,0,0" FontFamily="Consolas" FontSize="13" AcceptsReturn="True" IsReadOnly="True" TextWrapping="NoWrap" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" /></Grid>
+                    <Grid Grid.Row="1"><Grid.ColumnDefinitions><ColumnDefinition Width="2*" /><ColumnDefinition Width="3*" /></Grid.ColumnDefinitions><ScrollViewer AutomationProperties.Name="Visual preview" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"><StackPanel x:Name="PreviewVisualPanel" Margin="4" /></ScrollViewer><Grid Grid.Column="1" Margin="8,0,0,0"><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="170" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions><TextBlock Text="Structural template fields — select a field to highlight its bytes" FontWeight="SemiBold" Margin="0,0,0,4" /><DataGrid x:Name="PreviewFieldsGrid" AutomationProperties.AutomationId="PreviewFieldsGrid" AutomationProperties.Name="Hex template fields" AutoGenerateColumns="True" IsReadOnly="True" SelectionChanged="PreviewFieldsGrid_SelectionChanged" Grid.Row="1" /><TextBlock Text="Hex bytes" FontWeight="SemiBold" Margin="0,8,0,4" Grid.Row="2" /><TextBox AutomationProperties.AutomationId="PreviewHexBox" AutomationProperties.Name="Raw hex bytes" x:Name="PreviewHexBox" Grid.Row="3" FontFamily="Consolas" FontSize="13" AcceptsReturn="True" IsReadOnly="True" TextWrapping="NoWrap" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" /></Grid></Grid>
                 </Grid>
             </TabItem>
             <TabItem AutomationProperties.AutomationId="SearchTab" Header="Search">
@@ -130,7 +130,10 @@
                         <TextBox AutomationProperties.AutomationId="AnnotationTagBox" AutomationProperties.Name="Annotation tag" x:Name="AnnotationTagBox" Width="110" Margin="0,0,6,0" ToolTip="Optional tag" />
                         <TextBox AutomationProperties.AutomationId="AnnotationNoteBox" AutomationProperties.Name="Annotation note" x:Name="AnnotationNoteBox" Width="220" Margin="0,0,6,0" ToolTip="Optional note" />
                         <Button AutomationProperties.AutomationId="AddAnnotationButton" Content="Add Annotation" Click="AddAnnotation_Click" Margin="0,0,6,0" />
-                        <Button AutomationProperties.AutomationId="ExportSelectionButton" Content="Export Selection" Click="ExportSelection_Click" />
+                        <Button AutomationProperties.AutomationId="ExportSelectionButton" Content="Export Selection" Click="ExportSelection_Click" Margin="0,0,6,0" />
+                        <Border x:Name="TriageBanner" Padding="8,3" Background="#E5E7EB" BorderBrush="#9CA3AF" BorderThickness="1" CornerRadius="3" AutomationProperties.Name="Evidence triage status">
+                            <TextBlock x:Name="TriageBannerText" Text="Triage: not run" FontWeight="SemiBold" />
+                        </Border>
                     </WrapPanel>
                     <Grid Grid.Row="3">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>

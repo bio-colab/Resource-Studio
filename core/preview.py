@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from .hex_templates import build_hex_template
 from .hex_view import HexViewer
 
 
@@ -53,7 +54,7 @@ class PreviewEngine:
     ) -> PreviewResult:
         resource_type = str(resource_type).upper()
         name = str(resource_name)
-        raw = _raw_preview(data, raw_length)
+        raw = _raw_preview(data, raw_length, resource_type)
         try:
             if resource_type == "MANIFEST":
                 return cls._manifest(resource_type, data, name, language, raw)
@@ -134,11 +135,11 @@ class PreviewEngine:
         return PreviewResult(resource_type, name, language, "image-group", group.kind, {"entryCount": len(group.entries), "dimensions": group.dimensions()}, group.to_dict(), raw)
 
 
-def _raw_preview(data: bytes, length: int) -> dict[str, Any]:
+def _raw_preview(data: bytes, length: int, resource_type: str) -> dict[str, Any]:
     if length < 0:
         raise ValueError("raw preview length must be non-negative")
     chunk = HexViewer(data).slice(0, length)
-    return {"size": len(data), "shown": len(chunk.data), "hex": chunk.hex(), "ascii": chunk.ascii(), "base64": base64.b64encode(chunk.data).decode("ascii")}
+    return {"size": len(data), "shown": len(chunk.data), "hex": chunk.hex(), "ascii": chunk.ascii(), "base64": base64.b64encode(chunk.data).decode("ascii"), "template": build_hex_template(resource_type, data)}
 
 
 def _count_menu_items(items: list[Any]) -> int:

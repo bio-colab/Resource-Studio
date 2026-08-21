@@ -11,6 +11,8 @@
 ### أُضيف
 
 - إضافة `resource_studio.static_code_analysis.v1`: bounded Capstone disassembly وbasic CFG من PE entrypoint مع RVA/file offsets وقيود صريحة، إضافة إلى unpacking indicators ساكنة مثل section expansion وhigh entropy وexecutable+writable sections وoverlay.
+- إضافة `resource_studio.hex_template.v1` لقوالب BITMAPINFOHEADER وVS_VERSIONINFO وDIALOG/MENU headers، مع field offsets وlengths وvalues وhex ranges قابلة للتحديد في WPF Preview.
+- إضافة `resource_studio.evidence_triage.v1` لتلوين Resource Grid بصريًا بحسب corruption وlow confidence وobfuscation/packing indicators، مع banner وtooltip وعبارة صريحة بأن اللون visual cue وليس verdict.
 - إضافة `runtime_evidence.v1` لاستيراد behavioral telemetry وmemory-analysis reports وAPI-call traces الخارجية بعد مطابقة target SHA-256؛ لا ينفذ Resource Studio العينة ولا يقرأ live memory ولا يتصل بعملية.
 - توسيع PE corpus من fixture PE واحد إلى ملفات benign متعددة: x86 وx64، minimal وresource-heavy، named/numeric resources، multiple languages، weird alignment، UPX packed profile، overlay، وشهادة اختبار self-signed، مع manifest SHA-256 وtoolchain/profile metadata.
 - إضافة builder قابل لإعادة التشغيل في `tools/build_pe_corpus.py`، وتوسيع PE matrix ليجري read-only checks على كل PE manifest entry.
