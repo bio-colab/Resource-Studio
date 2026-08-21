@@ -539,6 +539,12 @@
 | RC-02 | RC subset decompiler | [x] | `rc decompile` يعيد RES المدعوم إلى RC ويحافظ على unsupported records كتعليقات |
 | RC-03 | RC expansion | [ ] | DIALOG/ICON/ACCELERATORS وfixtures حقيقية فقط بعد round-trip contracts مستقلة |
 
+### تحقق الدفعة
+
+- CI run `32439696170` نجح على Python 3.12 وWindows/WPF في commit `be9d066`.
+- Release run `32439696133` نجح في بناء source bundle وSHA-256؛ الفحص أكد غياب `ResourceHacker.exe` وPDB وbin/obj وoutputs/snapshots والملفات الجانبية المحظورة.
+- GH-05 بقي `[~]` عمدًا: Issue #1 موجود، أما Discussion فتحتاج إنشاءً يدويًا أو صلاحية GitHub إضافية.
+
 ### ملاحظة الترخيص
 
 اختيار Apache-2.0 هنا قرار هندسي/مجتمعي عملي لتوفير ترخيص permissive مع patent grant؛ يجب مراجعة محامٍ قبل اعتماد النص كقرار قانوني نهائي في منتج أو مؤسسة، خصوصًا عند خلط الكود باعتماديات أو ملفات خارجية.
