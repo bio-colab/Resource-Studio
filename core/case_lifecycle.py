@@ -110,7 +110,9 @@ class CaseFile:
         self.payload["findings"] = list(report.get("findings", []))
         self.payload["reports"].append({"kind": "security", "schema": report.get("schema"), "evidenceHash": report.get("evidenceHash"), "graphHash": graph.graph_hash(), "report": dict(report)})
         if self.payload["status"] == "OPEN":
-            self.payload["status"] = "ANALYZED"
+            self.transition("TRIAGED", actor=actor, note="security report submitted for triage")
+        if self.payload["status"] == "TRIAGED":
+            self.transition("ANALYZED", actor=actor, note="static evidence analysis completed")
         self._append_event("SECURITY_REPORT_ADDED", {"evidenceHash": report.get("evidenceHash"), "graphHash": graph.graph_hash()}, actor=actor)
 
     def add_note(self, note: str, *, actor: str = "resource-studio") -> None:
