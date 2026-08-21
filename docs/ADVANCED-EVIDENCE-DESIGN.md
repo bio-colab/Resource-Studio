@@ -21,7 +21,13 @@ finding.severity == "HIGH"
 evidence.confidence >= 0.8
 ```
 
-يُحوّل المحرك القيم إلى أنواع محدودة، ويدعم `==`, `!=`, `>`, `>=`, `<`, `<=`, و`contains`، مع `and` و`or` وparentheses. أسماء الحقول تقع ضمن namespace صريح: `resource`, `finding`, `observation`, `evidence`, `artifact`, و`externalScan`. أي حقل أو عامل غير معروف يسبب خطأ واضحًا بدل نتيجة ناقصة.
+يُحوّل المحرك القيم إلى أنواع محدودة، ويدعم `==`, `!=`, `>`, `>=`, `<`, `<=`، و`contains`، مع `and` و`or` والأقواس. الكلمات التشغيلية غير حساسة لحالة الأحرف، لذلك تعمل الصيغتان `and` و`AND`، وكذلك `contains` و`CONTAINS`. مثال مركب:
+
+```text
+(resource.type == "ICON" OR resource.type == "CURSOR") AND resource.size > 10000
+```
+
+أسماء الحقول تقع ضمن namespace صريح: `resource`, `finding`, `observation`, `evidence`, `artifact`، و`externalScan`. عندما يحتوي `evidence_summary.v1` على نتائج مستوردة من `external_scan.v1`، تُحفظ في `externalScans` وتصبح حقولها قابلة للاستعلام مثل `externalScan.status` و`externalScan.provider` و`externalScan.targetSha256`. أي حقل أو عامل غير معروف يسبب خطأ واضحًا بدل نتيجة ناقصة.
 
 ## Case lifecycle
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any, Iterable, Mapping
 
 
 _SCHEMA = "resource_studio.evidence_summary.v1"
@@ -19,6 +19,7 @@ def build_evidence_summary(
     raw_resource: Mapping[str, Any] | None = None,
     raw_comparison: Mapping[str, Any] | None = None,
     verification: Mapping[str, Any] | None = None,
+    external_scans: Iterable[Mapping[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Normalize existing PE reports into attributable observations and findings."""
 
@@ -31,6 +32,7 @@ def build_evidence_summary(
     raw_resource = dict(raw_resource or {})
     raw_comparison = dict(raw_comparison or {})
     verification = dict(verification or {})
+    external_scan_records = [dict(item) for item in (external_scans or ()) if isinstance(item, Mapping)]
     observations: list[dict[str, Any]] = []
 
     def observe(
@@ -144,6 +146,7 @@ def build_evidence_summary(
         "corroboration": {"resourceGraphVsRaw": "CORROBORATED" if corroborated is True else "DISCREPANCY" if corroborated is False else "NOT_RUN"},
         "statistics": {"resources": len(leaves), "uniqueTypes": len(resource_types), "types": resource_types, "languages": languages, "largestResource": largest, "sections": len(inspector.get("sections", [])), "imports": sum(len(item.get("entries", [])) for item in inspector.get("imports", [])), "exports": len(inspector.get("exports", []))},
         "findings": findings,
+        "externalScans": external_scan_records,
     }
 
 

@@ -108,7 +108,16 @@ def analyze_security(path: Path, external_results: tuple[ExternalScanResult, ...
                 base["findings"].append(_finding("MEDIUM", "EXTERNAL", "EXTERNAL_SCAN", f"External provider returned an error: {result.provider}", "; ".join(result.limitations) or "provider error"))
         if raw_comparison.get("matches") is False:
             base["findings"].append(_finding("HIGH", "HIGH", "CORRUPTION", "Canonical ResourceGraph disagrees with the independent raw resource parser", "Resource corroboration failed"))
-        evidence = build_evidence_summary(source, inspector=inspector, signature=signature, integrity=integrity, resource_graph=graph, raw_resource=raw, raw_comparison=raw_comparison)
+        evidence = build_evidence_summary(
+            source,
+            inspector=inspector,
+            signature=signature,
+            integrity=integrity,
+            resource_graph=graph,
+            raw_resource=raw,
+            raw_comparison=raw_comparison,
+            external_scans=[result.to_dict() for result in external_results],
+        )
         base["evidence"] = evidence
         base["evidenceHash"] = evidence_summary_hash(evidence)
     except Exception as exc:

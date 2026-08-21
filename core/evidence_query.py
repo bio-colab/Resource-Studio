@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import Any, Iterable, Mapping
 
 
-_TOKEN = re.compile(r'\s*(?:(and|or|contains)\b|([A-Za-z_][A-Za-z0-9_.-]*)|(>=|<=|==|!=|>|<)|("(?:\\.|[^"\\])*"|\'[^\']*\')|(\d+(?:\.\d+)?))')
+_TOKEN = re.compile(r'\s*(?:(and|or|contains)\b|([A-Za-z_][A-Za-z0-9_.-]*)|(>=|<=|==|!=|>|<)|(\"(?:\\\\.|[^\"\\\\])*\"|\'[^\']*\')|(\d+(?:\.\d+)?)|(\()|(\)))', re.IGNORECASE)
 _OPERATORS = {"==", "!=", ">", ">=", "<", "<=", "contains"}
 _CONFIDENCE = {"HIGH": 1.0, "MEDIUM": 0.7, "LIMITED": 0.5, "LOW": 0.2, "UNKNOWN": 0.0}
 
@@ -27,7 +27,7 @@ def tokenize(expression: str) -> tuple[_Token, ...]:
         match = _TOKEN.match(expression, position)
         if not match:
             raise EvidenceQueryError(f"unexpected query text at position {position}")
-        keyword, identifier, operator, quoted, number = match.groups()
+        keyword, identifier, operator, quoted, number, lparen, rparen = match.groups()
         if keyword:
             tokens.append(_Token(keyword.upper(), keyword))
         elif identifier:
@@ -36,6 +36,10 @@ def tokenize(expression: str) -> tuple[_Token, ...]:
             tokens.append(_Token("OP", operator))
         elif quoted:
             tokens.append(_Token("VALUE", quoted[1:-1]))
+        elif lparen:
+            tokens.append(_Token("LPAREN", lparen))
+        elif rparen:
+            tokens.append(_Token("RPAREN", rparen))
         else:
             tokens.append(_Token("VALUE", float(number) if "." in number else int(number)))
         position = match.end()
@@ -84,8 +88,9 @@ class _Parser:
 
     def _peek(self) -> _Token:
         token = self.tokens[self.index]
-        if token.kind == "IDENT" and token.value in {"and", "or", "contains"}:
-            return _Token(str(token.value).upper(), token.value)
+        if token.kind == "IDENT" and str(token.value).lower() in {"and", "or", "contains"}:
+            value = str(token.value).lower()
+            return _Token(value.upper(), value)
         return token
 
     def _accept(self, kind: str) -> bool:
@@ -131,6 +136,11 @@ def records_from_summary(summary: Mapping[str, Any]) -> list[dict[str, Any]]:
         if isinstance(finding, Mapping):
             record = {"scope": "finding", **{f"finding.{key}": value for key, value in finding.items()}}
             record["evidence.confidence"] = _confidence(finding.get("confidence"))
+            records.append(record)
+    for scan in summary.get("externalScans", []):
+        if isinstance(scan, Mapping):
+            record = {"scope": "externalScan", **{f"externalScan.{key}": value for key, value in scan.items()}}
+            record["evidence.confidence"] = _confidence(scan.get("confidence", "LIMITED"))
             records.append(record)
     return records
 

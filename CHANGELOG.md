@@ -10,6 +10,8 @@
 
 ### أُضيف
 
+- استكمال عقد Evidence Query: دعم الأقواس، operators غير الحساسة لحالة الأحرف، وتحويل `external_scan.v1` إلى سجلات قابلة للاستعلام عبر namespace `externalScan`، مع regression coverage وأمثلة موثقة.
+
 - إضافة regression contracts لمطابقة أهداف Forensic عند استخدام لغة wildcard، واستعادة project locks اليتيمة بعد انهيار العملية، والتحقق من أن استيراد CLI الأساسي لا يحمّل وحدات core الثقيلة قبل تنفيذ الأمر.
 - توثيق `resource_studio_gui.py` كواجهة Tkinter fallback محدودة، مع اعتماد WPF shell كواجهة Windows المدعومة للمسارات typed وVerification وForensic.
 
