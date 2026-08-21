@@ -126,6 +126,8 @@ dotnet build windows\ResourceStudio.Windows\ResourceStudio.Windows.csproj -c Rel
 windows\Run-ResourceStudio.cmd
 ```
 
+واجهة Windows المدعومة هي **WPF shell** الموجودة في `windows/ResourceStudio.Windows/`، لأنها تعرض مسارات التحقق والمعاينة والمحررات typed الخاصة بالمشروع. يبقى `resource_studio_gui.py` كواجهة **Tkinter fallback/legacy** خفيفة للبيئات التي لا تستطيع تشغيل WPF؛ وهي مناسبة للفهرسة والعرض الأساسي، لكنها لا تمثل كامل سطح Verification أو Forensic أو المحررات typed.
+
 ## Verification وForensic evidence
 
 يستخدم `core/verification.py` العقود الحالية لبناء Resource Graph وsemantic/layout fingerprints وpreservation map. وتضيف `core/forensics.py` طبقة evidence مستقلة:

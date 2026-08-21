@@ -42,6 +42,8 @@ class ReadSession:
         return json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True)
 
     def search_json(self, argv: list[str]) -> str:
+        from core.search import search_resources
+
         arguments = cli.parser().parse_args(argv)
         reader = self.reader_for(arguments.input)
         entries = reader.entries
@@ -52,7 +54,7 @@ class ReadSession:
                 if (not arguments.type or entry.resource_type == arguments.type)
                 and (arguments.language is None or entry.language == arguments.language)
             ]
-        hits = cli.search_resources(
+        hits = search_resources(
             entries,
             arguments.query,
             regex=arguments.regex,

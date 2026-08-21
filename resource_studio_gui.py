@@ -1,3 +1,9 @@
+"""Legacy Tkinter fallback; the supported Windows desktop UI is the WPF shell.
+
+This module remains useful on environments without WPF, but it intentionally does
+not expose the complete Verification, forensic, or typed-editor surface.
+"""
+
 from __future__ import annotations
 
 import json

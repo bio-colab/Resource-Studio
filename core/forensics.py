@@ -155,7 +155,10 @@ class ForensicEvidence:
         added = [list(item) for item in diff.get("added", [])]
         removed = [list(item) for item in diff.get("removed", [])]
         target_key = [self.target.get("type"), str(self.target.get("name")), self.target.get("language")]
-        unintended = [item for item in changed + added + removed if item != target_key]
+        unintended = [item for item in changed + added + removed if not self._target_key_matches(item, target_key)]
+        targeted_changed = any(self._target_key_matches(item, target_key) for item in changed)
+        targeted_added = any(self._target_key_matches(item, target_key) for item in added)
+        targeted_removed = any(self._target_key_matches(item, target_key) for item in removed)
         payload = {
             "schema": "resource_studio.forensic_evidence.v1",
             "operationId": self.operation_id,
@@ -166,14 +169,14 @@ class ForensicEvidence:
             "forensicDifference": {
                 "targeted": {
                     "key": target_key,
-                    "changed": target_key in changed,
-                    "added": target_key in added,
-                    "removed": target_key in removed,
+                    "changed": targeted_changed,
+                    "added": targeted_added,
+                    "removed": targeted_removed,
                     "beforeSha256": self._resource_hash(self.baseline, target_key),
                     "afterSha256": self._resource_hash(self.result, target_key),
                 },
                 "resourceTree": {
-                    "intendedChanges": int(target_key in changed) + int(target_key in added) + int(target_key in removed),
+                    "intendedChanges": int(targeted_changed) + int(targeted_added) + int(targeted_removed),
                     "unintendedChanges": len(unintended),
                     "changed": changed,
                     "added": added,
@@ -204,11 +207,24 @@ class ForensicEvidence:
         return json.loads(json.dumps(payload, ensure_ascii=False))
 
     @staticmethod
-    def _resource_hash(baseline: ForensicBaseline, key: list[Any]) -> str | None:
-        for leaf in baseline.resource_graph.get("leaves", []):
-            if [leaf.get("type"), str(leaf.get("name")), leaf.get("language")] == key:
-                return str(leaf.get("sha256"))
-        return None
+    def _target_key_matches(item: list[Any], target_key: list[Any]) -> bool:
+        return (
+            len(item) == 3
+            and item[0] == target_key[0]
+            and item[1] == target_key[1]
+            and (target_key[2] is None or int(item[2]) == int(target_key[2]))
+        )
+
+    @classmethod
+    def _resource_hash(cls, baseline: ForensicBaseline, key: list[Any]) -> str | None:
+        matches = [
+            str(leaf.get("sha256"))
+            for leaf in baseline.resource_graph.get("leaves", [])
+            if cls._target_key_matches(
+                [leaf.get("type"), str(leaf.get("name")), leaf.get("language")], key
+            )
+        ]
+        return matches[0] if len(matches) == 1 else None
 
 
 def verify_transformation(

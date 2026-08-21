@@ -98,15 +98,38 @@ class Project:
     def acquire_lock(self) -> Path:
         self.project_dir.mkdir(parents=True, exist_ok=True)
         payload = json.dumps({"pid": os.getpid(), "project": str(self.project_dir)}) + "\n"
+        for attempt in range(2):
+            try:
+                descriptor = os.open(self.lock_file, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            except FileExistsError as exc:
+                if attempt == 0 and self._lock_is_stale():
+                    self.lock_file.unlink(missing_ok=True)
+                    continue
+                raise RuntimeError(f"project is locked: {self.lock_file}") from exc
+            try:
+                os.write(descriptor, payload.encode("utf-8"))
+            finally:
+                os.close(descriptor)
+            return self.lock_file
+        raise RuntimeError(f"project is locked: {self.lock_file}")
+
+    def _lock_is_stale(self) -> bool:
         try:
-            descriptor = os.open(self.lock_file, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
-        except FileExistsError as exc:
-            raise RuntimeError(f"project is locked: {self.lock_file}") from exc
+            payload = json.loads(self.lock_file.read_text(encoding="utf-8"))
+            pid = int(payload["pid"])
+        except (OSError, ValueError, KeyError, TypeError):
+            return False
+        if pid <= 0:
+            return False
         try:
-            os.write(descriptor, payload.encode("utf-8"))
-        finally:
-            os.close(descriptor)
-        return self.lock_file
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            return True
+        except PermissionError:
+            return False
+        except OSError:
+            return False
+        return False
 
     def release_lock(self) -> None:
         self.lock_file.unlink(missing_ok=True)

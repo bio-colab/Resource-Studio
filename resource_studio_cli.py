@@ -9,45 +9,11 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-from core.batch import BatchWorkspace
-from core.compatibility import inspect_compatibility
-from core.diff import diff_image_payloads, diff_resources
-from core.diagnostics import build_post_write_diagnostics
-from core.security_analysis import analyze_security
-from core.security_providers import load_external_scan
-from core.security_workspace import stage_readonly_copy
-from core.evidence_ledger import EvidenceLedger, generate_ed25519_keypair
-from core.evidence_model import build_evidence_summary, evidence_summary_hash
-from core.evidence_graph import EvidenceGraph
-from core.evidence_query import query_summary
-from core.case_lifecycle import CaseFile
-from core.p0_telemetry import measure
-from core.forensics import ForensicBaseline
-from core.deep_invariants import inspect_deep
-from core.dialog_resources import DialogResource
-from core.health import PEHealth
-from core.image_resources import BitmapResource, IconCursorGroup, icon_cursor_bmp_to_payload, icon_cursor_payload_to_bmp
-from core.hex_view import HexViewer
-from core.pe_inspector import PEInspector
-from core.pe_integrity import inspect_integrity
-from core.pe_metadata import PEMetadataInspector
-from core.preview import PreviewEngine
-from core.project import Project, ResourceEntry
-from core.resource_reader import ResourceReader
-from core.reports import FORMATS, render_report
-from core.rc_format import compile_rc, decompile_res
-from core.raw_resource_parser import compare_with_graph, parse_raw_resources
-from core.search import search_resources
-from core.string_table import StringTableBlock
-from core.localization import LocalizationCatalog
-from core.manifest import ManifestDocument
-from core.menu_resources import MenuResource
-from core.signature import create_test_certificate, inspect_signature, resign_authenticode, strip_authenticode
-from core.version_info import VersionInfo
-from core.verification import ResourceGraph
 
 
 def _entries(path: Path) -> list[ResourceEntry]:
+    from core.resource_reader import ResourceReader
+
     return ResourceReader(path).entries
 
 
@@ -76,6 +42,8 @@ def _print(payload: Any, as_json: bool) -> None:
 
 
 def _diff_payload(left_path: Path, right_path: Path) -> dict[str, Any]:
+    from core.diff import diff_resources
+
     left_entries = _entries(left_path)
     right_entries = _entries(right_path)
     tree = diff_resources(left_entries, right_entries).to_dict()
@@ -141,6 +109,8 @@ def command_plan(args: argparse.Namespace) -> int:
 
 
 def command_search(args: argparse.Namespace) -> int:
+    from core.search import search_resources
+
     entries = _entries(args.input)
     if args.type or args.language is not None:
         entries = [entry for entry in entries if (not args.type or entry.resource_type == args.type) and (args.language is None or entry.language == args.language)]
@@ -155,6 +125,8 @@ def command_diff(args: argparse.Namespace) -> int:
 
 
 def command_export(args: argparse.Namespace) -> int:
+    from core.project import Project
+
     project = Project.load(args.project)
     output = project.export_git(args.output)
     _print({"output": str(output), "resourceCount": len(project.entries)}, args.json)
@@ -162,12 +134,16 @@ def command_export(args: argparse.Namespace) -> int:
 
 
 def command_import(args: argparse.Namespace) -> int:
+    from core.project import Project
+
     project = Project.import_git(args.input, args.project)
     _print({"project": str(project.project_dir), "resourceCount": len(project.entries)}, args.json)
     return 0
 
 
 def command_batch(args: argparse.Namespace) -> int:
+    from core.batch import BatchWorkspace
+
     workspace = BatchWorkspace.load(args.manifest)
     if args.action == "plan":
         payload = workspace.plan()
@@ -178,6 +154,8 @@ def command_batch(args: argparse.Namespace) -> int:
 
 
 def command_build(args: argparse.Namespace) -> int:
+    from core.project import Project
+
     project = Project.load(args.project)
     output = project.build(args.output)
     _print({"output": str(output), "sha256": _sha256(output)}, args.json)
@@ -185,6 +163,8 @@ def command_build(args: argparse.Namespace) -> int:
 
 
 def command_evidence_ledger(args: argparse.Namespace) -> int:
+    from core.evidence_ledger import EvidenceLedger, generate_ed25519_keypair
+
     if args.action == "keygen":
         generate_ed25519_keypair(args.private_key, args.public_key)
         _print({"privateKey": str(args.private_key.resolve()), "publicKey": str(args.public_key.resolve())}, args.json)
@@ -203,6 +183,8 @@ def command_evidence_ledger(args: argparse.Namespace) -> int:
 
 
 def command_forensic_baseline(args: argparse.Namespace) -> int:
+    from core.forensics import ForensicBaseline
+
     baseline = ForensicBaseline.from_path(args.input)
     artifact = baseline.save(args.output)
     payload = baseline.to_dict()
@@ -212,6 +194,16 @@ def command_forensic_baseline(args: argparse.Namespace) -> int:
 
 
 def command_inspect(args: argparse.Namespace) -> int:
+    from core.compatibility import inspect_compatibility
+    from core.deep_invariants import inspect_deep
+    from core.evidence_model import build_evidence_summary, evidence_summary_hash
+    from core.pe_inspector import PEInspector
+    from core.pe_integrity import inspect_integrity
+    from core.pe_metadata import PEMetadataInspector
+    from core.raw_resource_parser import compare_with_graph, parse_raw_resources
+    from core.signature import inspect_signature
+    from core.verification import ResourceGraph
+
     inspector = PEInspector.inspect(args.input).to_dict()
     signature = inspect_signature(args.input).to_dict()
     integrity = inspect_integrity(args.input).to_dict()
@@ -258,6 +250,8 @@ def _resource_match(input_path: Path, resource_type: str, name: str, language: i
 
 
 def command_preview(args: argparse.Namespace) -> int:
+    from core.preview import PreviewEngine
+
     entry = _resource_match(args.input, args.type.upper(), args.name, args.language)
     output = args.output if args.output is not None else None
     result = PreviewEngine.preview(args.type, entry.data, resource_name=entry.name, language=entry.language, raw_length=args.length, output_path=output)
@@ -266,6 +260,8 @@ def command_preview(args: argparse.Namespace) -> int:
 
 
 def command_image_payload(args: argparse.Namespace) -> int:
+    from core.image_resources import icon_cursor_bmp_to_payload, icon_cursor_payload_to_bmp
+
     kind = args.kind.upper()
     resource_type = "ICON" if kind == "ICON" else "CURSOR"
     format_name = args.format.lower()
@@ -287,6 +283,8 @@ def command_image_payload(args: argparse.Namespace) -> int:
 
 
 def command_image_resource(args: argparse.Namespace) -> int:
+    from core.image_resources import BitmapResource, IconCursorGroup
+
     kind = args.kind.upper()
     resource_type = {"BITMAP": "BITMAP", "ICON": "GROUP_ICON", "CURSOR": "GROUP_CURSOR"}[kind]
     if args.action == "export":
@@ -315,6 +313,8 @@ def command_image_resource(args: argparse.Namespace) -> int:
 
 
 def command_version_resource(args: argparse.Namespace) -> int:
+    from core.version_info import VersionInfo
+
     if args.action == "export":
         entry = _resource_match(args.input, "VERSION", args.name, args.language)
         info = VersionInfo.from_bytes(entry.data)
@@ -330,6 +330,8 @@ def command_version_resource(args: argparse.Namespace) -> int:
 
 
 def command_manifest_resource(args: argparse.Namespace) -> int:
+    from core.manifest import ManifestDocument
+
     if args.action == "export":
         entry = _resource_match(args.input, "MANIFEST", args.name, args.language)
         document = ManifestDocument.parse(entry.data.decode("utf-8-sig"))
@@ -350,6 +352,8 @@ def command_manifest_resource(args: argparse.Namespace) -> int:
 
 
 def command_menu_resource(args: argparse.Namespace) -> int:
+    from core.menu_resources import MenuResource
+
     if args.action == "validate":
         entry = _resource_match(args.input, "MENU", args.name, args.language)
         report = MenuResource.parse(entry.data).validate()
@@ -370,6 +374,8 @@ def command_menu_resource(args: argparse.Namespace) -> int:
 
 
 def command_string_table(args: argparse.Namespace) -> int:
+    from core.string_table import StringTableBlock
+
     if args.action == "export":
         matches = [entry for entry in _entries(args.input) if entry.resource_type == "STRING" and entry.name == str(args.name) and (args.language is None or entry.language == args.language)]
         if not matches:
@@ -398,6 +404,8 @@ def command_string_table(args: argparse.Namespace) -> int:
 
 
 def command_localization(args: argparse.Namespace) -> int:
+    from core.localization import LocalizationCatalog
+
     catalog = LocalizationCatalog.from_json(args.input.read_text(encoding="utf-8"))
     if args.action == "compare":
         _print(catalog.mode_report(args.source_language, args.target_language), args.json)
@@ -412,6 +420,8 @@ def command_localization(args: argparse.Namespace) -> int:
 
 
 def command_signature(args: argparse.Namespace) -> int:
+    from core.signature import create_test_certificate, inspect_signature, resign_authenticode, strip_authenticode
+
     if args.action == "inspect":
         _print(inspect_signature(args.input).to_dict(), args.json)
         return 0
@@ -440,6 +450,8 @@ def command_signature(args: argparse.Namespace) -> int:
 
 
 def command_dialog(args: argparse.Namespace) -> int:
+    from core.dialog_resources import DialogResource
+
     if args.action == "validate":
         matches = [entry for entry in _entries(args.input) if entry.resource_type == "DIALOG" and entry.name == args.name and (args.language is None or entry.language == args.language)]
         if not matches:
@@ -473,6 +485,8 @@ def command_dialog(args: argparse.Namespace) -> int:
 
 
 def command_version_info(args: argparse.Namespace) -> int:
+    from core.version_info import VersionInfo
+
     text = args.input.read_text(encoding="utf-8")
     source_format = args.input_format
     if source_format == "auto":
@@ -492,6 +506,9 @@ def command_version_info(args: argparse.Namespace) -> int:
 
 
 def command_hex(args: argparse.Namespace) -> int:
+    from core.hex_view import HexViewer
+    from core.project import Project
+
     viewer = HexViewer(args.input.read_bytes())
     if args.offset is not None:
         chunk = viewer.slice(args.offset, args.length)
@@ -513,6 +530,8 @@ def command_hex(args: argparse.Namespace) -> int:
 
 
 def command_rc(args: argparse.Namespace) -> int:
+    from core.rc_format import compile_rc, decompile_res
+
     output = args.output.expanduser().resolve()
     output.parent.mkdir(parents=True, exist_ok=True)
     if args.action == "compile":
@@ -528,6 +547,8 @@ def command_rc(args: argparse.Namespace) -> int:
 
 
 def command_image_diff(args: argparse.Namespace) -> int:
+    from core.diff import diff_image_payloads
+
     before = args.left.read_bytes()
     after = args.right.read_bytes()
     _print(diff_image_payloads(before, after, kind=args.kind).to_dict(), args.json)
@@ -535,6 +556,9 @@ def command_image_diff(args: argparse.Namespace) -> int:
 
 
 def command_evidence_graph(args: argparse.Namespace) -> int:
+    from core.evidence_graph import EvidenceGraph
+    from core.security_analysis import analyze_security
+
     report = analyze_security(args.input)
     summary = report.get("evidence")
     if not isinstance(summary, dict):
@@ -547,6 +571,9 @@ def command_evidence_graph(args: argparse.Namespace) -> int:
 
 
 def command_evidence_query(args: argparse.Namespace) -> int:
+    from core.evidence_query import query_summary
+    from core.security_analysis import analyze_security
+
     report = analyze_security(args.input)
     summary = report.get("evidence")
     if not isinstance(summary, dict):
@@ -557,6 +584,9 @@ def command_evidence_query(args: argparse.Namespace) -> int:
 
 
 def command_case(args: argparse.Namespace) -> int:
+    from core.case_lifecycle import CaseFile
+    from core.security_analysis import analyze_security
+
     if args.action == "create":
         case = CaseFile.create(args.input)
         case.save(args.output)
@@ -590,6 +620,11 @@ def command_case(args: argparse.Namespace) -> int:
 
 
 def command_security(args: argparse.Namespace) -> int:
+    from core.evidence_ledger import EvidenceLedger
+    from core.security_analysis import analyze_security
+    from core.security_providers import load_external_scan
+    from core.security_workspace import stage_readonly_copy
+
     external_results = tuple(load_external_scan(path) for path in (args.external_result or []))
     staged = stage_readonly_copy(args.input, args.stage_root) if args.stage_root else None
     payload = analyze_security(args.input, external_results)
@@ -603,12 +638,25 @@ def command_security(args: argparse.Namespace) -> int:
 
 
 def command_validate(args: argparse.Namespace) -> int:
+    from core.health import PEHealth
+
     report = PEHealth.inspect(args.input).to_dict()
     _print(report, args.json)
     return 0 if report["is_pe"] and (not args.strict or not report["warnings"]) else 1
 
 
 def command_report(args: argparse.Namespace) -> int:
+    from core.compatibility import inspect_compatibility
+    from core.diff import diff_image_payloads
+    from core.diagnostics import build_post_write_diagnostics
+    from core.health import PEHealth
+    from core.pe_inspector import PEInspector
+    from core.pe_integrity import inspect_integrity
+    from core.pe_metadata import PEMetadataInspector
+    from core.reports import render_report
+    from core.security_analysis import analyze_security
+    from core.signature import inspect_signature
+
     if args.kind == "health":
         payload = PEHealth.inspect(args.input).to_dict()
     elif args.kind == "inspect":
@@ -651,6 +699,8 @@ def _sha256(path: Path) -> str:
 
 
 def parser() -> argparse.ArgumentParser:
+    from core.reports import FORMATS
+
     root = argparse.ArgumentParser(prog="resource-studio", description="Resource Studio core CLI")
     subparsers = root.add_subparsers(dest="command", required=True)
 
@@ -979,6 +1029,8 @@ def main(argv: list[str] | None = None) -> int:
         if arguments.action == "create-test-cert" and arguments.output is None:
             parser().error("signature create-test-cert requires --output")
     try:
+        from core.p0_telemetry import measure
+
         with measure(arguments.command, argv=list(argv) if argv is not None else sys.argv[1:]) as telemetry:
             result = int(arguments.handler(arguments))
             telemetry.set("exitCode", result)

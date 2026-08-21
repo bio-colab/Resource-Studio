@@ -10,6 +10,9 @@
 
 ### أُضيف
 
+- إضافة regression contracts لمطابقة أهداف Forensic عند استخدام لغة wildcard، واستعادة project locks اليتيمة بعد انهيار العملية، والتحقق من أن استيراد CLI الأساسي لا يحمّل وحدات core الثقيلة قبل تنفيذ الأمر.
+- توثيق `resource_studio_gui.py` كواجهة Tkinter fallback محدودة، مع اعتماد WPF shell كواجهة Windows المدعومة للمسارات typed وVerification وForensic.
+
 - تنفيذ P0 من خطة إصلاح الأداء: telemetry اختياري لمسارات CLI وWriter وWPF runner، مع قياس الزمن وLIEF parses والقراءات الكاملة وtemporary I/O وprocess-per-action، دون تغيير السلوك الافتراضي. وثقت النتائج في `docs/P0-PERFORMANCE-BASELINE.md`.
 - تنفيذ P1 عبر `core/resource_reader.py`: أصبحت `list` و`extract` و`search` وقراءة طرفي `diff` تستخدم parse واحدًا دون `Project` workspace أو audit؛ baseline أثبت إزالة temporary I/O والقراءات الكاملة من هذه المسارات. التفاصيل في `docs/P1-READONLY-READER.md`.
 - تنفيذ P2 عبر `VerificationContext`: إعادة استخدام binary وsnapshot وResourceGraph وdeep/integrity/signature داخل Writer، مع انخفاض `writer.replace_manifest` من 49 إلى 11 LIEF parses ومن 14 إلى 12 full reads دون حذف مراحل التحقق. التفاصيل في `docs/P2-VERIFICATION-CONTEXT.md`.
