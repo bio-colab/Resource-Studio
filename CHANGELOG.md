@@ -10,6 +10,8 @@
 
 ### أُضيف
 
+- تحسينات وإصلاحات P0 لتوافق DLLs Windows الواقعية: حماية export ordinals عند غيابها في LIEF، وإبقاء Evidence Summary degraded قابلًا للاستهلاك في Evidence Graph وEvidence Query بدل إسقاط المسار كاملًا.
+- تحسينات وإصلاحات في Save As diagnostics: عند رفض Windows validation يبقى rollback آمنًا ويُحفظ failure artifact مستقل يحوي operation ID وSHA-256 وسبب الرفض دون commit مخرج غير صالح.
 - توحيد الثيم الداكن على `ImageResourceWindow` و`DialogEditorWindow` و`ResourceWizardsWindow` و`SignatureToolsWindow` و`StringTableEditorWindow`، مع أنماط مشتركة لـ`ComboBox` و`ListBox` و`PasswordBox` وعقد UI تثبت عدم عودة الخلفيات البيضاء الافتراضية.
 - إضافة هوية بصرية متكاملة: علامة Resource Studio وGitHub banner وPNG بأحجام Windows وICO متعدد الأحجام، مع `docs/BRAND-IDENTITY.md` وأداة إعادة تجهيز قابلة للتكرار في `tools/prepare_brand_assets.py`.
 - تطبيق العلامة على WPF عبر `ApplicationIcon` و`Window.Icon` وواجهة رأس تحمل اسم المنتج، مع لوحة ألوان موحدة وإبقاء دلالات triage منفصلة عن verdict الأمني.

@@ -40,7 +40,7 @@
 | Verification | Resource Graph، semantic fingerprints، deep PE invariants، differential verification، LIEF comparison، Windows resource oracle، integrity وAuthenticode diagnostics |
 | Forensic core | `ForensicBaseline` و`ForensicEvidence` و`verify_transformation` في `core/forensics.py`؛ baseline/result وoperation attribution وforensic difference موثقة ومختبرة جزئيًا |
 | Security Layer | static PE report، unpacking indicators، bounded Capstone disassembly وCFG، hex templates في Preview، وvisual evidence triage مع import-only behavioral telemetry/memory/API evidence وtarget SHA-256 |
-| Windows shell | WPF مستقل فوق CLI، Verification summary، async CLI runner، Stop، Preview مع field-to-byte hex selection، Resource Grid triage coloring، Image Wizard، وثيم داكن موحد للنوافذ الفرعية، وUI automation |
+| Windows shell | WPF مستقل فوق CLI، Verification summary، async CLI runner، Stop، Preview مع field-to-byte hex selection، Resource Grid triage coloring، Image Wizard، وثيم داكن موحد للنوافذ الفرعية، وUI automation؛ مع تحسينات وإصلاحات P0 لمسارات DLLs الواقعية وSave As diagnostics |
 | Testing | اختبارات core/CLI/QA، PE corpus matrix متعدد المعمارية والprofiles، bounded وstructure-aware fuzzing، crash consistency، Win32 oracles، Job Object، WPF build وUI automation |
 | الوثائق | `CONTRIBUTING.md`، `CHANGELOG.md`، `TODO.md`، وملفات الأهداف والتقارير في `docs/`، ومنها [`docs/PE-CORPUS.md`](docs/PE-CORPUS.md) |
 
