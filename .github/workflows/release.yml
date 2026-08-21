@@ -20,9 +20,8 @@ jobs:
         run: |
           set -euo pipefail
           rm -rf staging
-          mkdir staging
-          cp -a . staging/resource-studio
-          rm -rf staging/resource-studio/.git staging/resource-studio/.github
+          mkdir -p staging/resource-studio
+          tar --exclude='./.git' --exclude='./.github' --exclude='./staging' -cf - . | tar -xf - -C staging/resource-studio
           find staging/resource-studio -type f \( \
             -iname 'ResourceHacker.exe' -o -iname '*.pdb' -o -iname '*.bak' -o \
             -iname '*.provenance.json' -o -iname '*.forensic-baseline.json' -o \
