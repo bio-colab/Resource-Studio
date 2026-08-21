@@ -102,8 +102,10 @@ try {
     if ((Find-ById $imageWindow 'StopCliButton').Current.IsEnabled) { throw 'Image Wizard Stop button remained enabled while idle' }
     Wait-Until { (Get-ElementValue (Find-ById $imageWindow 'ImagePePathBox')) -ieq $resolvedPe } 'Image Wizard PE path' | Out-Null
     Invoke-Element (Find-ById $imageWindow 'ImageLoadButton')
+    Write-Output 'ui-automation: Image Wizard load invoked'
     $entriesList = Find-ById $imageWindow 'GroupEntriesList'
     $firstEntry = Wait-Until { $itemCondition = [System.Windows.Automation.PropertyCondition]::new([System.Windows.Automation.AutomationElement]::ControlTypeProperty, [System.Windows.Automation.ControlType]::ListItem); $entriesList.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $itemCondition) } 'image group entry' | Select-Object -First 1
+    Write-Output ("ui-automation: selecting image group entry: " + $firstEntry.Current.Name)
     Select-Element $firstEntry
     Wait-Until {
         $previewText = Get-ElementText (Find-ById $imageWindow 'ImagePreview')
@@ -118,7 +120,7 @@ try {
     exit 0
 }
 catch {
-    Write-Error "ui-automation-tests: failed: $($_.Exception.Message)"
+    Write-Error "ui-automation-tests: failed: $($_.Exception.ToString())"
     exit 1
 }
 finally {
