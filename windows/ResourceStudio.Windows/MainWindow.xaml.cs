@@ -21,12 +21,14 @@ public partial class MainWindow : Window
     private CliOperationState _cliState = CliOperationState.Idle;
     private Process? _activeCliProcess;
     private CancellationTokenSource? _cliCancellation;
+    private ReadHostClient? _readHost;
 
     public MainWindow()
     {
         InitializeComponent();
         _cliPath = FindCliPath();
         Loaded += MainWindow_Loaded;
+        Closed += (_, _) => _readHost?.Dispose();
         if (SystemParameters.HighContrast) ApplyHighContrastTheme();
     }
 
@@ -564,6 +566,36 @@ public partial class MainWindow : Window
         }
         try
         {
+            if (IsReadOnlyHostCommand(arguments))
+            {
+                try
+                {
+                    _readHost ??= new ReadHostClient(Path.Combine(Path.GetDirectoryName(_cliPath)!, "tools", "wpf_read_host.py"));
+                    var hostResult = await _readHost.RunAsync(arguments, cancellation.Token);
+                    var hostState = hostResult.Stopped
+                        ? CliOperationState.Stopped
+                        : hostResult.ExitCode == 0 ? CliOperationState.Completed : CliOperationState.Failed;
+                    var hostDetail = hostState == CliOperationState.Completed
+                        ? $"{operation} completed in {stopwatch.Elapsed.TotalSeconds:0.0}s"
+                        : hostState == CliOperationState.Stopped
+                            ? $"{operation} stopped — input unchanged"
+                            : $"{operation} failed — open Inspect for details";
+                    SetCliState(hostState, hostDetail);
+                    return new CliResult(hostResult.ExitCode, hostResult.Output, hostState, stopwatch.ElapsedMilliseconds);
+                }
+                catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+                {
+                    SetCliState(CliOperationState.Stopped, $"{operation} stopped — input unchanged");
+                    return new CliResult(130, "Operation stopped; input unchanged.", CliOperationState.Stopped, stopwatch.ElapsedMilliseconds);
+                }
+                catch
+                {
+                    _readHost?.Dispose();
+                    _readHost = null;
+                    // Fall back to the existing one-shot CLI path if the host cannot start.
+                }
+            }
+
             var info = new ProcessStartInfo
             {
                 FileName = "py.exe",
@@ -609,6 +641,13 @@ public partial class MainWindow : Window
             _activeCliProcess = null;
             _cliCancellation = null;
         }
+    }
+
+    private static bool IsReadOnlyHostCommand(IReadOnlyList<string> arguments)
+    {
+        if (arguments.Count == 0) return false;
+        return arguments[0] is "list" or "inspect" or "validate" or "search" or "security" or "evidence-graph" or "evidence-query" or "diff" or "preview"
+            || (arguments[0] == "localization" && arguments.Count > 1 && arguments[1] == "compare");
     }
 
     private void StopCli_Click(object sender, RoutedEventArgs e)

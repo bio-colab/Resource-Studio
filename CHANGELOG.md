@@ -13,6 +13,7 @@
 - تنفيذ P0 من خطة إصلاح الأداء: telemetry اختياري لمسارات CLI وWriter وWPF runner، مع قياس الزمن وLIEF parses والقراءات الكاملة وtemporary I/O وprocess-per-action، دون تغيير السلوك الافتراضي. وثقت النتائج في `docs/P0-PERFORMANCE-BASELINE.md`.
 - تنفيذ P1 عبر `core/resource_reader.py`: أصبحت `list` و`extract` و`search` وقراءة طرفي `diff` تستخدم parse واحدًا دون `Project` workspace أو audit؛ baseline أثبت إزالة temporary I/O والقراءات الكاملة من هذه المسارات. التفاصيل في `docs/P1-READONLY-READER.md`.
 - تنفيذ P2 عبر `VerificationContext`: إعادة استخدام binary وsnapshot وResourceGraph وdeep/integrity/signature داخل Writer، مع انخفاض `writer.replace_manifest` من 49 إلى 11 LIEF parses ومن 14 إلى 12 full reads دون حذف مراحل التحقق. التفاصيل في `docs/P2-VERIFICATION-CONTEXT.md`.
+- تنفيذ P3 عبر Python JSONL read host طويل العمر و`ReadHostClient.cs`؛ أزيل process-per-action من مسارات القراءة الساخنة مع session cache لـ`list/search` وfallback آمن. أبقى القياس Rust وC++ خارج المسار حتى يثبت Windows baseline حاجة حقيقية. التفاصيل في `docs/P3-READ-HOST.md`.
 
 - Apache-2.0 في `LICENSE` مع توضيح نطاق كود Resource Studio واعتماديات الطرف الثالث.
 - GitHub Actions CI لـPython وWindows/WPF، وRelease workflow لإنتاج source bundle عند tags دون ملفات الأسرار أو البناء.

@@ -73,7 +73,7 @@
 | P0 | benchmark/trace بلا تغيير سلوك | منخفضة | يزيل الجدل ويحدد عنق الزجاجة الحقيقي |
 | P1 | read-only ResourceReader للـCLI | منخفضة | مكتمل؛ أزال workspace وtemporary I/O من list/extract/search |
 | P2 | VerificationContext وإزالة إعادة التحليل المكرر | متوسطة | مكتمل؛ خفض إعادة parsing في Writer دون تقليل الضمانات |
-| P3 | Python host طويل العمر للقراءة في WPF | متوسطة | يزيل process-per-action ويضيف state persistence |
+| P3 | Python host طويل العمر للقراءة في WPF | متوسطة | مكتمل؛ host JSONL واحد وsession cache لـlist/search، وfallback آمن |
 | P4 | WPF session/cache/cancellation | متوسطة | يحول الواجهة إلى تطبيق مستمر فعليًا |
 | P5 | دراسة raw-surgical writer لنطاق ضيق | عالية | لا يبدأ إلا بعد القياس وcorpus وWindows oracle |
 

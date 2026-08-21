@@ -278,8 +278,8 @@
 | [x] | PERF-00 | P0 baseline telemetry | إضافة `resource_studio.p0_telemetry.v1` و`tools/p0_baseline.py`؛ القياس اختياري ولا يغير السلوك، وbaseline محفوظ في `docs/P0-PERFORMANCE-BASELINE.md` |
 | [x] | PERF-01 | P1 read-only ResourceReader | `core/resource_reader.py` فصل `list/extract/search` وقراءة طرفي `diff` عن `Project.open_pe`؛ baseline أثبت `temporaryDirectories=0` و`temporaryFiles=0` و`fullFileReads=0` لمسارات القراءة |
 | [x] | PERF-02 | P2 VerificationContext | `VerificationContext` يعيد استخدام binary وsnapshot وResourceGraph وdeep/integrity/signature داخل Writer؛ `writer.replace_manifest` انخفض من 49 إلى 11 LIEF parses ومن 14 إلى 12 full reads، مع بقاء كل مراحل التحقق وround-trip وforensic evidence |
-| [ ] | PERF-03 | P3 WPF long-lived host | host stdio/JSONL وجلسة PE مستمرة لمسارات القراءة |
-| [ ] | PERF-04 | P4 WPF session/cache | إلغاء stale results وإدارة cancellation/session identity |
+| [x] | PERF-03 | P3 WPF long-lived host | `tools/wpf_read_host.py` و`ReadHostClient.cs`؛ host واحد وsession cache لـ`list/search`، fallback آمن، والقياس في `docs/P3-READ-HOST.md` |
+| [ ] | PERF-04 | P4 WPF session/cache | إلغاء stale results وإدارة cancellation/session identity بعد إثبات احتياج UI الفعلي |
 | [ ] | PERF-05 | P5 raw-surgical writer study | يبدأ فقط إذا أثبتت القياسات أن P1–P4 لا تكفي وبعد corpus وWindows oracle |
 
 ## Advanced Evidence layers
