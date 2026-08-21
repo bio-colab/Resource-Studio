@@ -238,6 +238,8 @@ PYTHONPATH=. python3 tools/p0_baseline.py
 
 أُنجز P4 بإضافة `_requestGeneration` و`CliResult.IsStale`: عند بدء طلب أحدث يُلغى السابق، ولا يستطيع ناتج قديم الكتابة إلى UI. كما أصبحت عملية fallback مملوكة للطلب الذي أنشأها، وتفاصيل ذلك في [`docs/P4-WPF-SESSION.md`](docs/P4-WPF-SESSION.md).
 
+أُجري تقييم Rust جراحيًا على byte-search عبر FFI. تطابقت النتائج مع Python، لكن `bytes.find` كان أسرع، لذلك لم يُدخل المشروع dependency أو native artifact غير مبرر. النتيجة والتجربة في [`docs/RUST-EVALUATION.md`](docs/RUST-EVALUATION.md).
+
 ## حدود مقصودة
 
 لا يهدف Forensic-goal إلى بناء malware scanner أو IOC engine أو YARA أو PEiD أو entropy maps أو timeline عام أو hex forensic viewer جديد. أصبح Security-goal مسارًا مستقلًا للتحليل الساكن الدفاعي؛ لا يشغّل الملفات ولا يفك payloadات ولا يعلن أن heuristic واحدة تعني malware. أما Defender وYARA فهما موفّران خارجيان اختياريان على staged copies، وليسَا جزءًا من writer أو verdict داخلي. كما أن MCP مؤجل في هذه الدورة.

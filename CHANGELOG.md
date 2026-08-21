@@ -15,6 +15,7 @@
 - تنفيذ P2 عبر `VerificationContext`: إعادة استخدام binary وsnapshot وResourceGraph وdeep/integrity/signature داخل Writer، مع انخفاض `writer.replace_manifest` من 49 إلى 11 LIEF parses ومن 14 إلى 12 full reads دون حذف مراحل التحقق. التفاصيل في `docs/P2-VERIFICATION-CONTEXT.md`.
 - تنفيذ P3 عبر Python JSONL read host طويل العمر و`ReadHostClient.cs`؛ أزيل process-per-action من مسارات القراءة الساخنة مع session cache لـ`list/search` وfallback آمن. أبقى القياس Rust وC++ خارج المسار حتى يثبت Windows baseline حاجة حقيقية. التفاصيل في `docs/P3-READ-HOST.md`.
 - تنفيذ P4 في WPF: request generation و`CliResult.IsStale` لمنع النتائج القديمة، وowned process/cancellation لمنع تداخل الطلبات. التفاصيل في `docs/P4-WPF-SESSION.md`.
+- تقييم Rust جراحيًا لمسار byte-search عبر FFI؛ تطابقت accuracy، لكن `bytes.find` كان أسرع من prototype Rust، لذلك لم يُضف أي dependency أو artifact Rust إلى المشروع. التفاصيل في `docs/RUST-EVALUATION.md`.
 
 - Apache-2.0 في `LICENSE` مع توضيح نطاق كود Resource Studio واعتماديات الطرف الثالث.
 - GitHub Actions CI لـPython وWindows/WPF، وRelease workflow لإنتاج source bundle عند tags دون ملفات الأسرار أو البناء.

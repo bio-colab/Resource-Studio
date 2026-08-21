@@ -281,6 +281,7 @@
 | [x] | PERF-03 | P3 WPF long-lived host | `tools/wpf_read_host.py` و`ReadHostClient.cs`؛ host واحد وsession cache لـ`list/search`، fallback آمن، والقياس في `docs/P3-READ-HOST.md` |
 | [x] | PERF-04 | P4 WPF session/cache | `_requestGeneration` و`CliResult.IsStale` يمنعان stale UI updates، وowned process/cancellation يمنعان قتل طلب أحدث؛ التفاصيل في `docs/P4-WPF-SESSION.md` |
 | [ ] | PERF-05 | P5 raw-surgical writer study | يبدأ فقط إذا أثبتت القياسات أن P1–P4 لا تكفي وبعد corpus وWindows oracle |
+| [x] | PERF-06 | Rust surgical evaluation | تم اختبار byte-search عبر Rust FFI؛ accuracy تطابقت لكن Rust أبطأ من Python `bytes.find`، لذلك لم يُدمج. التفاصيل في `docs/RUST-EVALUATION.md` |
 
 ## Advanced Evidence layers
 
