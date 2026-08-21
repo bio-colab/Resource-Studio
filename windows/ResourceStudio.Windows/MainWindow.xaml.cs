@@ -363,10 +363,10 @@ public partial class MainWindow : Window
             {
                 foreach (var item in resources.EnumerateObject())
                 {
-                    var levelValue = item.Value.TryGetProperty("level", out var itemLevel) ? itemLevel.GetString() ?? "NONE" : "NONE";
+                    var resourceLevelValue = item.Value.TryGetProperty("level", out var itemLevel) ? itemLevel.GetString() ?? "NONE" : "NONE";
                     var itemColor = item.Value.TryGetProperty("color", out var itemColorValue) ? itemColorValue.GetString() ?? "#6B7280" : "#6B7280";
                     var itemReason = item.Value.TryGetProperty("reasons", out var itemReasons) && itemReasons.ValueKind == JsonValueKind.Array ? string.Join(", ", itemReasons.EnumerateArray().Select(value => value.ToString()).Take(2)) : "visual cue only";
-                    _resourceTriage[item.Name] = new TriageStyle(levelValue, ParseBrush(itemColor, Colors.Gray), itemReason);
+                    _resourceTriage[item.Name] = new TriageStyle(resourceLevelValue, ParseBrush(itemColor, Colors.Gray), itemReason);
                 }
             }
             ApplyResourceFilter();
@@ -543,7 +543,7 @@ public partial class MainWindow : Window
         PreviewVisualPanel.Children.Clear();
         if (!RequirePe() || row.Language is null)
         {
-            PreviewBox.Text = "A numeric language is required for the preview.";
+            PreviewHexBox.Text = "A numeric language is required for the preview.";
             return;
         }
         string? bitmapOutput = null;
@@ -555,7 +555,7 @@ public partial class MainWindow : Window
         }
         var result = await RunCliCaptureAsync(arguments.ToArray());
         if (result.IsStale) return;
-        PreviewBox.Text = result.ExitCode == 0 ? PrettyJson(result.StdoutOrError) : result.StdoutOrError;
+        PreviewHexBox.Text = result.ExitCode == 0 ? PreviewHexBox.Text : result.StdoutOrError;
         if (result.ExitCode == 0)
         {
             try
