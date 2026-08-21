@@ -30,54 +30,54 @@
         <SolidColorBrush x:Key="VerifiedGreenBrush" Color="{StaticResource VerifiedGreenColor}" />
 
         <Style TargetType="Window">
-            <Setter Property="Background" Value="{StaticResource DeepSlateBrush}" />
-            <Setter Property="Foreground" Value="{StaticResource PaperBrush}" />
+            <Setter Property="Background" Value="{DynamicResource DeepSlateBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource PaperBrush}" />
             <Setter Property="FontFamily" Value="Segoe UI" />
         </Style>
         <Style TargetType="TextBlock">
-            <Setter Property="Foreground" Value="{StaticResource PaperBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource PaperBrush}" />
         </Style>
         <Style TargetType="Button">
             <Setter Property="Margin" Value="2" />
             <Setter Property="Padding" Value="8,4" />
-            <Setter Property="Foreground" Value="{StaticResource PaperBrush}" />
-            <Setter Property="Background" Value="{StaticResource SlateElevatedBrush}" />
-            <Setter Property="BorderBrush" Value="{StaticResource SignalCyanBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource PaperBrush}" />
+            <Setter Property="Background" Value="{DynamicResource SlateElevatedBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SignalCyanBrush}" />
             <Setter Property="BorderThickness" Value="1" />
         </Style>
         <Style TargetType="ToolBarTray">
-            <Setter Property="Background" Value="{StaticResource SlatePanelBrush}" />
+            <Setter Property="Background" Value="{DynamicResource SlatePanelBrush}" />
             <Setter Property="Margin" Value="0" />
         </Style>
         <Style TargetType="ToolBar">
-            <Setter Property="Background" Value="{StaticResource SlatePanelBrush}" />
-            <Setter Property="Foreground" Value="{StaticResource PaperBrush}" />
-            <Setter Property="BorderBrush" Value="{StaticResource DividerBrush}" />
+            <Setter Property="Background" Value="{DynamicResource SlatePanelBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource PaperBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource DividerBrush}" />
             <Setter Property="BorderThickness" Value="0,0,1,0" />
             <Setter Property="Padding" Value="3,1" />
             <Setter Property="Margin" Value="0,0,2,0" />
             <Setter Property="FontSize" Value="12" />
         </Style>
         <Style TargetType="TextBox">
-            <Setter Property="Background" Value="{StaticResource SlateInputBrush}" />
-            <Setter Property="Foreground" Value="{StaticResource PaperBrush}" />
-            <Setter Property="BorderBrush" Value="{StaticResource DividerBrush}" />
+            <Setter Property="Background" Value="{DynamicResource SlateInputBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource PaperBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource DividerBrush}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="Padding" Value="6,4" />
         </Style>
         <Style TargetType="CheckBox">
-            <Setter Property="Foreground" Value="{StaticResource PaperBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource PaperBrush}" />
         </Style>
         <Style TargetType="TabControl">
-            <Setter Property="Background" Value="{StaticResource DeepSlateBrush}" />
-            <Setter Property="BorderBrush" Value="{StaticResource DividerBrush}" />
+            <Setter Property="Background" Value="{DynamicResource DeepSlateBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource DividerBrush}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="Padding" Value="4" />
         </Style>
         <Style TargetType="TabItem">
-            <Setter Property="Foreground" Value="{StaticResource MistBrush}" />
-            <Setter Property="Background" Value="{StaticResource SlatePanelBrush}" />
-            <Setter Property="BorderBrush" Value="{StaticResource DividerBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource MistBrush}" />
+            <Setter Property="Background" Value="{DynamicResource SlatePanelBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource DividerBrush}" />
             <Setter Property="Padding" Value="12,8" />
             <Setter Property="Margin" Value="0,0,4,0" />
             <Setter Property="FontWeight" Value="Normal" />
@@ -98,13 +98,13 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="TabBorder" Property="Background" Value="{StaticResource DeepSlateBrush}" />
-                                <Setter TargetName="TabBorder" Property="BorderBrush" Value="{StaticResource SignalCyanBrush}" />
-                                <Setter Property="Foreground" Value="{StaticResource SignalCyanBrush}" />
+                                <Setter TargetName="TabBorder" Property="Background" Value="{DynamicResource DeepSlateBrush}" />
+                                <Setter TargetName="TabBorder" Property="BorderBrush" Value="{DynamicResource SignalCyanBrush}" />
+                                <Setter Property="Foreground" Value="{DynamicResource SignalCyanBrush}" />
                                 <Setter Property="FontWeight" Value="SemiBold" />
                             </Trigger>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="TabBorder" Property="Background" Value="{StaticResource SlateElevatedBrush}" />
+                                <Setter TargetName="TabBorder" Property="Background" Value="{DynamicResource SlateElevatedBrush}" />
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter Property="Opacity" Value="0.55" />
@@ -115,40 +115,40 @@
             </Setter>
         </Style>
         <Style TargetType="DataGrid">
-            <Setter Property="Background" Value="{StaticResource SlatePanelBrush}" />
-            <Setter Property="Foreground" Value="{StaticResource PaperBrush}" />
-            <Setter Property="BorderBrush" Value="{StaticResource DividerBrush}" />
+            <Setter Property="Background" Value="{DynamicResource SlatePanelBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource PaperBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource DividerBrush}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="GridLinesVisibility" Value="Horizontal" />
-            <Setter Property="HorizontalGridLinesBrush" Value="{StaticResource DividerBrush}" />
-            <Setter Property="VerticalGridLinesBrush" Value="{StaticResource DividerBrush}" />
+            <Setter Property="HorizontalGridLinesBrush" Value="{DynamicResource DividerBrush}" />
+            <Setter Property="VerticalGridLinesBrush" Value="{DynamicResource DividerBrush}" />
             <Setter Property="HeadersVisibility" Value="Column" />
             <Setter Property="RowHeaderWidth" Value="0" />
             <Setter Property="CanUserAddRows" Value="False" />
         </Style>
         <Style TargetType="DataGridColumnHeader">
-            <Setter Property="Background" Value="{StaticResource SlateElevatedBrush}" />
-            <Setter Property="Foreground" Value="{StaticResource PaperBrush}" />
-            <Setter Property="BorderBrush" Value="{StaticResource DividerBrush}" />
+            <Setter Property="Background" Value="{DynamicResource SlateElevatedBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource PaperBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource DividerBrush}" />
             <Setter Property="BorderThickness" Value="0,0,1,1" />
             <Setter Property="Padding" Value="8,6" />
             <Setter Property="FontWeight" Value="SemiBold" />
         </Style>
         <Style TargetType="DataGridRow">
-            <Setter Property="Background" Value="{StaticResource SlatePanelBrush}" />
-            <Setter Property="Foreground" Value="{StaticResource PaperBrush}" />
-            <Setter Property="BorderBrush" Value="{StaticResource DividerBrush}" />
+            <Setter Property="Background" Value="{DynamicResource SlatePanelBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource PaperBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource DividerBrush}" />
         </Style>
         <Style TargetType="DataGridCell">
             <Setter Property="Padding" Value="8,5" />
         </Style>
         <Style TargetType="TreeView">
-            <Setter Property="Background" Value="{StaticResource SlatePanelBrush}" />
-            <Setter Property="Foreground" Value="{StaticResource PaperBrush}" />
-            <Setter Property="BorderBrush" Value="{StaticResource DividerBrush}" />
+            <Setter Property="Background" Value="{DynamicResource SlatePanelBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource PaperBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource DividerBrush}" />
         </Style>
         <Style TargetType="TreeViewItem">
-            <Setter Property="Foreground" Value="{StaticResource PaperBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource PaperBrush}" />
             <Setter Property="Padding" Value="4,2" />
         </Style>
     </Application.Resources>

@@ -80,9 +80,9 @@ public partial class MainWindow : Window
 
     private void SetBrushColor(string key, string value)
     {
-        if (Application.Current.Resources[key] is SolidColorBrush brush && ColorConverter.ConvertFromString(value) is Color color)
+        if (ColorConverter.ConvertFromString(value) is Color color)
         {
-            brush.Color = color;
+            Application.Current.Resources[key] = new SolidColorBrush(color);
         }
     }
 
