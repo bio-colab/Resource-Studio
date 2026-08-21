@@ -17,6 +17,7 @@
                         <TextBlock Text="Resource Studio" FontSize="16" FontWeight="SemiBold" />
                         <TextBlock Text="PE Resource Workbench" FontSize="10" Foreground="{DynamicResource MistBrush}" />
                     </StackPanel>
+                    <Button AutomationProperties.AutomationId="AboutButton" AutomationProperties.Name="About Resource Studio" ToolTip="About Resource Studio and its developer" Click="About_Click"><StackPanel Orientation="Horizontal"><TextBlock Text="ⓘ" FontSize="14" Margin="0,0,6,0" /><TextBlock Text="About" /></StackPanel></Button>
                 </StackPanel>
                 <ToolBarTray AutomationProperties.Name="Primary actions" DockPanel.Dock="Left">
 

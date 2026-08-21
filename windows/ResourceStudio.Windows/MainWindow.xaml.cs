@@ -52,6 +52,8 @@ public partial class MainWindow : Window
         await InspectCurrentAsync();
     }
 
+    private void About_Click(object sender, RoutedEventArgs e) => new AboutWindow { Owner = this }.ShowDialog();
+
     private void Theme_Click(object sender, RoutedEventArgs e)
     {
         _darkMode = !_darkMode;
