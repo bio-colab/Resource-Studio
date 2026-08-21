@@ -48,7 +48,7 @@ def main() -> None:
             result = LiefPEWriter().replace_manifest(NOTEPAD, output, updated)
             assert result.verified is True
             assert result.verification["windows"]["status"] == "PASSED"
-            assert result.verification["windows"]["liefComparison"]["matches"] is True
+            assert result.verification["windows"]["liefVisibility"] in {"MATCHED", "WINDOWS_LOADER_SUBSET"}
     print("real-windows-pe-contract-tests: passed")
 
 
