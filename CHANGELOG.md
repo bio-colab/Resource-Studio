@@ -38,6 +38,7 @@
 - توسيع Security-goal بنتائج بحث دفاعي عن T1486 وT1219 وT1573: إضافة static indicators للـoverlay وentrypoint وexecutable+writable sections وcrypto/network/persistence imports وstrings محدودة، مع إبقاء RAT/ransomware/C2 attribution خارج الحكم الساكن.
 - توثيق طبقات التكامل الآمنة المستقبلية: YARA وDefender على staged copies وSysmon/EDR telemetry كأدلة خارجية، مع منع تشغيل أو unpacking أو decryption أو process injection داخل النواة.
 - إضافة عقد `resource_studio.external_scan.v1` في `core/security_providers.py` واستيراد النتائج السابقة عبر `security --external-result` مع provider/status/target SHA/ruleset/exit code؛ لا يشغّل أي موفر.
+- نجاح GitHub Actions run `32445879114` على commit `8f3c2db`، مع اجتياز Python 3.12 وWindows/WPF وفحص artifacts المحظورة.
 - `core/evidence_model.py` بصيغة `resource_studio.evidence_summary.v1` لتطبيع observations وraw ranges وstatistics وprovenance وExpert Findings.
 - إضافة `evidence` و`evidenceHash` و`rawResourceComparison` إلى CLI `inspect --json`، وإضافة Evidence Summary إلى `ForensicEvidence`.
 - وثيقة `docs/PE-EVIDENCE-MODEL.md` التي تحدد المصادر والـconfidence والحدود وعدم تحويل entropy إلى verdict.
