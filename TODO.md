@@ -541,7 +541,7 @@
 
 ### تحقق الدفعة
 
-- CI run `32440079226` نجح على Python 3.12 وWindows/WPF في commit `1ab87bc`.
+- CI run `32441785614` نجح على Python 3.12 وWindows/WPF في commit `3c7d783`.
 - Release run `32440078729` نجح في بناء source bundle وSHA-256؛ الفحص أكد غياب `ResourceHacker.exe` وPDB وbin/obj وoutputs/snapshots والملفات الجانبية المحظورة.
 - GH-05 بقي `[~]` عمدًا: Issue #1 موجود، أما Discussion فتحتاج إنشاءً يدويًا أو صلاحية GitHub إضافية.
 

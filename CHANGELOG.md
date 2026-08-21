@@ -44,7 +44,8 @@
 - توسيع VerificationSummary في WPF ليعرض `Technical evidence` من التقرير دون إعادة تنفيذ Verification Engine.
 - إغلاق بوابة Manus الكاملة، وبوابة Windows Python/Win32/WPF/UI automation؛ SHA-256 للنسخة الأصلية بقي `14A44FE31B04FBCC65E94E80016138A2E9FC9BB6DFCEA09B98DE57F8A22A1240`.
 - نجاح GitHub Actions run `32439414719` على Python 3.12 وWindows/WPF بعد إصلاح فحص PDB الناتج الطبيعي داخل `bin/obj` في commit `506ee11`.
-- نجاح أحدث CI run `32440079226` على commit `1ab87bc`، ونجاح release workflow run `32440078729` في إنشاء source bundle وSHA-256 مع اجتياز فحص الملفات المحظورة.
+- نجاح أحدث CI run `32441785614` على commit `3c7d783`، مع اجتياز Python 3.12 وWindows/WPF وبدون ملفات محظورة.
+- نجاح release workflow السابق `32440078729` في إنشاء source bundle وSHA-256 مع اجتياز فحص الملفات المحظورة.
 - نشر screenshot حقيقي لنافذة WPF في `assets/screenshots/resource-studio-main.png`، وإنشاء Issue المجتمع الأول [#1](https://github.com/bio-colab/Resource-Studio/issues/1). Discussion بقيت اختيارية بسبب رفض صلاحية `createDiscussion` من GitHub integration.
 - إضافة regression لنموذج Evidence وCLI inspect وForensicEvidence، مع إبقاء RSQL وMutation Timeline مخططين لا منفذين في هذه الدفعة.
 
