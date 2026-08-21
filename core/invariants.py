@@ -181,7 +181,17 @@ def _imports(binary: Any) -> list[dict[str, Any]]:
 
 
 def _exports(binary: Any) -> list[dict[str, Any]]:
-    return [{"name": str(item.name), "address": int(item.address), "ordinal": int(item.ordinal), "forwarder": bool(item.is_forwarder)} for item in getattr(binary, "exported_functions", [])]
+    result = []
+    for item in getattr(binary, "exported_functions", []):
+        result.append(
+            {
+                "name": str(getattr(item, "name", "")),
+                "address": _numeric(getattr(item, "address", 0)),
+                "ordinal": _numeric(getattr(item, "ordinal", 0)),
+                "forwarder": bool(getattr(item, "is_forwarder", False)),
+            }
+        )
+    return result
 
 
 def _tls(binary: Any) -> dict[str, Any] | None:

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import shutil
 import tempfile
@@ -418,6 +419,7 @@ class LiefPEWriter:
         before = _sha256(input_path)
         operation_id = f"writer-{uuid.uuid4().hex}"
         forensic_baseline_path: Path | None = None
+        failure_diagnostics_path = output_path.with_suffix(output_path.suffix + f".{operation_id}.failure.json")
         forensic_baseline = None
         original_timestamp = int(getattr(binary.header, "time_date_stamps", 0))
         temporary: Path | None = None
@@ -504,6 +506,24 @@ class LiefPEWriter:
             if not evidence.verification.passed:
                 raise PEWriterError("forensic evidence failed: " + "; ".join(evidence.verification.errors or _failed_phases(evidence.verification)))
         except Exception as exc:
+            diagnostics = {
+                "schema": "resource_studio.pe_writer_failure.v1",
+                "operationId": operation_id,
+                "operation": operation,
+                "inputPath": str(input_path),
+                "outputPath": str(output_path),
+                "resourceType": resource_type,
+                "resourceName": str(resource_name),
+                "language": language,
+                "beforeSha256": before,
+                "outputExistedBefore": rollback_path is not None,
+                "error": str(exc),
+                "temporaryCandidate": str(temporary) if temporary is not None else None,
+            }
+            try:
+                failure_diagnostics_path.write_text(json.dumps(diagnostics, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+            except OSError:
+                pass
             if temporary is not None:
                 temporary.unlink(missing_ok=True)
             if rollback_path is not None and rollback_path.is_file():
@@ -512,7 +532,7 @@ class LiefPEWriter:
                 output_path.unlink(missing_ok=True)
             if rollback_path is not None:
                 rollback_path.unlink(missing_ok=True)
-            raise PEWriterError(f"PE write or output validation failed: {exc}") from exc
+            raise PEWriterError(f"PE write or output validation failed: {exc}; diagnostics: {failure_diagnostics_path}") from exc
         if rollback_path is not None:
             rollback_path.unlink(missing_ok=True)
         after = _sha256(output_path)

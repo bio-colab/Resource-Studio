@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import tempfile
 from pathlib import Path
 
@@ -55,6 +56,11 @@ def main() -> None:
                 raise AssertionError("forced validation failure was not propagated")
             assert existing_output.read_bytes() == existing_bytes
             assert not list(Path(temporary).glob("resource-studio-rollback-*"))
+            failure_reports = list(Path(temporary).glob("existing.dll.*.failure.json"))
+            assert len(failure_reports) == 1
+            failure_payload = json.loads(failure_reports[0].read_text(encoding="utf-8"))
+            assert failure_payload["schema"] == "resource_studio.pe_writer_failure.v1"
+            assert "forced validation failure" in failure_payload["error"]
         finally:
             writer.validate_output = original_validate
 

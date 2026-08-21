@@ -134,9 +134,31 @@ def analyze_security(path: Path, external_results: tuple[ExternalScanResult, ...
         base["evidenceHash"] = evidence_summary_hash(evidence)
         base["resourceTriage"] = build_triage_map(base)
     except Exception as exc:
-        base["parse"] = {"status": "CORRUPT_OR_UNSUPPORTED", "errors": [str(exc)]}
-        base["findings"].append(_finding("HIGH", "HIGH", "CORRUPTION", "PE parsing failed", str(exc)))
+        error_text = str(exc)
+        base["parse"] = {"status": "CORRUPT_OR_UNSUPPORTED", "errors": [error_text]}
+        base["findings"].append(_finding("HIGH", "HIGH", "CORRUPTION", "PE parsing failed", error_text))
         base["limitations"].append("A parse failure is not proof of malware; the file may be unsupported, truncated, encrypted, or malformed.")
+        try:
+            degraded_evidence = build_evidence_summary(
+                source,
+                inspector=locals().get("inspector", {}),
+                signature=locals().get("signature", {}),
+                integrity=locals().get("integrity", {}),
+                resource_graph=locals().get("graph", {}),
+                raw_resource=locals().get("raw", {}),
+                raw_comparison=locals().get("raw_comparison", {}),
+                verification={"errors": [error_text]},
+                external_scans=[result.to_dict() for result in external_results],
+            )
+            degraded_evidence["analysisStatus"] = "DEGRADED"
+            degraded_evidence["limitations"] = [
+                "Evidence is partial because one or more PE analyzers failed.",
+                "Downstream evidence consumers must not interpret degraded analysis as a malware verdict.",
+            ]
+            base["evidence"] = degraded_evidence
+            base["evidenceHash"] = evidence_summary_hash(degraded_evidence)
+        except Exception as evidence_exc:
+            base["limitations"].append(f"Evidence normalization failed: {evidence_exc}")
         base["resourceTriage"] = build_triage_map(base)
     return base
 
