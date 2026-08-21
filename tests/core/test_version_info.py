@@ -27,9 +27,11 @@ def main() -> None:
     assert binary_round_trip.product_version == rc_source.product_version
     assert binary_round_trip.strings == {"CompanyName": "Acme\\Labs", "FileDescription": 'A "safe" tool'}
     assert binary_round_trip.translations == [0x0409]
+    padded = VersionInfo.from_bytes(rc_source.to_bytes() + b"\x00\x00\x00\x00")
+    assert any("trailing VERSIONINFO bytes" in warning for warning in padded.warnings)
     try:
         VersionInfo.from_bytes(b"bad")
-        VersionInfo.from_bytes(rc_source.to_bytes() + b"tail")
+        VersionInfo.from_bytes(rc_source.to_bytes() + (b"x" * 65))
     except ValueError:
         pass
     else:

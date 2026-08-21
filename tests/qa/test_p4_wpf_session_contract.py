@@ -12,6 +12,9 @@ def test_main_window_rejects_stale_results_and_owns_cancellation() -> None:
     assert "if (result.IsStale) return;" in MAIN_WINDOW
     assert "ReferenceEquals(_cliCancellation, cancellation)" in MAIN_WINDOW
     assert "ReferenceEquals(_activeCliProcess, ownedProcess)" in MAIN_WINDOW
+    assert "Analysis degraded — see Inspect tab" in MAIN_WINDOW
+    assert "Resources loaded" in MAIN_WINDOW
+    assert "Resource listing unavailable — see Inspect tab" in MAIN_WINDOW
 
 
 def test_read_host_serializes_requests_and_stops_its_owned_process() -> None:

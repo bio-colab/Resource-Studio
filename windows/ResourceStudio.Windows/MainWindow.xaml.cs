@@ -142,7 +142,7 @@ public partial class MainWindow : Window
         var result = await RunCliCaptureAsync("inspect", _selectedPe!, "--json");
         if (result.IsStale) return;
         InspectBox.Text = PrettyJson(result.StdoutOrError);
-        StatusText.Text = result.ExitCode == 0 ? "Inspection completed" : $"CLI exited with code {result.ExitCode}";
+        StatusText.Text = result.ExitCode == 0 ? "Inspection completed" : "Analysis degraded — see Inspect tab";
     }
 
     private async void Validate_Click(object sender, RoutedEventArgs e)
@@ -548,8 +548,8 @@ public partial class MainWindow : Window
         if (result.IsStale) return;
         if (result.ExitCode != 0)
         {
-            StatusText.Text = $"CLI exited with code {result.ExitCode}";
-            InspectBox.Text = result.StdoutOrError;
+            StatusText.Text = "Resource listing unavailable — see Inspect tab";
+            InspectBox.Text = PrettyJson(result.StdoutOrError);
             return;
         }
         _resources.Clear();

@@ -7,6 +7,8 @@ from typing import Any
 
 import lief
 
+from .access import path_access_status
+from .deep_invariants import inspect_deep
 from .project import _entries_from_lief
 from .resource_index import ResourceIndex
 
@@ -24,6 +26,7 @@ class HealthReport:
     signature_count: int
     warnings: tuple[str, ...]
     resource_index: tuple[dict[str, Any], ...] = ()
+    status: str = "VALID_PE"
 
     def to_dict(self) -> dict[str, Any]:
         payload = asdict(self)
@@ -39,14 +42,27 @@ class PEHealth:
         path = Path(path).expanduser().resolve()
         if not path.is_file():
             raise ValueError(f"file not found: {path}")
+        access_status = path_access_status(path)
+        if access_status in {"LOCKED", "ACCESS_DENIED", "ACCESS_ERROR"}:
+            return HealthReport(
+                path=str(path), sha256="", size=0, is_pe=False, machine=None,
+                sections=0, resource_count=0, signed=False, signature_count=0,
+                warnings=(f"file access status: {access_status}",), status=access_status,
+            )
         data = path.read_bytes()
         try:
             binary = lief.parse(str(path))
         except Exception as exc:
-            raise ValueError(f"cannot parse PE: {exc}") from exc
+            return HealthReport(
+                path=str(path), sha256=_sha256(data), size=len(data), is_pe=False, machine=None,
+                sections=0, resource_count=0, signed=False, signature_count=0,
+                warnings=(f"PE parser failed: {exc}",), status="MALFORMED_PE",
+            )
         if binary is None or not isinstance(binary, lief.PE.Binary):
             return HealthReport(
-                str(path), _sha256(data), len(data), False, None, 0, 0, False, 0, ("file is not a supported PE",)
+                path=str(path), sha256=_sha256(data), size=len(data), is_pe=False, machine=None,
+                sections=0, resource_count=0, signed=False, signature_count=0,
+                warnings=("file is not a supported PE",), status="NOT_PE",
             )
         entries = _entries_from_lief(binary) if binary.has_resources else []
         resource_index = tuple(ResourceIndex.from_entries(entries).to_dicts())
@@ -62,18 +78,15 @@ class PEHealth:
             warnings.append("writing a new binary changes its hash; re-verify or re-sign with the owner's certificate")
         if not binary.has_resources:
             warnings.append("PE has no resource directory")
+        deep = inspect_deep(path, binary=binary)
+        if not deep.valid:
+            warnings.extend(f"deep invariant: {issue}" for issue in deep.issues[:8])
+        status = "VALID_PE" if deep.valid and not any("outside file bounds" in warning for warning in warnings) else "MALFORMED_PE"
         return HealthReport(
-            path=str(path),
-            sha256=_sha256(data),
-            size=len(data),
-            is_pe=True,
+            path=str(path), sha256=_sha256(data), size=len(data), is_pe=True,
             machine=str(getattr(getattr(binary, "header", None), "machine", "unknown")),
-            sections=len(getattr(binary, "sections", [])),
-            resource_count=len(entries),
-            signed=signed,
-            signature_count=signature_count,
-            warnings=tuple(warnings),
-            resource_index=resource_index,
+            sections=len(getattr(binary, "sections", [])), resource_count=len(entries), signed=signed,
+            signature_count=signature_count, warnings=tuple(warnings), resource_index=resource_index, status=status,
         )
 
 

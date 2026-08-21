@@ -116,6 +116,18 @@ def main() -> None:
         assert valid.returncode == 0, valid.stderr
         assert json.loads(valid.stdout)["is_pe"] is True
 
+        malformed = temporary_path / "truncated.dll"
+        malformed.write_bytes(FIXTURE.read_bytes()[:512])
+        malformed_validate = run_cli("validate", str(malformed), "--json")
+        assert malformed_validate.returncode != 0
+        malformed_validate_payload = json.loads(malformed_validate.stdout)
+        assert malformed_validate_payload["status"] == "MALFORMED_PE"
+        malformed_inspect = run_cli("inspect", str(malformed), "--json")
+        assert malformed_inspect.returncode != 0
+        malformed_inspect_payload = json.loads(malformed_inspect.stdout)
+        assert malformed_inspect_payload["analysisStatus"] == "DEGRADED"
+        assert malformed_inspect_payload["health"]["status"] == "MALFORMED_PE"
+
         inspected = run_cli("inspect", str(FIXTURE), "--json")
         assert inspected.returncode == 0, inspected.stderr
         inspected_payload = json.loads(inspected.stdout)

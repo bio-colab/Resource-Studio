@@ -14,6 +14,7 @@ class VersionInfo:
     product_version: str = "1.0.0.0"
     strings: dict[str, str] = field(default_factory=dict)
     translations: list[int] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
 
     def validate(self) -> dict[str, list[str]]:
         errors: list[str] = []
@@ -25,6 +26,7 @@ class VersionInfo:
             warnings.append("FileDescription is empty")
         if not self.translations:
             warnings.append("no language translations declared")
+        warnings.extend(self.warnings)
         if any(not isinstance(value, str) for value in self.strings.values()):
             errors.append("all version strings must be text")
         return {"errors": errors, "warnings": warnings, "valid": not errors}
@@ -80,9 +82,15 @@ class VersionInfo:
     @classmethod
     def from_bytes(cls, data: bytes) -> VersionInfo:
         data = bytes(data)
-        if len(data) < 2 or struct.unpack_from("<H", data, 0)[0] != len(data):
-            raise ValueError("VERSION resource has invalid root length or trailing bytes")
-        root = _parse_vs_block(data, 0, len(data))
+        if len(data) < 2:
+            raise ValueError("VERSION resource has invalid root length")
+        root_length = struct.unpack_from("<H", data, 0)[0]
+        if root_length < 2 or root_length > len(data):
+            raise ValueError("VERSION resource has invalid root length")
+        trailing = data[root_length:]
+        if len(trailing) > 64:
+            raise ValueError("VERSION resource has excessive trailing data")
+        root = _parse_vs_block(data[:root_length], 0, root_length)
         if root.key != "VS_VERSION_INFO" or len(root.value) < 52:
             raise ValueError("invalid VS_VERSION_INFO resource")
         fixed = struct.unpack_from("<13I", root.value, 0)
@@ -108,7 +116,8 @@ class VersionInfo:
                     if value.key == "Translation" and len(value.value) % 4 == 0:
                         for (translation,) in struct.iter_unpack("<I", value.value):
                             translations.append(translation & 0xFFFF)
-        return cls(file_version, product_version, strings, sorted(set(translations)))
+        compatibility_warnings = [f"ignored {len(trailing)} trailing VERSIONINFO bytes" ] if trailing else []
+        return cls(file_version, product_version, strings, sorted(set(translations)), compatibility_warnings)
 
     def to_json(self) -> str:
         return json.dumps(
@@ -118,6 +127,7 @@ class VersionInfo:
                 "productVersion": self.product_version,
                 "strings": dict(sorted(self.strings.items())),
                 "translations": self.translations,
+                "warnings": list(self.warnings),
             },
             ensure_ascii=False,
             indent=2,
@@ -187,6 +197,7 @@ class VersionInfo:
             product_version=str(payload.get("productVersion", "1.0.0.0")),
             strings={str(key): str(value) for key, value in (payload.get("strings") or {}).items()},
             translations=[int(language) for language in payload.get("translations", [])],
+            warnings=[str(item) for item in payload.get("warnings", [])],
         )
 
 

@@ -195,6 +195,7 @@ def command_forensic_baseline(args: argparse.Namespace) -> int:
 
 def command_inspect(args: argparse.Namespace) -> int:
     from core.compatibility import inspect_compatibility
+    from core.health import PEHealth
     from core.deep_invariants import inspect_deep
     from core.evidence_model import build_evidence_summary, evidence_summary_hash
     from core.pe_inspector import PEInspector
@@ -204,6 +205,16 @@ def command_inspect(args: argparse.Namespace) -> int:
     from core.signature import inspect_signature
     from core.verification import ResourceGraph
 
+    health = PEHealth.inspect(args.input).to_dict()
+    if health["status"] != "VALID_PE":
+        payload = {
+            "path": str(args.input.resolve()),
+            "analysisStatus": "DEGRADED",
+            "health": health,
+            "warnings": health.get("warnings", []),
+        }
+        _print(payload, args.json)
+        return 1
     inspector = PEInspector.inspect(args.input).to_dict()
     signature = inspect_signature(args.input).to_dict()
     integrity = inspect_integrity(args.input).to_dict()
@@ -225,6 +236,7 @@ def command_inspect(args: argparse.Namespace) -> int:
         raw_comparison=raw_comparison,
     )
     payload = dict(inspector)
+    payload["health"] = health
     payload["metadata"] = PEMetadataInspector.inspect(args.input).to_dict()
     payload["signature"] = signature
     payload["integrity"] = integrity
@@ -236,7 +248,7 @@ def command_inspect(args: argparse.Namespace) -> int:
     payload["evidence"] = evidence
     payload["evidenceHash"] = evidence_summary_hash(evidence)
     _print(payload, args.json)
-    return 0
+    return 0 if health["status"] == "VALID_PE" else 1
 
 
 def _resource_match(input_path: Path, resource_type: str, name: str, language: int | None) -> ResourceEntry:
@@ -649,7 +661,7 @@ def command_validate(args: argparse.Namespace) -> int:
 
     report = PEHealth.inspect(args.input).to_dict()
     _print(report, args.json)
-    return 0 if report["is_pe"] and (not args.strict or not report["warnings"]) else 1
+    return 0 if report["status"] == "VALID_PE" and (not args.strict or not report["warnings"]) else 1
 
 
 def command_report(args: argparse.Namespace) -> int:

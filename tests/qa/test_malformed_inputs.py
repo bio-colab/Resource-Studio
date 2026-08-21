@@ -20,6 +20,7 @@ CASES = (
 def main() -> None:
     report = PEHealth.inspect(NOT_PE)
     assert report.is_pe is False
+    assert report.status == "NOT_PE"
     assert report.warnings
     with tempfile.TemporaryDirectory() as temporary:
         for index, payload in enumerate(CASES):
@@ -30,6 +31,7 @@ def main() -> None:
             except ValueError:
                 continue
             assert malformed_report.is_pe is False
+            assert malformed_report.status in {"NOT_PE", "MALFORMED_PE"}
     print("malformed-input-tests: passed")
 
 

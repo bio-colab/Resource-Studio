@@ -11,6 +11,10 @@
 ### أُضيف
 
 - تحسينات وإصلاحات P0 لتوافق DLLs Windows الواقعية: حماية export ordinals عند غيابها في LIEF، وإبقاء Evidence Summary degraded قابلًا للاستهلاك في Evidence Graph وEvidence Query بدل إسقاط المسار كاملًا.
+- تحسين توافق `VERSIONINFO` مع ملفات Windows الواقعية: قبول trailing padding محدود حتى 64 بايت مع تحذير قابل للرصد، مع استمرار رفض padding غير المحدود.
+- إضافة حالات صحة PE صريحة `VALID_PE` و`MALFORMED_PE` و`NOT_PE` و`LOCKED` و`ACCESS_DENIED`، مع فحص الوصول قبل القراءة ورسائل CLI تميز سبب الفشل بدل رسالة `not supported` العامة.
+- جعل `validate` و`inspect` يعيدان exit code غير صفري عند التلف البنيوي، مع إخراج `analysisStatus: DEGRADED` من `inspect` للحفاظ على evidence وwarnings القابلة للعرض.
+- تحسين WPF degraded state: تبقى قائمة الموارد قابلة للاستخدام عند نجاح `list` وفشل `inspect`، وتعرض الواجهة `Analysis degraded — see Inspect tab` بدل انتظار حالة إتمام غير مفسرة.
 - إغلاق السبب الجذري لفشل Save As على ملفات Windows الحقيقية: تطبيع named resource types في LIEF، مطابقة اللغة الضمنية مع اللغة الفعلية، وتشغيل Windows resource oracle من مسار candidate نفسه لعزل موارد MUI الخارجية والـ`ERROR_RESOURCE_*` path-scoped noise، مع إبقاء target/non-target changes خاضعة للتحقق.
 - تحسينات وإصلاحات في Save As diagnostics: عند رفض Windows validation يبقى rollback آمنًا ويُحفظ pre/post verification وforensic failure artifact مستقل يحوي operation ID وSHA-256 وسبب الرفض دون commit مخرج غير صالح.
 - توحيد الثيم الداكن على `ImageResourceWindow` و`DialogEditorWindow` و`ResourceWizardsWindow` و`SignatureToolsWindow` و`StringTableEditorWindow`، مع أنماط مشتركة لـ`ComboBox` و`ListBox` و`PasswordBox` وعقد UI تثبت عدم عودة الخلفيات البيضاء الافتراضية.

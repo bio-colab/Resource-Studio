@@ -4,6 +4,7 @@ from pathlib import Path
 
 import lief
 
+from .access import path_access_status
 from .project import ResourceEntry, _entries_from_lief
 
 
@@ -13,13 +14,16 @@ class ResourceReader:
     def __init__(self, path: Path) -> None:
         self.path = Path(path).expanduser().resolve()
         if not self.path.is_file():
-            raise ValueError(f"source file not found: {self.path}")
+            raise ValueError(f"NOT_FOUND: source file not found: {self.path}")
+        access_status = path_access_status(self.path)
+        if access_status != "READY":
+            raise ValueError(f"{access_status}: cannot read PE source: {self.path}")
         try:
             binary = lief.parse(str(self.path))
         except Exception as exc:
-            raise ValueError(f"cannot open PE: {exc}") from exc
+            raise ValueError(f"MALFORMED_PE: cannot open PE: {exc}") from exc
         if binary is None or not isinstance(binary, lief.PE.Binary):
-            raise ValueError("source is not a supported PE file")
+            raise ValueError("NOT_PE: source is not a supported PE file")
         self._entries = tuple(_entries_from_lief(binary))
 
     @property
