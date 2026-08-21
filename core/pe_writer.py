@@ -521,6 +521,7 @@ class LiefPEWriter:
                 "error": str(exc),
                 "temporaryCandidate": str(temporary) if temporary is not None else None,
                 "verification": pre_verification.to_dict() if pre_verification is not None else None,
+                "forensicEvidence": forensic_evidence,
             }
             try:
                 failure_diagnostics_path.write_text(json.dumps(diagnostics, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
