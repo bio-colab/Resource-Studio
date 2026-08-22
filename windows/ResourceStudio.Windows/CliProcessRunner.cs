@@ -13,7 +13,8 @@ internal static class CliProcessRunner
     {
         var started = Stopwatch.GetTimestamp();
         var argumentList = arguments.ToArray();
-        var info = new ProcessStartInfo("py.exe")
+        var bundledExecutable = cliPath.EndsWith(".exe", StringComparison.OrdinalIgnoreCase);
+        var info = new ProcessStartInfo(bundledExecutable ? cliPath : "py.exe")
         {
             WorkingDirectory = Path.GetDirectoryName(cliPath) ?? Environment.CurrentDirectory,
             UseShellExecute = false,
@@ -23,8 +24,11 @@ internal static class CliProcessRunner
             StandardOutputEncoding = Encoding.UTF8,
             StandardErrorEncoding = Encoding.UTF8,
         };
-        info.ArgumentList.Add("-3.12");
-        info.ArgumentList.Add(cliPath);
+        if (!bundledExecutable)
+        {
+            info.ArgumentList.Add("-3.12");
+            info.ArgumentList.Add(cliPath);
+        }
         foreach (var argument in argumentList) info.ArgumentList.Add(argument);
         if (environment is not null)
         {

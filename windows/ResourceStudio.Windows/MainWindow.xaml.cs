@@ -761,7 +761,7 @@ public partial class MainWindow : Window
         }
         try
         {
-            if (IsReadOnlyHostCommand(arguments))
+            if (IsReadOnlyHostCommand(arguments) && _cliPath.EndsWith(".py", StringComparison.OrdinalIgnoreCase))
             {
                 try
                 {
@@ -793,9 +793,10 @@ public partial class MainWindow : Window
                 }
             }
 
+            var bundledExecutable = _cliPath.EndsWith(".exe", StringComparison.OrdinalIgnoreCase);
             var info = new ProcessStartInfo
             {
-                FileName = "py.exe",
+                FileName = bundledExecutable ? _cliPath : "py.exe",
                 WorkingDirectory = Path.GetDirectoryName(_cliPath) ?? Environment.CurrentDirectory,
                 UseShellExecute = false,
                 RedirectStandardOutput = true,
@@ -804,8 +805,11 @@ public partial class MainWindow : Window
                 StandardOutputEncoding = Encoding.UTF8,
                 StandardErrorEncoding = Encoding.UTF8,
             };
-            info.ArgumentList.Add("-3.12");
-            info.ArgumentList.Add(_cliPath);
+            if (!bundledExecutable)
+            {
+                info.ArgumentList.Add("-3.12");
+                info.ArgumentList.Add(_cliPath);
+            }
             foreach (var argument in arguments) info.ArgumentList.Add(argument);
             using var process = Process.Start(info) ?? throw new InvalidOperationException("Could not start Python CLI");
             ownedProcess = process;
@@ -874,6 +878,8 @@ public partial class MainWindow : Window
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
         for (var i = 0; i < 8 && directory is not null; i++, directory = directory.Parent)
         {
+            var bundled = Path.Combine(directory.FullName, "ResourceStudioCli.exe");
+            if (File.Exists(bundled)) return bundled;
             var candidate = Path.Combine(directory.FullName, "resource_studio_cli.py");
             if (File.Exists(candidate)) return candidate;
         }

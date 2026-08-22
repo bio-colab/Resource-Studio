@@ -93,9 +93,17 @@ Durable commit + audit
 | .NET SDK 8.0 أو أحدث | بناء WPF على Windows |
 | Windows 10/11 | Windows oracle وWinVerifyTrust وWPF automation |
 
-لتثبيت .NET استخدم [صفحة .NET 8 الرسمية](https://dotnet.microsoft.com/download/dotnet/8.0). لا تُضمّن SDK أو `external executable` في المستودع أو الحزم.
+لتثبيت .NET استخدم [صفحة .NET 8 الرسمية](https://dotnet.microsoft.com/download/dotnet/8.0) عند البناء من المصدر. لا يُضمّن SDK أو أدوات البناء داخل المستودع؛ أما حزمة Windows الرسمية فتحتوي executable التطبيق وCLI المحمول الناتجين من عملية البناء.
 
 ## التثبيت والتشغيل
+
+### Windows installer
+
+للمستخدمين على Windows، تتوفر حزمة `ResourceStudio-0.1.0-win-x64-installer.zip` داخل GitHub Release. فك الضغط ثم شغّل `ResourceStudio-Setup-0.1.0-win-x64.exe`. يعرض installer اتفاقية الاستخدام المبنية على Apache License 2.0، ويستخدم أيقونة Resource Studio وهوية الألوان الحالية، ويثبت التطبيق افتراضيًا داخل مجلد المستخدم دون الحاجة إلى صلاحيات administrator.
+
+الحزمة self-contained: فهي تحتوي WPF shell منشورًا لـ`win-x64` وCLI محمولًا، ولا تتطلب تثبيت Python أو .NET Runtime منفصلًا. بعد التثبيت سيجد المستخدم اختصار Resource Studio وملفَي `EULA.txt` و`INSTALLATION.txt`. يجب التحقق من SHA-256 المنشور في [تقرير إصدار Windows](docs/RELEASE-WINDOWS-0.1.0.md) قبل التشغيل.
+
+### البناء من المصدر
 
 من جذر المشروع:
 

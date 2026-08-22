@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.0 — Windows installer
+
+- إضافة حزمة Windows x64 قابلة للتثبيت من آخر نسخة مستقرة، بواجهة WPF self-contained وCLI محمول لا يحتاجان Python أو .NET Runtime منفصلًا.
+- إضافة installer يحمل أيقونة Resource Studio وأصول wizard المتسقة مع الهوية البصرية، واتفاقية استخدام تعرض Apache License 2.0، واختصار Start وخيار اختصار سطح المكتب وuninstaller.
+- إضافة `installer/build-windows.ps1` و`installer/ResourceStudio.iss` لبناء الحزمة من المصدر، مع تقرير الإصدار في `docs/RELEASE-WINDOWS-0.1.0.md` وchecksum قابل للتحقق.
+- اختبار التثبيت والتشغيل والإزالة على clone Windows معزول، وتشغيل CLI المحمول على fixture PE حقيقي، مع إبقاء النسخة الأصلية المحمية خارج نطاق البناء.
+
 تتبع هذه الوثيقة التغييرات القابلة للملاحظة في Resource Studio. لا تُسجل فيها وعود مستقبلية على أنها منجزة؛ الأعمال غير المكتملة تبقى في [`TODO.md`](TODO.md) بحالة ومعيار إنجاز.
 
 ## [Unreleased]
