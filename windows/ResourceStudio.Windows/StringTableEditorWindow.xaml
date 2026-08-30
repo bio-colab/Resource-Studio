@@ -1,0 +1,43 @@
+<Window x:Class="ResourceStudio.Windows.StringTableEditorWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="StringTable Editor" Height="680" Width="820" MinHeight="500" MinWidth="650" Background="{DynamicResource DeepSlateBrush}" Foreground="{DynamicResource PaperBrush}">
+    <Grid Margin="12" Background="{DynamicResource DeepSlateBrush}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <WrapPanel>
+            <Button Content="Load from PE" Click="LoadPe_Click" Margin="0,0,6,6" />
+            <Button Content="Load JSON" Click="LoadJson_Click" Margin="0,0,6,6" />
+            <Button Content="Save JSON" Click="SaveJson_Click" Margin="0,0,6,6" />
+            <Button Content="Apply Save As" Click="Apply_Click" Margin="0,0,6,0" />
+            <Button AutomationProperties.AutomationId="StopCliButton" x:Name="StopCliButton" Content="Stop" Click="StopCli_Click" IsEnabled="False" ToolTip="Stop the current operation; the input remains unchanged" />
+        </WrapPanel>
+        <Grid Grid.Row="1" Margin="0,0,0,8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" /><ColumnDefinition Width="2*" />
+                <ColumnDefinition Width="Auto" /><ColumnDefinition Width="90" />
+                <ColumnDefinition Width="Auto" /><ColumnDefinition Width="90" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Text="PE" VerticalAlignment="Center" Margin="0,0,6,0" />
+            <TextBox x:Name="PePathBox" Grid.Column="1" Margin="0,0,8,0" />
+            <TextBlock Text="Block" Grid.Column="2" VerticalAlignment="Center" Margin="0,0,6,0" />
+            <TextBox x:Name="BlockBox" Grid.Column="3" Text="1" Margin="0,0,8,0" />
+            <TextBlock Text="Language" Grid.Column="4" VerticalAlignment="Center" Margin="0,0,6,0" />
+            <TextBox x:Name="LanguageBox" Grid.Column="5" Text="1033" />
+        </Grid>
+        <DataGrid x:Name="StringsGrid" Grid.Row="2" AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="False" HeadersVisibility="Column" Margin="0,0,0,8">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="String ID" Binding="{Binding Id}" IsReadOnly="True" Width="120" />
+                <DataGridTextColumn Header="Text" Binding="{Binding Text, UpdateSourceTrigger=PropertyChanged}" Width="*" />
+            </DataGrid.Columns>
+        </DataGrid>
+        <StackPanel Grid.Row="3">
+            <TextBlock x:Name="StatusText" Text="Ready" TextWrapping="Wrap" />
+            <TextBox AutomationProperties.AutomationId="VerificationSummaryText" AutomationProperties.Name="Verification summary" x:Name="VerificationSummaryText" Margin="0,4,0,0" IsReadOnly="True" TextWrapping="Wrap" Visibility="Collapsed" />
+        </StackPanel>
+    </Grid>
+</Window>

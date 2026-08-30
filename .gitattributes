@@ -1,0 +1,4 @@
+# Corpus bytes are evidence inputs; checkout must not normalize them.
+tests/fixtures/not-pe.txt -text
+tests/fixtures/*.dll binary
+tests/fixtures/*.exe binary

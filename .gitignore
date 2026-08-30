@@ -1,0 +1,25 @@
+__pycache__/
+*.py[cod]
+*.pyd
+.pytest_cache/
+.venv/
+venv/
+.env
+*.bak
+*.provenance.json
+outputs/
+snapshots/
+windows/**/bin/
+windows/**/obj/
+*.user
+*.suo
+*.pdb
+*.userprefs
+
+# local test/MCP run artifacts
+tests/.tmp-corpus-project/
+.resource-studio/
+
+# coverage artifacts
+.coverage
+htmlcov/
