@@ -1,0 +1,197 @@
+# Changelog
+
+## 0.1.0 — Windows installer
+
+- إضافة حزمة Windows x64 قابلة للتثبيت من آخر نسخة مستقرة، بواجهة WPF self-contained وCLI محمول لا يحتاجان Python أو .NET Runtime منفصلًا.
+- إضافة installer يحمل أيقونة Resource Studio وأصول wizard المتسقة مع الهوية البصرية، واتفاقية استخدام تعرض Apache License 2.0، واختصار Start وخيار اختصار سطح المكتب وuninstaller.
+- إضافة `installer/build-windows.ps1` و`installer/ResourceStudio.iss` لبناء الحزمة من المصدر، مع تقرير الإصدار في `docs/RELEASE-WINDOWS-0.1.0.md` وchecksum قابل للتحقق.
+- اختبار التثبيت والتشغيل والإزالة على clone Windows معزول، وتشغيل CLI المحمول على fixture PE حقيقي، مع إبقاء النسخة الأصلية المحمية خارج نطاق البناء.
+
+تتبع هذه الوثيقة التغييرات القابلة للملاحظة في Resource Studio. لا تُسجل فيها وعود مستقبلية على أنها منجزة؛ الأعمال غير المكتملة تبقى في [`TODO.md`](TODO.md) بحالة ومعيار إنجاز.
+
+## [Unreleased]
+
+### الاتجاه النشط
+
+تتركز الدفعة التالية على **Security-goal** فوق Forensic-goal وVerification Engine: تحليل PE ساكن، تصنيف الفساد والوصول والقفل، مؤشرات العبث والتمويه، وفصل نتائج Defender/YARA الخارجية عن verdict الداخلي. لا تشمل تشغيل الملفات أو unpacking أو decryption أو process injection أو dynamic malware engine داخل النواة.
+
+### أُضيف
+
+- إضافة `LiveAnalysisAdapter` read-only وعقد `resource_studio.live_analysis.v1`: جلسات مرتبطة بـSHA-256 واستيراد behavioral telemetry وmemory analysis وAPI call traces الخارجية مع `sessionId` و`sourceSha256` و`evidenceSha256` وlimitations، دون تشغيل process أو attach أو قراءة live memory أو تنفيذ debugger commands.
+- إضافة أدوات MCP وموارد live-analysis للجلسات والتقارير، مع اختبار core واختبار stdio يثبتان تطابق الهدف وبقاء المصدر والعملية خارج نطاق التعديل.
+- إضافة MCP Observability Contract: موارد read-only لـ`resource://tools/metadata` و`resource://session/state` و`resource://session/events`، مع side-effect/precondition/confirmation/audit metadata وسجل أحداث محدود للجلسة، دون منح صلاحيات جديدة أو تغيير evidence وverification.
+- إصلاح بوابة CI بإعلان `httpx` صراحةً ضمن dependencies لأن اختبار MCP HTTP يستخدم `httpx.ASGITransport` و`AsyncClient`، مع توسيع أمر المساهمين ليشغّل اختبارات MCP نفسها.
+- إضافة Release preflight ينتظر نجاح CI لنفس commit قبل إنشاء source bundle أو نشر Release؛ فشل CI أو انتهاء مهلة الانتظار يمنع النشر بدل ترك artifact غير موثق الحالة.
+- توسيع Release workflow ليبني Windows installer على `windows-latest`، ويجري smoke test للتثبيت والإزالة ويولد checksum، ثم ينشر source bundle وinstaller فقط بعد اكتمال CI والبناء والتحقق بنجاح. الإصدار `v0.1.0` السابق بقي كما هو لأنه بُني واختُبر قبل إضافة هذا المسار الآلي.
+- إصلاح استدعاء توليد أصول installer في PowerShell بعد نجاح PyInstaller باستخدام المسار المتحقق نفسه، بعد أن كشف أول تشغيل فعلي على Windows runner أن الاستدعاء المباشر قد يفشل رغم اكتمال البناء.
+- إصلاح تطبيع Release artifacts في job النشر؛ إذ تحفظ `actions/download-artifact` بعض المسارات داخل مجلدات فرعية، وأصبح النشر يبحث عن الملفات المطلوبة وينقلها إلى staging موحد قبل التحقق والنشر.
+- إصلاح تحقق النشر النهائي ليحدد repository صراحةً عند استخدام GitHub CLI على runner لا يحتوي checkout، مع إبقاء التحقق من وجود installer وsource bundle بعد النشر.
+- تحسينات وإصلاحات P0 لتوافق DLLs Windows الواقعية: حماية export ordinals عند غيابها في LIEF، وإبقاء Evidence Summary degraded قابلًا للاستهلاك في Evidence Graph وEvidence Query بدل إسقاط المسار كاملًا.
+- تحسين توافق `VERSIONINFO` مع ملفات Windows الواقعية: قبول trailing padding محدود حتى 64 بايت مع تحذير قابل للرصد، مع استمرار رفض padding غير المحدود.
+- إضافة حالات صحة PE صريحة `VALID_PE` و`MALFORMED_PE` و`NOT_PE` و`LOCKED` و`ACCESS_DENIED`، مع فحص الوصول قبل القراءة ورسائل CLI تميز سبب الفشل بدل رسالة `not supported` العامة.
+- جعل `validate` و`inspect` يعيدان exit code غير صفري عند التلف البنيوي، مع إخراج `analysisStatus: DEGRADED` من `inspect` للحفاظ على evidence وwarnings القابلة للعرض.
+- تحسين WPF degraded state: تبقى قائمة الموارد قابلة للاستخدام عند نجاح `list` وفشل `inspect`، وتعرض الواجهة `Analysis degraded — see Inspect tab` بدل انتظار حالة إتمام غير مفسرة.
+- إغلاق السبب الجذري لفشل Save As على ملفات Windows الحقيقية: تطبيع named resource types في LIEF، مطابقة اللغة الضمنية مع اللغة الفعلية، وتشغيل Windows resource oracle من مسار candidate نفسه لعزل موارد MUI الخارجية والـ`ERROR_RESOURCE_*` path-scoped noise، مع إبقاء target/non-target changes خاضعة للتحقق.
+- تحسينات وإصلاحات في Save As diagnostics: عند رفض Windows validation يبقى rollback آمنًا ويُحفظ pre/post verification وforensic failure artifact مستقل يحوي operation ID وSHA-256 وسبب الرفض دون commit مخرج غير صالح.
+- توحيد الثيم الداكن على `ImageResourceWindow` و`DialogEditorWindow` و`ResourceWizardsWindow` و`SignatureToolsWindow` و`StringTableEditorWindow`، مع أنماط مشتركة لـ`ComboBox` و`ListBox` و`PasswordBox` وعقد UI تثبت عدم عودة الخلفيات البيضاء الافتراضية.
+- إضافة هوية بصرية متكاملة: علامة Resource Studio وGitHub banner وPNG بأحجام Windows وICO متعدد الأحجام، مع `docs/BRAND-IDENTITY.md` وأداة إعادة تجهيز قابلة للتكرار في `tools/prepare_brand_assets.py`.
+- تطبيق العلامة على WPF عبر `ApplicationIcon` و`Window.Icon` وواجهة رأس تحمل اسم المنتج، مع لوحة ألوان موحدة وإبقاء دلالات triage منفصلة عن verdict الأمني.
+- إضافة `tests/qa/test_branding_contract.py` لإثبات وجود الأصول وربطها بعقود XAML وMSBuild.
+- إضافة نافذة About أصلية داخل WPF مرتبطة بهوية Resource Studio، تشرح وظيفة المشروع، وتعرض اسم المطور Elias Sharar والبريد `aliasbio95@gmail.com` ورابط المستودع، مع دعم كامل لموارد الثيم الديناميكية وعقد UI automation.
+- استكمال MCP Phase 1 المحلي عبر `stdio`: تثبيت `mcp==2.0.0` في dependencies وCI، وإضافة fileId محدود الجلسة، Resources وResource Templates وPrompts، ودورة plan/confirm/apply/export/cancel مع TTL للتأكيد.
+- ربط MCP بمسار `LiefPEWriter` و`PEHealth` المشترك، وإضافة `resource_studio.result.v1` وaudit references واختبار stdio على Python وWindows. النقل البعيد والمصادقة وحالة الخادم الدائمة تبقى خارج هذه الدفعة.
+- توسيع MCP عبر Streamable HTTP اختياري مع Bearer authentication وTrusted Host وOrigin/HTTPS guards، مع إبقاء الربط المحلي هو الافتراضي ومنع الربط البعيد دون opt-in صريح.
+- إضافة حفظ ذري للحالة في `.resource-studio/mcp-state.json` واستعادتها بين عمليتين منفصلتين، مع TTL للتأكيد وRLock داخل العملية وعزل الملفات تحت الجذر المصرح.
+- إضافة عمليات MCP كاملة لـ`add` و`delete` و`change-language` إلى جانب `replace` عبر المسار المشترك للكاتب وإعادة الفتح والتحقق، مع regression coverage على fixture PE حقيقي.
+- إضافة `resource_studio.list_plugins` و`resource://plugins` لاكتشاف manifests والتحقق من التوافق والصلاحيات والحالة للقراءة فقط؛ كان التنفيذ خارج هذا المسار في الدفعة الأولى، ثم أضيف لاحقًا runtime محدود ومفصول خارج العملية عبر أدوات مستقلة وبصلاحية `project.read` فقط.
+- تحديث عقد MCP ووثيقة التشغيل وCI لتغطية HTTP وpersistence وmutations وplugin discovery على Python وWindows.
+- إصلاح Windows oracle وForensic attribution لعملية `change-language` كي تُسجل إزالة لغة المصدر وإضافة لغة الهدف كتغيير مقصود، مع تمرير `sourceLanguage` إلى طبقات التحقق؛ وأثبتت بوابة Windows الواقعية operations الثلاث بنجاح.
+- تفعيل plugin runtime محدود عبر MCP: تنفيذ خارج العملية مع staging مؤقت، رفض symlinks، Python isolated mode، Windows Job Object، حدود زمن/ذاكرة/طلب/استجابة، grant صريح، confirmation، admin gate، quarantine محفوظ، وأداة إعادة تمكين إدارية؛ التنفيذ معطل افتراضيًا ولا يبدأ إلا مع opt-in صريح.
+- إبقاء `project.read` هو grant الوحيد المدعوم فعليًا؛ رفض `network` و`process.execute` وfilesystem وclipboard حتى تتوفر sandbox adapters متخصصة بدل منح صلاحيات شكلية.
+- إضافة external integration gateway إنتاجي مقيد بـHTTPS allowlist وعمليات ثابتة، مع منع SSRF، رفض العناوين الخاصة والـredirectات غير المعتمدة، أسرار من environment فقط، وخطط plan/confirm/admin مع request hashes وبدون تسريب secrets.
+- إضافة وحدة `core/msix.py` مستقلة لفحص MSIX/AppX و`AppxManifest.xml` و`AppxBlockMap.xml` وPRI metadata بحدود حجم وعدد entries ورفض المسارات الخطرة وXML entities، مع خطة rebuild منفصلة عبر MakeAppx على Windows وعدم خلطها مع PE writer.
+- إضافة أدوات MCP لـ`inspect_package` و`plan_package_change` و`apply_package_change`، وتحديث العقد والـTODO والاختبارات والتوثيق؛ signing وMRT Core deep PRI semantics بقيا مسارين منفصلين ومؤجلين حتى توفر أدوات وسياسات Windows المناسبة.
+
+- إضافة `resource_studio.static_code_analysis.v1`: bounded Capstone disassembly وbasic CFG من PE entrypoint مع RVA/file offsets وقيود صريحة، إضافة إلى unpacking indicators ساكنة مثل section expansion وhigh entropy وexecutable+writable sections وoverlay.
+- إضافة `resource_studio.hex_template.v1` لقوالب BITMAPINFOHEADER وVS_VERSIONINFO وDIALOG/MENU headers، مع field offsets وlengths وvalues وhex ranges قابلة للتحديد في WPF Preview.
+- إضافة `resource_studio.evidence_triage.v1` لتلوين Resource Grid بصريًا بحسب corruption وlow confidence وobfuscation/packing indicators، مع banner وtooltip وعبارة صريحة بأن اللون visual cue وليس verdict.
+- إضافة `runtime_evidence.v1` لاستيراد behavioral telemetry وmemory-analysis reports وAPI-call traces الخارجية بعد مطابقة target SHA-256؛ لا ينفذ Resource Studio العينة ولا يقرأ live memory ولا يتصل بعملية.
+- توسيع PE corpus من fixture PE واحد إلى ملفات benign متعددة: x86 وx64، minimal وresource-heavy، named/numeric resources، multiple languages، weird alignment، UPX packed profile، overlay، وشهادة اختبار self-signed، مع manifest SHA-256 وtoolchain/profile metadata.
+- إضافة builder قابل لإعادة التشغيل في `tools/build_pe_corpus.py`، وتوسيع PE matrix ليجري read-only checks على كل PE manifest entry.
+- تطبيع قيم TLS range التي يعيدها LIEF في بعض x86/x64 fixtures داخل `PEInspector` بدل إسقاط الفحص باستثناء `TypeError`.
+
+- استكمال عقد Evidence Query: دعم الأقواس، operators غير الحساسة لحالة الأحرف، وتحويل `external_scan.v1` إلى سجلات قابلة للاستعلام عبر namespace `externalScan`، مع regression coverage وأمثلة موثقة.
+
+- إضافة regression contracts لمطابقة أهداف Forensic عند استخدام لغة wildcard، واستعادة project locks اليتيمة بعد انهيار العملية، والتحقق من أن استيراد CLI الأساسي لا يحمّل وحدات core الثقيلة قبل تنفيذ الأمر.
+- توثيق `resource_studio_gui.py` كواجهة Tkinter fallback محدودة، مع اعتماد WPF shell كواجهة Windows المدعومة للمسارات typed وVerification وForensic.
+
+- تنفيذ P0 من خطة إصلاح الأداء: telemetry اختياري لمسارات CLI وWriter وWPF runner، مع قياس الزمن وLIEF parses والقراءات الكاملة وtemporary I/O وprocess-per-action، دون تغيير السلوك الافتراضي. وثقت النتائج في `docs/P0-PERFORMANCE-BASELINE.md`.
+- تنفيذ P1 عبر `core/resource_reader.py`: أصبحت `list` و`extract` و`search` وقراءة طرفي `diff` تستخدم parse واحدًا دون `Project` workspace أو audit؛ baseline أثبت إزالة temporary I/O والقراءات الكاملة من هذه المسارات. التفاصيل في `docs/P1-READONLY-READER.md`.
+- تنفيذ P2 عبر `VerificationContext`: إعادة استخدام binary وsnapshot وResourceGraph وdeep/integrity/signature داخل Writer، مع انخفاض `writer.replace_manifest` من 49 إلى 11 LIEF parses ومن 14 إلى 12 full reads دون حذف مراحل التحقق. التفاصيل في `docs/P2-VERIFICATION-CONTEXT.md`.
+- تنفيذ P3 عبر Python JSONL read host طويل العمر و`ReadHostClient.cs`؛ أزيل process-per-action من مسارات القراءة الساخنة مع session cache لـ`list/search` وfallback آمن. أبقى القياس Rust وC++ خارج المسار حتى يثبت Windows baseline حاجة حقيقية. التفاصيل في `docs/P3-READ-HOST.md`.
+- تنفيذ P4 في WPF: request generation و`CliResult.IsStale` لمنع النتائج القديمة، وowned process/cancellation لمنع تداخل الطلبات. التفاصيل في `docs/P4-WPF-SESSION.md`.
+- تقييم Rust جراحيًا لمسار byte-search عبر FFI؛ تطابقت accuracy، لكن `bytes.find` كان أسرع من prototype Rust، لذلك لم يُضف أي dependency أو artifact Rust إلى المشروع. التفاصيل في `docs/RUST-EVALUATION.md`.
+- إضافة `Evidence annotations` و`evidence_selection.v1` بعد مراجعة أنماط Wireshark وOxygen: annotations append-only مربوطة بـartifact SHA-256 وgraph hash، وCLI/WPF لتصدير selection manifest انتقائي دون تعديل PE. الدراسة في `docs/FORENSIC-ANALYTICS-RESEARCH.md`.
+- توسعة محرري DIALOG وMENU: typed WYSIWYG controls وproperties وadd/delete/duplicate في DIALOG، وtyped tree وflags وadd/delete/reorder/validate في MENU، مع CLI `dialog validate` و`menu-resource validate` وround-trip contracts. التفاصيل في `docs/DIALOG-MENU-EDITOR.md`.
+
+- Apache-2.0 في `LICENSE` مع توضيح نطاق كود Resource Studio واعتماديات الطرف الثالث.
+- GitHub Actions CI لـPython وWindows/WPF، وRelease workflow لإنتاج source bundle عند tags دون ملفات الأسرار أو البناء.
+- community files: `CODE_OF_CONDUCT.md` و`SUPPORT.md` و`SECURITY.md` وIssue templates.
+- توسيع `hex` CLI ليعرض raw file slices أو resource slices مع hex/ASCII/base64/C-array JSON.
+- إضافة `rc compile` و`rc decompile` لـSTRINGTABLE وMENU/MENUEX وVERSIONINFO ضمن RC subset حتمي قابل للاختبار.
+- `core/forensics.py` مع `ForensicBaseline` الذي يلتقط hash والحجم وPE invariant snapshot وResource Graph وdeep invariants وintegrity diagnostics.
+- `ForensicEvidence` و`verify_transformation` لإنتاج `resource_studio.forensic_evidence.v1` وربط operation ID وoperation وtarget بالفرق المرصود.
+- ربط `forensic_evidence` بـ`WriteResult` بعد commit مستقل، وتمريره إلى Project Audit وBatch operation payload.
+- حفظ `ForensicBaseline` كـartifact JSON ذري قبل mutation، مع `ForensicBaseline.save/load` وأمر CLI `forensic-baseline`.
+- إضافة `forensicBaselinePath` إلى WriteResult وProject Audit وBatch payload.
+- فصل `passed` عن `verified` وإضافة `platformLimited` عندما تكون Windows Resource Oracle أو WinVerifyTrust متخطاة.
+- إضافة `CommitResult.verified_sha256` مع post-commit readback بعد الاستبدال.
+- إضافة `core/pure_loader_oracle.py` لاختبار اختيار اللغة على canonical ResourceGraph دون الادعاء بأنه بديل Win32.
+- إضافة `EvidenceLedger` اختياريًا كسجل JSONL append-only مع hash-chain وتوقيع Ed25519 عند توفر `cryptography`، دون ادعاء chain of custody قانونية.
+- إضافة `resource_studio.evidence_graph.v1` بعقد evidence nodes وعلاقات `corroborates` و`contradicts` و`derives-from` و`supports` و`references` مع graph hash حتمي.
+- إضافة Query Engine آمن وأوامر `evidence-query` و`evidence-graph`، مع namespaces محددة وoperators مقارنة و`contains` و`and/or` دون `eval`.
+- إضافة `resource_studio.case.v1` وأوامر `case create/analyze/transition/show` مع lifecycle وtimeline وaudit event hash-chain وتقارير قابلة لإعادة التحميل.
+- إضافة تبويب WPF Security Center يعرض static security report وEvidence Graph ونتائج Query وcase path فوق CLI/Core الحالية، دون إعادة تنفيذ Verification Engine.
+- نجاح GitHub Actions run `32478276207` على commit `f81b2bd`، مع اجتياز Python 3.12 وWindows/WPF وبناء Security Center بنجاح.
+- إضافة evidence chain metadata القابل لإعادة البناء: `prevSha256` وenvironment fingerprint وcommand line وevidence sha256.
+- إضافة `PreservationMap` بخريطة byte ranges وتصنيف `EXPECTED_TARGET_RESOURCE` و`EXPECTED_RESOURCE_CONTAINER` و`EXPECTED_HEADER_RECALC` و`UNEXPECTED`، مع ميزانية unexpected تساوي صفرًا.
+- إضافة raw resource parser مستقل محدود يقارن موارد `IMAGE_RESOURCE_DIRECTORY` مع canonical ResourceGraph.
+- إضافة Rich Header hash/preservation signal وتثبيت COFF timestamp الأصلي وdeterminism regression لنفس mutation.
+- forensic difference أولي يميز target وresource tree unintended changes وPE preservation وintegrity وsignature وWindows status.
+- اختبار `tests/core/test_forensics.py` الذي يثبت baseline contract وno-op attribution وغياب unintended changes.
+- `FORENSIC-GOAL.md` الذي يحدد الهوية والحدود ومعايير FR-00 إلى FR-09.
+- `CONTRIBUTING.md` الذي يشرح السلامة والاختبارات والتوثيق وقواعد المساهمات.
+- إنشاء `docs/SECURITY-GOAL.md` كخطة دفاعية للتحليل الساكن، وفصل المؤشرات عن verdicts، وتحديد حدود Defender/YARA وruntime telemetry.
+- إضافة `core/security_analysis.py` وأوامر CLI `security` و`report security` لإنتاج `resource_studio.security_report.v1` مع access/parse state وPEHealth وdeep invariants وsignature/integrity وResource Graph/raw corroboration وstatic indicators وEvidence Summary؛ لا يشغّل الملف ولا يفك payloadات.
+- نجاح GitHub Actions run `32444514351` على commit `3dc383b`، مع اجتياز Python 3.12 وWindows/WPF وفحص الملفات المحظورة.
+- توسيع Security-goal بنتائج بحث دفاعي عن T1486 وT1219 وT1573: إضافة static indicators للـoverlay وentrypoint وexecutable+writable sections وcrypto/network/persistence imports وstrings محدودة، مع إبقاء RAT/ransomware/C2 attribution خارج الحكم الساكن.
+- توثيق طبقات التكامل الآمنة المستقبلية: YARA وDefender على staged copies وSysmon/EDR telemetry كأدلة خارجية، مع منع تشغيل أو unpacking أو decryption أو process injection داخل النواة.
+- إضافة عقد `resource_studio.external_scan.v1` في `core/security_providers.py` واستيراد النتائج السابقة عبر `security --external-result` مع provider/status/target SHA/ruleset/exit code؛ لا يشغّل أي موفر.
+- نجاح GitHub Actions run `32445879114` على commit `8f3c2db`، مع اجتياز Python 3.12 وWindows/WPF وفحص artifacts المحظورة.
+- إضافة `security --stage-root` لإنشاء نسخة read-only ذات SHA-256 ثابتة، و`security --ledger` لربط التقرير بـEvidenceLedger المحلي وإعادة entry/evidence hashes.
+- إبقاء تشغيل YARA وMicrosoft Defender مؤجلًا كما طلب المستخدم؛ لا يوجد external provider runner أو تشغيل عينة داخل هذه الدفعة.
+- نجاح GitHub Actions run `32446796151` على commit `8e3a19f`، مع اجتياز Python 3.12 وWindows/WPF وفحص artifacts المحظورة.
+- `core/evidence_model.py` بصيغة `resource_studio.evidence_summary.v1` لتطبيع observations وraw ranges وstatistics وprovenance وExpert Findings.
+- إضافة `evidence` و`evidenceHash` و`rawResourceComparison` إلى CLI `inspect --json`، وإضافة Evidence Summary إلى `ForensicEvidence`.
+- وثيقة `docs/PE-EVIDENCE-MODEL.md` التي تحدد المصادر والـconfidence والحدود وعدم تحويل entropy إلى verdict.
+
+### غُيّر
+
+- تفكيك `mcp/server.py` (1732 سطرًا) إلى جذر تركيب نحيف (~85 سطرًا) مع حزمة `rs_mcp/` (14 وحدة حسب المجال) دون أي تغيير منطقي أو في السطح المكشوف؛ `ci.yml` يفحص `rs_mcp` في compileall على المنصتين.
+- جعل `core/__init__.py` واجهة كسولة (PEP 562): أي `from core.X import Y` لم يعد يسحب الحزمة كاملة، فمسار الإقلاع لا يستورد `lief` إلا عند حاجة فعلية لفك PE. `__all__` كما هو (152 اسمًا). القياس: `cli --help` من 472ms إلى 53ms، و`import core.project` من 365ms إلى 44ms.
+- تأجيل استيراد `FORMATS` في CLI إلى موعده الوحيد داخل بناء `report` بدل أعلى `parser()`.
+- توجيه استدعاءات CLI من WPF (وضع source) عبر `tools/wpf_cli_host.py` الدائم عديم الحالة بنفس بروتوكول `wpf_read_host` مع حقل `env` اختياري لكل طلب (يُطبق ويُستعاد)؛ فشل بدء المضيف يعود تلقائيًا إلى spawn، وفشل بروتوكولي يعيد خطأ صريحًا بلا إعادة تلقائية لأن حالة العملية تصبح غير معلومة. تسلسل 4 عمليات محرر على fixture ثقيل انخفض من ~1743ms إلى ~456ms، والنداء الدافئ من ~393ms إلى ~6ms. تسجيل P0 أضاف حقل `mode` (host|spawn) و`processSpawned` صادقًا.
+
+### أُصلح
+
+- إصلاح كشف same-volume في `core/durable_commit.py`: مقارنة `st_dev` بين ملف ومجلد تعطي false negative على overlayfs؛ المقارنة الآن مجلد-بمجلد دون تغيير الدلالة.
+- إصلاح خلل إقلاع `wpf_read_host.py` في وضع الإطلاق الفعلي من WPF: التشغيل كـscript يجعل `sys.path[0]=tools/` فيفشل `import resource_studio_cli`؛ كلا المضيفين يشفيان `sys.path` ذاتيًا، مع اختبار انحدار يطلقهما بلا PYTHONPATH.
+- ربط الاختبارات اليتيمة القيّمة بـ`ci.yml` على المنصتين: `tests/golden/test_preview_golden.py` و`test_mcp_live_analysis.py` و`test_mcp_observability.py`، مع إصلاح رابطين ميتين في README ومؤشرين معلقين في TODO.
+
+### أُزيل
+
+- تنظيف الفحوص الزائدة: `tests/windows/` كاملة (Windows-only غير مربوطة بCI وتشير إلى fixture غير موجود)، و7 عقود WPF نصية من `tests/qa/` كانت تؤكد نصوص XAML/C# دون تنفيذ كود، و17 وثيقة مؤرخة/بحثية من `docs/`، و`docs/SECURITY.md` المكرر حرفيًا من الجذر، و`tests/MCP-TEST-PLAN.md` غير المحال؛ القرارات والتبريرات في `CODE-REVIEW.md`.
+- إزالة كود ميت رصده المسح (منها `AuditLog.latest` و`CaseLifecycle.add_note/timeline` و`EvidenceGraph.neighbors` و`Project.find_resources`) وتوحيد المكرر في `core/util.py` الجديدة (`sha256_file` و`numeric_value` و`unescape_rc_string`)؛ بعد التنظيف: 102 ملف اختبار بدل 111 و27 وثيقة بدل 44.
+
+### تحسّن
+
+- توحيد README ليعرض هوية المشروع والحالة الحالية ومسار Save/Verification/Forensic والتثبيت والتشغيل والاختبار والحدود وروابط التوثيق.
+- توسيع TODO بسجل Forensic-goal وحالات baseline/evidence الحالية والفجوات المتبقية.
+- إضافة regression لـbaseline save/load وWriter sidecar وCLI `forensic-baseline`، مع إبقاء UI/UX improvements السابقة: Verification summary وasync CLI وStop وaccessibility surfaces وUI automation.
+- توسيع VerificationSummary في WPF ليعرض `Technical evidence` من التقرير دون إعادة تنفيذ Verification Engine.
+- إغلاق بوابة Manus الكاملة، وبوابة Windows Python/Win32/WPF/UI automation؛ SHA-256 للنسخة الأصلية بقي `14A44FE31B04FBCC65E94E80016138A2E9FC9BB6DFCEA09B98DE57F8A22A1240`.
+- نجاح GitHub Actions run `32439414719` على Python 3.12 وWindows/WPF بعد إصلاح فحص PDB الناتج الطبيعي داخل `bin/obj` في commit `506ee11`.
+- نجاح أحدث CI run `32441785614` على commit `3c7d783`، مع اجتياز Python 3.12 وWindows/WPF وبدون ملفات محظورة.
+- نجاح release workflow السابق `32440078729` في إنشاء source bundle وSHA-256 مع اجتياز فحص الملفات المحظورة.
+- نشر screenshot حقيقي لنافذة WPF في `assets/screenshots/resource-studio-main.png`، وإنشاء Issue المجتمع الأول [#1](https://github.com/bio-colab/Resource-Studio/issues/1). Discussion بقيت اختيارية بسبب رفض صلاحية `createDiscussion` من GitHub integration.
+- إضافة regression لنموذج Evidence وCLI inspect وForensicEvidence، مع إبقاء RSQL وMutation Timeline مخططين لا منفذين في هذه الدفعة.
+- تنفيذ `core/diagnostics.py` وأمر `report diagnostics` لتفسير before/after للأقسام والبنى المحمية وdirectories وchecksum وsignature وoverlay وresource graph وraw corroboration، مع findings وصيغ التقارير الحالية.
+- إضافة journal JSONL لكل Batch job وخيار `--resume` الذي يتحقق من hash الناتج ويخطي العناصر المكتملة بأمان، مع اختبارات core وCLI.
+- إضافة `docs/PRODUCTIZATION.md` وتحديث المرحلة 10 لتحديد ما اكتمل وما بقي مؤجلًا حسب احتياجات المطورين والهواة.
+- نجاح GitHub Actions run `32442901962` على commit `60ffe5d`، مع اجتياز Python 3.12 وWindows/WPF وفحص الملفات المحظورة.
+- نجاح release workflow run `32443264983` على commit `c5ec854` في إنشاء source bundle وSHA-256، مع اجتياز فحص غياب الملفات المحظورة.
+
+### ما يزال قيد التنفيذ
+
+- provenance طويل المدى يربط كل mutation تلقائيًا بledger واحد داخل Project.
+- تقرير forensic متعدد الصيغ وviewer تفاعلي كامل للأدلة.
+- operation ID persistence عبر كل مسارات mutation غير Writer/Project/Batch الحالية.
+- raw parser coverage للامتدادات غير القياسية، coverage-guided fuzzing دائم عبر Atheris مع corpus وcrash minimization، وsimilarity hashing بعد تعريف contract وfalse-positive tests.
+- التحليل السلوكي وentropy وssdeep وTLSH وrecursive payload/steganography خارج نطاق Forensic-goal عمدًا.
+- اختبار Stop أثناء عملية طويلة فعلية، ومصفوفة keyboard/accessibility/failure/resize الأوسع.
+
+## [2026-08-20] — Verification and UI/UX foundation
+
+### أُضيف
+
+- Resource Graph canonical model وsemantic fingerprints وdeep PE invariants.
+- Windows Resource Oracle وUpdateResourceW differential oracle.
+- checksum/signature diagnostics وWinVerifyTrust وdurable same-volume commit.
+- round-trip contract registry وPE corpus taxonomy وbounded/structure-aware fuzz harnesses.
+- Job Object containment proof وWPF process-state contract وUI automation مع BMP preview.
+- UI/UX-goal مع Workspace context وVerification summary وasync Stop وprogressive disclosure.
+
+### تم التحقق منه
+
+- نجاح بوابات Python وWindows core/CLI/QA ذات الصلة.
+- WPF Release build بـ0 أخطاء و0 تحذيرات في آخر بوابات موثقة.
+- نجاح Job Object containment وUI automation مع بقاء الأصل دون تغيير.
+
+### الحدود المعلنة
+
+بقي coverage-guided fuzzing طويل التشغيل، وsigned/MUI/LN corpus الأوسع، وscreen-reader وF6/TabIndex matrix، واختبار Stop أثناء عملية طويلة فعلية، ضمن TODO ولم تُدّعَ كتغطية مكتملة.
+
+## [2026-08-19] — Project and resource foundations
+
+### أُضيف
+
+- Project workspace وsnapshots وAudit Log وUndo/Redo وCommand Pattern.
+- LIEF PE writer مع Save As وbackup وrollback وresource operations.
+- parsers وserializers للموارد المدعومة، وCLI JSON، وWPF shell مستقل.
+- خطط MCP المحلية ووثائقها، مع إبقاء النقل البعيد والمصادقة والإضافات المؤجلة.
+
+### ملاحظة السلامة
+
+لم تُضمّن ملفات خارجية مملوكة أو مواد من بيئة المستخدم في المستودع أو أي حزمة.
+
+[Unreleased]: https://github.com/bio-colab/Resource-Studio/compare/main...HEAD

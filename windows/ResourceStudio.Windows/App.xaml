@@ -1,0 +1,359 @@
+<Application x:Class="ResourceStudio.Windows.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             StartupUri="MainWindow.xaml">
+    <Application.Resources>
+        <!-- Semantic Color Tokens (Default: High-Contrast Dark Mode) -->
+        <Color x:Key="DeepSlateColor">#101827</Color>
+        <Color x:Key="SlatePanelColor">#182337</Color>
+        <Color x:Key="SlateElevatedColor">#223149</Color>
+        <Color x:Key="SlateInputColor">#111C2D</Color>
+        <Color x:Key="DividerColor">#34445C</Color>
+        <Color x:Key="PaperColor">#F3F7FB</Color>
+        <Color x:Key="MistColor">#B7C4D6</Color>
+        <Color x:Key="SignalCyanColor">#2DD4BF</Color>
+        <Color x:Key="AnalysisBlueColor">#60A5FA</Color>
+        <Color x:Key="TriageAmberColor">#F59E0B</Color>
+        <Color x:Key="EvidenceRedColor">#EF4444</Color>
+        <Color x:Key="VerifiedGreenColor">#34D399</Color>
+
+        <!-- Dynamic Brushes -->
+        <SolidColorBrush x:Key="DeepSlateBrush" Color="{StaticResource DeepSlateColor}" />
+        <SolidColorBrush x:Key="SlatePanelBrush" Color="{StaticResource SlatePanelColor}" />
+        <SolidColorBrush x:Key="SlateElevatedBrush" Color="{StaticResource SlateElevatedColor}" />
+        <SolidColorBrush x:Key="SlateInputBrush" Color="{StaticResource SlateInputColor}" />
+        <SolidColorBrush x:Key="DividerBrush" Color="{StaticResource DividerColor}" />
+        <SolidColorBrush x:Key="PaperBrush" Color="{StaticResource PaperColor}" />
+        <SolidColorBrush x:Key="MistBrush" Color="{StaticResource MistColor}" />
+        <SolidColorBrush x:Key="SignalCyanBrush" Color="{StaticResource SignalCyanColor}" />
+        <SolidColorBrush x:Key="AnalysisBlueBrush" Color="{StaticResource AnalysisBlueColor}" />
+        <SolidColorBrush x:Key="TriageAmberBrush" Color="{StaticResource TriageAmberColor}" />
+        <SolidColorBrush x:Key="EvidenceRedBrush" Color="{StaticResource EvidenceRedColor}" />
+        <SolidColorBrush x:Key="VerifiedGreenBrush" Color="{StaticResource VerifiedGreenColor}" />
+
+        <!-- Base Window & Typography -->
+        <Style TargetType="{x:Type Window}">
+            <Setter Property="Background" Value="{DynamicResource DeepSlateBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource PaperBrush}" />
+            <Setter Property="FontFamily" Value="Segoe UI" />
+        </Style>
+        <Style TargetType="{x:Type TextBlock}">
+            <Setter Property="Foreground" Value="{DynamicResource PaperBrush}" />
+        </Style>
+        <Style TargetType="{x:Type Label}">
+            <Setter Property="Foreground" Value="{DynamicResource PaperBrush}" />
+        </Style>
+
+        <!-- Standard Button -->
+        <Style TargetType="{x:Type Button}">
+            <Setter Property="Margin" Value="2" />
+            <Setter Property="Padding" Value="8,4" />
+            <Setter Property="Foreground" Value="{DynamicResource PaperBrush}" />
+            <Setter Property="Background" Value="{DynamicResource SlateElevatedBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource DividerBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="BorderBrush" Value="{DynamicResource SignalCyanBrush}" />
+                    <Setter Property="Background" Value="{DynamicResource SlatePanelBrush}" />
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource DeepSlateBrush}" />
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Opacity" Value="0.45" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Primary Action Button (Accented Cyan) -->
+        <Style x:Key="PrimaryButton" TargetType="{x:Type Button}" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="BorderBrush" Value="{DynamicResource SignalCyanBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource SignalCyanBrush}" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="BorderBrush" Value="{DynamicResource SignalCyanBrush}" />
+                    <Setter Property="Foreground" Value="{DynamicResource PaperBrush}" />
+                    <Setter Property="Background" Value="{DynamicResource DeepSlateBrush}" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Text Input Controls -->
+        <Style TargetType="{x:Type TextBox}">
+            <Setter Property="Background" Value="{DynamicResource SlateInputBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource PaperBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource DividerBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="6,4" />
+            <Setter Property="CaretBrush" Value="{DynamicResource PaperBrush}" />
+            <Setter Property="SelectionBrush" Value="{DynamicResource SignalCyanBrush}" />
+        </Style>
+        <Style TargetType="{x:Type PasswordBox}">
+            <Setter Property="Background" Value="{DynamicResource SlateInputBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource PaperBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource DividerBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="6,4" />
+            <Setter Property="CaretBrush" Value="{DynamicResource PaperBrush}" />
+            <Setter Property="SelectionBrush" Value="{DynamicResource SignalCyanBrush}" />
+        </Style>
+
+        <!-- CheckBox & RadioButton -->
+        <Style TargetType="{x:Type CheckBox}">
+            <Setter Property="Foreground" Value="{DynamicResource PaperBrush}" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+        <Style TargetType="{x:Type RadioButton}">
+            <Setter Property="Foreground" Value="{DynamicResource PaperBrush}" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+
+        <!-- ContextMenu: High-Contrast Elevated Dark Surface -->
+        <Style TargetType="{x:Type ContextMenu}">
+            <Setter Property="Background" Value="{DynamicResource SlateElevatedBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource PaperBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource DividerBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="4" />
+            <Setter Property="Grid.IsSharedSizeScope" Value="True" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type ContextMenu}">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6"
+                                Padding="{TemplateBinding Padding}">
+                            <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Cycle" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- MenuItem: High-Contrast Text with Cyan Highlight Hover -->
+        <Style TargetType="{x:Type MenuItem}">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="{DynamicResource PaperBrush}" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Padding" Value="10,6" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type MenuItem}">
+                        <Border x:Name="ItemBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="Transparent"
+                                BorderThickness="1"
+                                CornerRadius="4"
+                                Padding="{TemplateBinding Padding}"
+                                Margin="1">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" SharedSizeGroup="MenuItemIconColumnGroup" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" SharedSizeGroup="MenuItemShortcutColumnGroup" />
+                                </Grid.ColumnDefinitions>
+                                <ContentPresenter x:Name="Icon" ContentSource="Icon" Margin="0,0,8,0" VerticalAlignment="Center" />
+                                <ContentPresenter Grid.Column="1" ContentSource="Header" RecognizesAccessKey="True" VerticalAlignment="Center" TextElement.Foreground="{TemplateBinding Foreground}" />
+                                <TextBlock Grid.Column="2" Text="{TemplateBinding InputGestureText}" Foreground="{DynamicResource MistBrush}" Margin="16,0,4,0" VerticalAlignment="Center" />
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsHighlighted" Value="True">
+                                <Setter TargetName="ItemBorder" Property="Background" Value="{DynamicResource SlatePanelBrush}" />
+                                <Setter TargetName="ItemBorder" Property="BorderBrush" Value="{DynamicResource SignalCyanBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.45" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Separator -->
+        <Style TargetType="{x:Type Separator}">
+            <Setter Property="Background" Value="{DynamicResource DividerBrush}" />
+            <Setter Property="Height" Value="1" />
+            <Setter Property="Margin" Value="2,4" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type Separator}">
+                        <Rectangle Fill="{TemplateBinding Background}" Height="1" Margin="{TemplateBinding Margin}" />
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- ToolTip: Dark Elevated Surface with Crisp Border -->
+        <Style TargetType="{x:Type ToolTip}">
+            <Setter Property="Background" Value="{DynamicResource SlateElevatedBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource PaperBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource DividerBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="8,5" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type ToolTip}">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="4"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter TextElement.Foreground="{DynamicResource PaperBrush}" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- ComboBox & Items -->
+        <Style TargetType="{x:Type ComboBox}">
+            <Setter Property="Background" Value="{DynamicResource SlateInputBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource PaperBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource DividerBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="6,4" />
+        </Style>
+        <Style TargetType="{x:Type ComboBoxItem}">
+            <Setter Property="Background" Value="{DynamicResource SlatePanelBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource PaperBrush}" />
+            <Setter Property="Padding" Value="6,4" />
+        </Style>
+
+        <!-- ListBox & Items -->
+        <Style TargetType="{x:Type ListBox}">
+            <Setter Property="Background" Value="{DynamicResource SlateInputBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource PaperBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource DividerBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+        </Style>
+        <Style TargetType="{x:Type ListBoxItem}">
+            <Setter Property="Background" Value="{DynamicResource SlatePanelBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource PaperBrush}" />
+            <Setter Property="Padding" Value="6,4" />
+            <Style.Triggers>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource SlateElevatedBrush}" />
+                    <Setter Property="Foreground" Value="{DynamicResource SignalCyanBrush}" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- TabControl & TabItem -->
+        <Style TargetType="{x:Type TabControl}">
+            <Setter Property="Background" Value="{DynamicResource DeepSlateBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource DividerBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="4" />
+        </Style>
+        <Style TargetType="{x:Type TabItem}">
+            <Setter Property="Foreground" Value="{DynamicResource MistBrush}" />
+            <Setter Property="Background" Value="{DynamicResource SlatePanelBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource DividerBrush}" />
+            <Setter Property="Padding" Value="12,8" />
+            <Setter Property="Margin" Value="0,0,4,0" />
+            <Setter Property="FontWeight" Value="Normal" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type TabItem}">
+                        <Border x:Name="TabBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="4,4,0,0"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter ContentSource="Header"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"
+                                              TextElement.Foreground="{TemplateBinding Foreground}"
+                                              TextElement.FontWeight="{TemplateBinding FontWeight}" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="TabBorder" Property="Background" Value="{DynamicResource DeepSlateBrush}" />
+                                <Setter TargetName="TabBorder" Property="BorderBrush" Value="{DynamicResource SignalCyanBrush}" />
+                                <Setter Property="Foreground" Value="{DynamicResource SignalCyanBrush}" />
+                                <Setter Property="FontWeight" Value="SemiBold" />
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="TabBorder" Property="Background" Value="{DynamicResource SlateElevatedBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.55" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- DataGrid & Cells -->
+        <Style TargetType="{x:Type DataGrid}">
+            <Setter Property="Background" Value="{DynamicResource SlatePanelBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource PaperBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource DividerBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="GridLinesVisibility" Value="Horizontal" />
+            <Setter Property="HorizontalGridLinesBrush" Value="{DynamicResource DividerBrush}" />
+            <Setter Property="VerticalGridLinesBrush" Value="{DynamicResource DividerBrush}" />
+            <Setter Property="HeadersVisibility" Value="Column" />
+            <Setter Property="RowHeaderWidth" Value="0" />
+            <Setter Property="CanUserAddRows" Value="False" />
+        </Style>
+        <Style TargetType="{x:Type DataGridColumnHeader}">
+            <Setter Property="Background" Value="{DynamicResource SlateElevatedBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource PaperBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource DividerBrush}" />
+            <Setter Property="BorderThickness" Value="0,0,1,1" />
+            <Setter Property="Padding" Value="8,6" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+        <Style TargetType="{x:Type DataGridRow}">
+            <Setter Property="Background" Value="{DynamicResource SlatePanelBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource PaperBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource DividerBrush}" />
+            <Style.Triggers>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource SlateElevatedBrush}" />
+                    <Setter Property="Foreground" Value="{DynamicResource SignalCyanBrush}" />
+                </Trigger>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource SlateElevatedBrush}" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style TargetType="{x:Type DataGridCell}">
+            <Setter Property="Padding" Value="8,5" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Style.Triggers>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource SlateElevatedBrush}" />
+                    <Setter Property="Foreground" Value="{DynamicResource SignalCyanBrush}" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- TreeView & Items -->
+        <Style TargetType="{x:Type TreeView}">
+            <Setter Property="Background" Value="{DynamicResource SlatePanelBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource PaperBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource DividerBrush}" />
+        </Style>
+        <Style TargetType="{x:Type TreeViewItem}">
+            <Setter Property="Foreground" Value="{DynamicResource PaperBrush}" />
+            <Setter Property="Padding" Value="4,2" />
+        </Style>
+
+        <!-- GroupBox -->
+        <Style TargetType="{x:Type GroupBox}">
+            <Setter Property="BorderBrush" Value="{DynamicResource DividerBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Foreground" Value="{DynamicResource PaperBrush}" />
+        </Style>
+    </Application.Resources>
+</Application>

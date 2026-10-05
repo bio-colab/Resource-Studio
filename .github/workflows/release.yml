@@ -1,0 +1,200 @@
+name: Release
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*.*.*']
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  preflight:
+    name: Require CI for this commit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for matching CI run
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const sha = context.sha;
+            const workflowId = 'ci.yml';
+            for (let attempt = 1; attempt <= 40; attempt += 1) {
+              const { data } = await github.rest.actions.listWorkflowRuns({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                workflow_id: workflowId,
+                head_sha: sha,
+                per_page: 20,
+              });
+              const runs = data.workflow_runs
+                .filter((run) => run.name === 'CI')
+                .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+              const run = runs[0];
+              if (run && run.status === 'completed') {
+                if (run.conclusion !== 'success') {
+                  core.setFailed(`CI for ${sha} concluded ${run.conclusion}: ${run.html_url}`);
+                } else {
+                  core.info(`CI passed for ${sha}: ${run.html_url}`);
+                }
+                return;
+              }
+              core.info(`Waiting for CI for ${sha} (attempt ${attempt}/40)`);
+              await new Promise((resolve) => setTimeout(resolve, 15000));
+            }
+            core.setFailed(`Timed out waiting for CI for ${sha}`);
+
+  source-bundle:
+    name: Build source bundle
+    needs: preflight
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+      - name: Create source bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf staging
+          mkdir -p staging/resource-studio
+          tar --exclude='./.git' --exclude='./staging' -cf - . | tar -xf - -C staging/resource-studio
+          find staging/resource-studio -type f \( \
+            -iname '*.pdb' -o -iname '*.bak' -o \
+            -iname '*.provenance.json' -o -iname '*.forensic-baseline.json' -o \
+            -iname '*.key' -o -iname '*.pub' \
+          \) -delete
+          find staging/resource-studio -type d \( -name bin -o -name obj -o -name outputs -o -name snapshots -o -name __pycache__ \) -prune -exec rm -rf {} +
+          tar -czf resource-studio-${GITHUB_REF_NAME:-manual}.tar.gz -C staging resource-studio
+          sha256sum resource-studio-${GITHUB_REF_NAME:-manual}.tar.gz > resource-studio-${GITHUB_REF_NAME:-manual}.sha256
+      - name: Upload source artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-asset-source
+          path: |
+            resource-studio-*.tar.gz
+            resource-studio-*.sha256
+          if-no-files-found: error
+
+  windows-installer:
+    name: Build and smoke-test Windows installer
+    needs: preflight
+    runs-on: windows-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: requirements-backend.txt
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Install Python build dependencies
+        shell: pwsh
+        run: python -m pip install -r requirements-backend.txt pyinstaller
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup --no-progress -y
+      - name: Build installer
+        shell: pwsh
+        run: |
+          $version = '0.1.0'
+          if ($env:GITHUB_REF -match '^refs/tags/v(?<version>[0-9]+\.[0-9]+\.[0-9]+)$') {
+            $version = $Matches['version']
+          }
+          "RESOURCE_STUDIO_VERSION=$version" >> $env:GITHUB_ENV
+          .\installer\build-windows.ps1 -Runtime win-x64 -Version $version
+      - name: Verify installer and silent install
+        shell: pwsh
+        run: |
+          $installer = "dist\windows\ResourceStudio-Setup-$env:RESOURCE_STUDIO_VERSION-win-x64.exe"
+          if (-not (Test-Path $installer)) { throw "Installer not found: $installer" }
+          if ((Get-Item $installer).Length -lt 1MB) { throw 'Installer is unexpectedly small.' }
+          $log = Join-Path $env:RUNNER_TEMP 'resource-studio-installer.log'
+          $installProcess = Start-Process -FilePath $installer -ArgumentList @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', "/LOG=$log") -Wait -PassThru
+          if ($installProcess.ExitCode -ne 0) { throw "Silent install failed with exit code $($installProcess.ExitCode)" }
+          $installRoot = Join-Path $env:LOCALAPPDATA 'Programs\Resource Studio'
+          foreach ($required in @('ResourceStudio.Windows.exe', 'ResourceStudioCli.exe', 'EULA.txt', 'unins000.exe')) {
+            if (-not (Test-Path (Join-Path $installRoot $required))) { throw "Installed file missing: $required" }
+          }
+          $uninstallProcess = Start-Process -FilePath (Join-Path $installRoot 'unins000.exe') -ArgumentList @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART') -Wait -PassThru
+          if ($uninstallProcess.ExitCode -ne 0) { throw "Silent uninstall failed with exit code $($uninstallProcess.ExitCode)" }
+          if (Test-Path $installRoot) { throw 'Installer uninstall left the install directory behind.' }
+      - name: Create installer checksum
+        shell: pwsh
+        run: |
+          $installer = "dist\windows\ResourceStudio-Setup-$env:RESOURCE_STUDIO_VERSION-win-x64.exe"
+          $hash = (Get-FileHash $installer -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  $(Split-Path $installer -Leaf)" | Set-Content "dist\windows\ResourceStudio-Setup-$env:RESOURCE_STUDIO_VERSION-win-x64.sha256" -Encoding ascii
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-asset-windows
+          path: |
+            dist/windows/*.exe
+            dist/windows/*.sha256
+            ${{ runner.temp }}/resource-studio-installer.log
+          if-no-files-found: error
+
+  publish:
+    name: Publish verified release assets
+    needs: [source-bundle, windows-installer]
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download source artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: release-asset-source
+          path: source-assets
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: release-asset-windows
+          path: windows-assets
+      - name: Normalize and verify release assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf release-assets
+          mkdir -p release-assets
+          source_bundle=$(find source-assets -type f -name '*.tar.gz' -print -quit)
+          source_hash=$(find source-assets -type f -name '*.sha256' -print -quit)
+          installer=$(find windows-assets -type f -name 'ResourceStudio-Setup-*.exe' -print -quit)
+          installer_hash=$(find windows-assets -type f -name 'ResourceStudio-Setup-*.sha256' -print -quit)
+          test -n "$source_bundle" && test -n "$source_hash" && test -n "$installer" && test -n "$installer_hash"
+          cp "$source_bundle" "$source_hash" "$installer" "$installer_hash" release-assets/
+          test "$(find release-assets -maxdepth 1 -name '*.tar.gz' | wc -l)" -eq 1
+          test "$(find release-assets -maxdepth 1 -name 'ResourceStudio-Setup-*.exe' | wc -l)" -eq 1
+          test "$(find release-assets -maxdepth 1 -name '*.sha256' | wc -l)" -eq 2
+          ls -la release-assets
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            release-assets/*.tar.gz
+            release-assets/*.sha256
+            release-assets/ResourceStudio-Setup-*.exe
+      - name: Upload release manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-asset-manifest
+          path: release-assets
+          if-no-files-found: error
+      - name: Verify published assets
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release view "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" --json assets --jq '.assets[].name' | sort > published-assets.txt
+          grep -q '^ResourceStudio-Setup-.*-win-x64\.exe$' published-assets.txt
+          grep -q '^resource-studio-.*\.tar\.gz$' published-assets.txt
+          test "$(grep -c '^ResourceStudio-Setup-.*-win-x64\.exe$' published-assets.txt)" -eq 1
+          test "$(grep -c '^resource-studio-.*\.tar\.gz$' published-assets.txt)" -eq 1
+          cat published-assets.txt

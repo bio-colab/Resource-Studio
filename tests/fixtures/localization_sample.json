@@ -1,0 +1,9 @@
+{
+  "format": "resource_studio.localization.v1",
+  "entries": [
+    {"key": "IDS_HELLO", "language": "en", "text": "Hello %s"},
+    {"key": "IDS_ONLY_EN", "language": "en", "text": "Only source"},
+    {"key": "IDS_HELLO", "language": "ar", "text": "مرحبا %s"},
+    {"key": "IDS_EXTRA", "language": "ar", "text": "Extra"}
+  ]
+}

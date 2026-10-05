@@ -1,0 +1,45 @@
+name: Bug report
+description: Report a reproducible defect in Resource Studio
+title: "bug: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please do not attach proprietary binaries or private files. Use a minimal reproducible fixture when possible.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What happened?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction steps
+      description: Include the command, operation, input class, and expected/actual result.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Resource Studio commit or version
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - Windows 10
+        - Windows 11
+        - Linux/macOS Manus gate
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs or evidence
+      description: Redact paths, secrets, and proprietary content.

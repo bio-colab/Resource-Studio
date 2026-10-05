@@ -1,0 +1,19 @@
+{
+  "manifest": {
+    "kind": "xml",
+    "title": "Manifest",
+    "valid": true,
+    "format": "resource_studio.manifest.v1"
+  },
+  "menu": {
+    "kind": "menu-tree",
+    "title": "Menu",
+    "itemCount": 2,
+    "topLevelCount": 1
+  },
+  "raw": {
+    "kind": "raw",
+    "shown": 2,
+    "size": 3
+  }
+}
