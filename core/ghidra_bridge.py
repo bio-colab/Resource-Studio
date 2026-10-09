@@ -94,14 +94,13 @@ class GhidraBridge:
             cid = ctrl.get("controlId") or ctrl.get("id") or 0
             label = str(ctrl.get("title") or ctrl.get("class") or f"Control_{cid}")
 
-            # Match patterns like:
-            # case 1:
-            # case 0x65:
-            # if (LOWORD(wParam) == 101)
-            # if (id == 101)
+            val_pat = rf"(?:{cid}|0x0*{cid:x}|0x0*{cid:X})[uUlL]*\b"
+            var_pat = r"(?:LOWORD|wParam|param_[1-4]|id|wId|controlId|lParam|a[1-4])"
+
             patterns = [
-                rf"case\s+(?:{cid}|0x{cid:x}|0x{cid:X})\s*:",
-                rf"(?:wParam|id|wId|controlId)\s*==\s*(?:{cid}|0x{cid:x}|0x{cid:X})",
+                rf"case\s*\(?\s*{val_pat}\s*\)?\s*:",
+                rf"{var_pat}.*?==\s*{val_pat}",
+                rf"{val_pat}\s*==.*?{var_pat}",
             ]
 
             handler_found = False
@@ -113,8 +112,11 @@ class GhidraBridge:
                     if re.search(pat, line):
                         handler_found = True
                         matched_branch = line.strip()
-                        # Capture up to 5 following lines of code
-                        snippet_lines = [l.rstrip() for l in lines[i : min(len(lines), i + 6)]]
+                        # Capture code block until break, return, next case, or up to 10 lines
+                        for j in range(i, min(len(lines), i + 10)):
+                            snippet_lines.append(lines[j].rstrip())
+                            if j > i and any(k in lines[j] for k in ("break;", "return;", "case ", "default:")):
+                                break
                         break
                 if handler_found:
                     break

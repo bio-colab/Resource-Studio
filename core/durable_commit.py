@@ -43,11 +43,16 @@ def commit_temporary(source: Path, target: Path) -> CommitResult:
     expected_sha256 = _sha256(source)
     flushed = _flush_file(source)
     same_volume = _same_volume(source, target)
-    if os.name == "nt" and same_volume:
-        method = _windows_replace_or_move(source, target)
-    else:
-        os.replace(source, target)
-        method = "os.replace"
+    try:
+        if os.name == "nt" and same_volume:
+            method = _windows_replace_or_move(source, target)
+        else:
+            os.replace(source, target)
+            method = "os.replace"
+    except PermissionError as exc:
+        raise DurableCommitError(f"Destination file is locked or in use by another process: {target}") from exc
+    except OSError as exc:
+        raise DurableCommitError(f"Failed to commit file to {target}: {exc}") from exc
     verified_sha256 = _sha256(target)
     if verified_sha256 != expected_sha256:
         raise DurableCommitError("post-commit readback hash mismatch")
@@ -102,4 +107,6 @@ def _windows_replace_or_move(source: Path, target: Path) -> str:
     if kernel32.MoveFileExW(str(source), str(target), flags):
         return "MoveFileExW"
     error = ctypes.get_last_error() or replace_error
+    if error in (5, 32):
+        raise DurableCommitError(f"Destination file is locked or in use by another process: {target}")
     raise DurableCommitError(f"Windows file commit failed: {error}")

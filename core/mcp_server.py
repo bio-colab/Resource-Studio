@@ -17,6 +17,20 @@ from .pe_inspector import PEInspector
 from .pe_integrity import inspect_integrity
 from .recipe import apply_recipe as core_apply_recipe, create_recipe as core_create_recipe
 from .resource_reader import ResourceReader
+from .signature import resign_authenticode, strip_authenticode
+
+
+def _coerce_language(val: int | str | None) -> int | None:
+    if val is None:
+        return None
+    if isinstance(val, int):
+        return val
+    s = str(val).strip()
+    if not s:
+        return None
+    if s.lower().startswith("0x"):
+        return int(s, 16)
+    return int(s)
 
 
 def _safe_identifier(name: str) -> str:
@@ -118,8 +132,8 @@ def create_mcp_server(
     def extract_resource(
         file_path: str,
         resource_type: str,
-        resource_name: str,
-        language: int | None = None,
+        resource_name: str | int,
+        language: int | str | None = None,
         output_path: str | None = None,
     ) -> dict[str, Any]:
         """Extract a specific PE resource payload by type, name, and optional language.
@@ -127,22 +141,23 @@ def create_mcp_server(
         Args:
             file_path: Path to the PE binary.
             resource_type: Win32 resource type name or number (e.g., 'MANIFEST', 'DIALOG', 'ICON', '10').
-            resource_name: Resource identifier or name (e.g., '1', 'MAIN', '101').
-            language: Optional LCID language identifier (e.g., 1033).
+            resource_name: Resource identifier or name (e.g., '1', 1, 'MAIN', '101').
+            language: Optional LCID language identifier or hex string (e.g., 1033 or '0x0409').
             output_path: Optional file path to write extracted raw payload.
         """
         path = Path(file_path).expanduser().resolve()
         entries = ResourceReader(path).entries
+        lang_id = _coerce_language(language)
         matches = [
             e
             for e in entries
             if str(e.resource_type).upper() == str(resource_type).upper()
             and str(e.name).upper() == str(resource_name).upper()
-            and (language is None or e.language == language)
+            and (lang_id is None or e.language == lang_id)
         ]
         if not matches:
-            raise ValueError(f"Resource not found: type={resource_type}, name={resource_name}, lang={language}")
-        if len(matches) > 1 and language is None:
+            raise ValueError(f"Resource not found: type={resource_type}, name={resource_name}, lang={lang_id}")
+        if len(matches) > 1 and lang_id is None:
             raise ValueError(
                 f"Multiple language instances found for {resource_type}/{resource_name}. Please specify language."
             )
@@ -220,26 +235,28 @@ def create_mcp_server(
         }
 
     @server.tool()
-    def analyze_dialog(file_path: str, dialog_name: str, language: int | None = None) -> dict[str, Any]:
+    def analyze_dialog(file_path: str, dialog_name: str | int, language: int | str | None = None) -> dict[str, Any]:
         """Parse and analyze a Win32 DIALOG/DIALOGEX template, reporting controls, DLU dimensions, and text clipping risks.
 
         Args:
             file_path: Path to the PE binary containing the DIALOG resource.
-            dialog_name: Resource ID or name of the DIALOG (e.g., '101' or 'IDD_MAIN').
-            language: Optional resource language ID.
+            dialog_name: Resource ID or name of the DIALOG (e.g., '101', 201, or 'IDD_MAIN').
+            language: Optional integer or hex string resource language ID (e.g., 1033 or '0x0409').
         """
         path = Path(file_path).expanduser().resolve()
         entries = ResourceReader(path).entries
+        lang_id = _coerce_language(language)
+        name_str = str(dialog_name).upper()
         matches = [
             e
             for e in entries
             if e.resource_type == "DIALOG"
-            and str(e.name).upper() == str(dialog_name).upper()
-            and (language is None or e.language == language)
+            and str(e.name).upper() == name_str
+            and (lang_id is None or e.language == lang_id)
         ]
         if not matches:
             raise ValueError(f"DIALOG resource '{dialog_name}' not found in {file_path}")
-        if len(matches) > 1 and language is None:
+        if len(matches) > 1 and lang_id is None:
             raise ValueError(f"Multiple languages found for DIALOG '{dialog_name}'; pass language parameter.")
 
         dialog_entry = matches[0]
@@ -274,6 +291,7 @@ def create_mcp_server(
             "controlCount": len(dialog_res.controls),
             "clippingRiskCount": len(clipping_risks),
             "clippingRisks": clipping_risks,
+            "clippingWarnings": dialog_res.clipping_warnings(),
             "validationReport": validation_report,
             "controls": controls_summary,
         }
@@ -310,8 +328,8 @@ def create_mcp_server(
     def generate_developer_code(
         file_path: str,
         resource_type: str,
-        resource_name: str,
-        language: int | None = None,
+        resource_name: str | int,
+        language: int | str | None = None,
         code_kind: Literal["c_array", "csharp_span", "base64", "sha256", "resource_h"] = "c_array",
     ) -> dict[str, Any]:
         """Generate developer-ready code snippets (C/C++ array, C# ReadOnlySpan, Base64, SHA-256, or resource.h definition).
@@ -319,18 +337,19 @@ def create_mcp_server(
         Args:
             file_path: Path to PE binary.
             resource_type: Resource type (e.g., 'ICON', 'DIALOG', 'RCDATA').
-            resource_name: Resource identifier or name (e.g., '1', '101').
-            language: Optional resource language ID.
+            resource_name: Resource identifier or name (e.g., '1', 1, '101').
+            language: Optional LCID language identifier or hex string (e.g., 1033 or '0x0409').
             code_kind: Format to generate: 'c_array', 'csharp_span', 'base64', 'sha256', or 'resource_h'.
         """
         path = Path(file_path).expanduser().resolve()
         entries = ResourceReader(path).entries
+        lang_id = _coerce_language(language)
         matches = [
             e
             for e in entries
             if str(e.resource_type).upper() == str(resource_type).upper()
             and str(e.name).upper() == str(resource_name).upper()
-            and (language is None or e.language == language)
+            and (lang_id is None or e.language == lang_id)
         ]
         if not matches:
             raise ValueError(f"Resource {resource_type}/{resource_name} not found")
@@ -418,26 +437,28 @@ def create_mcp_server(
     @server.tool()
     def correlate_dialog_behavior(
         file_path: str,
-        dialog_name: str,
+        dialog_name: str | int,
         decompiled_code: str | None = None,
-        language: int | None = None,
+        language: int | str | None = None,
     ) -> dict[str, Any]:
         """Correlate Win32 dialog controls with decompiled DialogProc C logic (e.g. from GhidraMCP) to map button clicks to handlers.
 
         Args:
             file_path: Path to the PE binary containing the DIALOG template.
-            dialog_name: Dialog resource identifier (e.g., '101' or '201').
+            dialog_name: Dialog resource identifier (e.g., '101', 201, or 'IDD_MAIN').
             decompiled_code: Decompiled C/C++ pseudocode of DialogProc. If None, retrieves controls without code mapping.
-            language: Optional language ID.
+            language: Optional integer or hex string language ID (e.g., 1033 or '0x0409').
         """
         path = Path(file_path).expanduser().resolve()
         entries = ResourceReader(path).entries
+        lang_id = _coerce_language(language)
+        name_str = str(dialog_name).upper()
         matches = [
             e
             for e in entries
             if e.resource_type == "DIALOG"
-            and str(e.name).upper() == str(dialog_name).upper()
-            and (language is None or e.language == language)
+            and str(e.name).upper() == name_str
+            and (lang_id is None or e.language == lang_id)
         ]
         if not matches:
             raise ValueError(f"DIALOG resource '{dialog_name}' not found")
@@ -459,6 +480,48 @@ def create_mcp_server(
             "hasCodeMapping": bool(decompiled_code),
             "mappings": mappings,
         }
+
+    @server.tool()
+    def strip_pe_signature(file_path: str, output_path: str | None = None) -> dict[str, Any]:
+        """Strip Authenticode digital signature certificate table from a signed PE binary into a clean unsigned copy.
+
+        Args:
+            file_path: Path to the signed Windows PE binary.
+            output_path: Optional destination path for the stripped binary. If None, saves to '<name>_unsigned<ext>'.
+        """
+        path = Path(file_path).expanduser().resolve()
+        if output_path is None:
+            out = path.with_name(f"{path.stem}_unsigned{path.suffix}")
+        else:
+            out = Path(output_path).expanduser().resolve()
+        res = strip_authenticode(path, out)
+        return res.to_dict()
+
+    @server.tool()
+    def sign_pe(
+        file_path: str,
+        certificate_path: str,
+        output_path: str | None = None,
+        password_env: str = "RS_PFX_PASSWORD",
+        strip_existing: bool = True,
+    ) -> dict[str, Any]:
+        """Sign a Windows PE binary with an Authenticode PFX code signing certificate.
+
+        Args:
+            file_path: Path to the Windows PE binary to sign.
+            certificate_path: Path to the .pfx code signing certificate file.
+            output_path: Optional destination path for the signed binary. If None, saves to '<name>_signed<ext>'.
+            password_env: Environment variable name containing the PFX password (default: RS_PFX_PASSWORD).
+            strip_existing: If true, strip any existing invalid/old signature before signing.
+        """
+        path = Path(file_path).expanduser().resolve()
+        cert = Path(certificate_path).expanduser().resolve()
+        if output_path is None:
+            out = path.with_name(f"{path.stem}_signed{path.suffix}")
+        else:
+            out = Path(output_path).expanduser().resolve()
+        res = resign_authenticode(path, out, cert, password_env=password_env, strip_existing=strip_existing)
+        return res.to_dict()
 
     @server.prompt()
     def triage_pe_resources(file_path: str) -> str:

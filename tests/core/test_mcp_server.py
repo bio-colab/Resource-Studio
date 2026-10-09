@@ -37,6 +37,8 @@ def test_server_registration() -> None:
             "inspect_security",
             "scan_resource_xrefs",
             "correlate_dialog_behavior",
+            "strip_pe_signature",
+            "sign_pe",
         }
         assert expected_tools.issubset(tool_names), f"Missing tools: {expected_tools - tool_names}"
 
@@ -268,6 +270,73 @@ def test_tool_scan_resource_xrefs_cap() -> None:
     asyncio.run(_run())
 
 
+def test_tool_type_coercion_and_signature_tools() -> None:
+    async def _run() -> None:
+        server = create_mcp_server()
+        # Test hex string language coercion in extract_resource
+        _, ext_hex = await server.call_tool(
+            "extract_resource",
+            {
+                "file_path": str(FIXTURE_SAMPLE),
+                "resource_type": "MANIFEST",
+                "resource_name": "1",
+                "language": "0x0409",
+            },
+        )
+        assert ext_hex["size"] == 381
+        assert ext_hex["language"] == 1033
+
+        # Test integer dialog_name in analyze_dialog and check clippingWarnings
+        _, dlg_res = await server.call_tool(
+            "analyze_dialog",
+            {
+                "file_path": str(FIXTURE_HEAVY),
+                "dialog_name": 201, # integer
+                "language": "0x0409",
+            },
+        )
+        assert dlg_res["dialogName"] == "201"
+        assert "clippingWarnings" in dlg_res
+        assert isinstance(dlg_res["clippingWarnings"], list)
+
+        # Test correlate_dialog_behavior with Ghidra dialects (padded hex and param_2 cast)
+        ghidra_code = """
+        if ((ushort)param_2 == 8) {
+            DoSomething();
+        } else if (param_2 == 0x00000008) {
+            DoOther();
+        }
+        """
+        _, corr_res = await server.call_tool(
+            "correlate_dialog_behavior",
+            {
+                "file_path": str(FIXTURE_HEAVY),
+                "dialog_name": 201,
+                "decompiled_code": ghidra_code,
+            },
+        )
+        matched_ids = {m["controlId"] for m in corr_res["mappings"] if m["handlerFound"]}
+        assert 8 in matched_ids
+
+        # Test strip_pe_signature tool
+        signed_src = ROOT / "tests" / "fixtures" / "mingw_x64_resource_heavy_test_signed.exe"
+        with tempfile.TemporaryDirectory() as td:
+            stripped_out = Path(td) / "stripped.exe"
+            _, strip_res = await server.call_tool(
+                "strip_pe_signature",
+                {
+                    "file_path": str(signed_src),
+                    "output_path": str(stripped_out),
+                },
+            )
+            assert strip_res["operation"] == "strip"
+            assert strip_res["before"]["present"] is True
+            assert strip_res["after"]["present"] is False
+            assert stripped_out.is_file()
+
+    asyncio.run(_run())
+
+
 def test_cli_mcp_invocation() -> None:
     res = subprocess.run(
         [sys.executable, str(ROOT / "resource_studio_cli.py"), "mcp", "--help"],
@@ -288,9 +357,10 @@ def main() -> None:
     test_tool_extract_resource_large_payload()
     test_tool_scan_resource_xrefs_cap()
     test_tool_diff_and_dialog_analysis()
+    test_tool_type_coercion_and_signature_tools()
     test_tool_recipe_export_and_apply()
     test_cli_mcp_invocation()
-    print("test_mcp_server: all 10 test suites passed successfully!")
+    print("test_mcp_server: all 11 test suites passed successfully!")
 
 
 if __name__ == "__main__":

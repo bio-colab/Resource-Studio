@@ -265,6 +265,8 @@ def _atomic_copy(source: Path, target: Path) -> None:
     try:
         shutil.copy2(source, temporary)
         os.replace(temporary, target)
+    except PermissionError as exc:
+        raise OSError(f"Destination file is locked or in use by another process: {target}") from exc
     finally:
         temporary.unlink(missing_ok=True)
 
