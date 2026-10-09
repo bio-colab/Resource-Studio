@@ -164,6 +164,45 @@ def command_behavioral_diff(args: argparse.Namespace) -> int:
     return 0
 
 
+def command_behavioral_graph(args: argparse.Namespace) -> int:
+    import json
+    from core.behavioral_graph import build_resource_behavior_graph
+
+    dec_sources = None
+    if getattr(args, "decompiled", None):
+        p = Path(args.decompiled).expanduser().resolve()
+        dec_sources = json.loads(p.read_text(encoding="utf-8")) if p.suffix.lower() == ".json" else {0: p.read_text(encoding="utf-8")}
+
+    graph = build_resource_behavior_graph(
+        pe_path=args.input,
+        ghidra_url=getattr(args, "ghidra_url", None),
+        decompiled_sources=dec_sources,
+    )
+
+    if getattr(args, "mermaid", False):
+        _safe_print_str(graph.mermaid_diagram)
+        return 0
+
+    if args.json:
+        _print(graph.to_dict(), True)
+        return 0
+
+    # Human-readable summary output
+    _safe_print_str("=== رسم بياني لسلوك الموارد (Resource-to-Behavior Graph) ===")
+    _safe_print_str(f"الملف: {graph.pe_path}")
+    _safe_print_str(f"العقد: {len(graph.nodes)} | الروابط: {len(graph.edges)} | المسارات الموثقة: {len(graph.traces)}")
+    _safe_print_str("")
+    _safe_print_str("المسارات السلوكية الموثقة (Behavioral Traces with Evidence):")
+    for t in graph.traces:
+        _safe_print_str(f"  * [{t.confidence_level} - {round(t.confidence*100)}%] {t.path_description}")
+        for ev in t.evidence_summary:
+            _safe_print_str(f"    - دليل: {ev}")
+    _safe_print_str("")
+    _safe_print_str("مخطط Mermaid:")
+    _safe_print_str(graph.mermaid_diagram)
+    return 0
+
+
 def command_recipe(args: argparse.Namespace) -> int:
     from core.recipe import apply_recipe, create_recipe
 
@@ -737,6 +776,14 @@ def parser() -> argparse.ArgumentParser:
     bdiff_parser.add_argument("--decompiled-new", type=Path, help="JSON or C code file for new binary")
     bdiff_parser.add_argument("--json", action="store_true")
     bdiff_parser.set_defaults(handler=command_behavioral_diff)
+
+    bgraph_parser = subparsers.add_parser("behavioral-graph", help="build evidence-backed directed graph connecting PE resources to behavior")
+    bgraph_parser.add_argument("input", type=Path)
+    bgraph_parser.add_argument("--ghidra-url", help="URL to GhidraMCP HTTP plugin")
+    bgraph_parser.add_argument("--decompiled", type=Path, help="JSON or C code file of decompiled functions")
+    bgraph_parser.add_argument("--mermaid", action="store_true", help="output raw Mermaid flowchart syntax")
+    bgraph_parser.add_argument("--json", action="store_true")
+    bgraph_parser.set_defaults(handler=command_behavioral_graph)
 
     export_parser = subparsers.add_parser("export", help="export a portable project directory")
     export_parser.add_argument("project", type=Path)

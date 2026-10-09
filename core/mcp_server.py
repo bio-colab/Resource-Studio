@@ -263,6 +263,34 @@ def create_mcp_server(
         return report.to_dict()
 
     @server.tool()
+    def generate_resource_behavior_graph(
+        file_path: str,
+        ghidra_url: str | None = None,
+        decompiled_sources_json: str | None = None,
+    ) -> dict[str, Any]:
+        """Generate a factual, evidence-backed directed graph connecting PE resources to code behavior.
+
+        Traces: Win32 Resource -> Code Reference / Invocation -> DialogProc / WndProc -> Control ID ->
+        WM_COMMAND message branch -> Called Function Handler -> Secondary Resources read downstream.
+        Provides concrete evidence records and confidence levels for every link.
+
+        Args:
+            file_path: Path to the Windows PE binary to analyze.
+            ghidra_url: Optional base URL to a running GhidraMCP plugin instance (default: None).
+            decompiled_sources_json: Optional JSON mapping function RVAs/names to decompiled C pseudocode.
+        """
+        import json
+        from .behavioral_graph import build_resource_behavior_graph
+
+        dec_sources = json.loads(decompiled_sources_json) if decompiled_sources_json else None
+        graph = build_resource_behavior_graph(
+            pe_path=file_path,
+            ghidra_url=ghidra_url,
+            decompiled_sources=dec_sources,
+        )
+        return graph.to_dict()
+
+    @server.tool()
     def analyze_dialog(file_path: str, dialog_name: str | int, language: int | str | None = None) -> dict[str, Any]:
         """Parse and analyze a Win32 DIALOG/DIALOGEX template, reporting controls, DLU dimensions, and text clipping risks.
 
