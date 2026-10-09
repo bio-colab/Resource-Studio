@@ -28,6 +28,65 @@ class ControlBehaviorMapping:
         }
 
 
+_VALID_PARAM_VARS = {
+    "wparam", "param_1", "param_2", "param_3", "param_4",
+    "id", "wid", "controlid", "lparam", "a1", "a2", "a3", "a4", "loword"
+}
+
+
+def _parse_int_constant(token: str) -> int | None:
+    s = re.sub(r"[uUlL]+$", "", token.strip())
+    try:
+        return int(s, 0)
+    except ValueError:
+        return None
+
+
+def _line_matches_control(line: str, cid: int) -> bool:
+    clean_line = re.sub(r"//.*$|/\*.*?\*/", "", line).strip()
+    if not clean_line:
+        return False
+
+    # Match switch case statements: case <const>:
+    case_match = re.search(r"\bcase\s*\(?\s*(0x[0-9a-fA-F]+[uUlL]*|\d+[uUlL]*)\s*\)?\s*:", clean_line)
+    if case_match:
+        val = _parse_int_constant(case_match.group(1))
+        if val is not None and val == cid:
+            return True
+
+    # Match structured equality comparisons around ==
+    for comp_match in re.finditer(r"([^\n;{}]+?)\s*==\s*([^\n;{}]+)", clean_line):
+        lhs, rhs = comp_match.group(1).strip(), comp_match.group(2).strip()
+
+        # Check lhs constant == cid and rhs references valid message parameter variable
+        lhs_nums = [_parse_int_constant(tok) for tok in re.findall(r"\b(?:0x[0-9a-fA-F]+|\d+)[uUlL]*\b", lhs)]
+        rhs_ids = {tok.lower() for tok in re.findall(r"\b[a-zA-Z_][a-zA-Z0-9_]*\b", rhs)}
+        if any(v == cid for v in lhs_nums if v is not None) and (rhs_ids & _VALID_PARAM_VARS):
+            return True
+
+        # Check rhs constant == cid and lhs references valid message parameter variable
+        rhs_nums = [_parse_int_constant(tok) for tok in re.findall(r"\b(?:0x[0-9a-fA-F]+|\d+)[uUlL]*\b", rhs)]
+        lhs_ids = {tok.lower() for tok in re.findall(r"\b[a-zA-Z_][a-zA-Z0-9_]*\b", lhs)}
+        if any(v == cid for v in rhs_nums if v is not None) and (lhs_ids & _VALID_PARAM_VARS):
+            return True
+
+    return False
+
+
+def _extract_control_snippet(lines: list[str], start_index: int, max_lines: int = 12) -> str | None:
+    snippet: list[str] = []
+    for j in range(start_index, min(len(lines), start_index + max_lines)):
+        stripped = lines[j].strip()
+        # Stop before appending if encountering next case/default branch or closing brace
+        if j > start_index and re.match(r"^(?:case\b|default\b|\})", stripped):
+            break
+        snippet.append(lines[j].rstrip())
+        # Stop after appending terminal flow statements
+        if j > start_index and any(k in stripped for k in ("break;", "return;", "return ")):
+            break
+    return "\n".join(snippet) if snippet else None
+
+
 class GhidraBridge:
     """HTTP client bridge communicating with a running GhidraMCP server plugin."""
 
@@ -94,34 +153,17 @@ class GhidraBridge:
             cid = ctrl.get("controlId") or ctrl.get("id") or 0
             label = str(ctrl.get("title") or ctrl.get("class") or f"Control_{cid}")
 
-            val_pat = rf"(?:{cid}|0x0*{cid:x}|0x0*{cid:X})[uUlL]*\b"
-            var_pat = r"(?:LOWORD|wParam|param_[1-4]|id|wId|controlId|lParam|a[1-4])"
-
-            patterns = [
-                rf"case\s*\(?\s*{val_pat}\s*\)?\s*:",
-                rf"{var_pat}.*?==\s*{val_pat}",
-                rf"{val_pat}\s*==.*?{var_pat}",
-            ]
-
             handler_found = False
             matched_branch = None
-            snippet_lines: list[str] = []
+            snippet: str | None = None
 
             for i, line in enumerate(lines):
-                for pat in patterns:
-                    if re.search(pat, line):
-                        handler_found = True
-                        matched_branch = line.strip()
-                        # Capture code block until break, return, next case, or up to 10 lines
-                        for j in range(i, min(len(lines), i + 10)):
-                            snippet_lines.append(lines[j].rstrip())
-                            if j > i and any(k in lines[j] for k in ("break;", "return;", "case ", "default:")):
-                                break
-                        break
-                if handler_found:
+                if _line_matches_control(line, int(cid)):
+                    handler_found = True
+                    matched_branch = line.strip()
+                    snippet = _extract_control_snippet(lines, i)
                     break
 
-            snippet = "\n".join(snippet_lines) if snippet_lines else None
             results.append(
                 ControlBehaviorMapping(
                     control_id=int(cid),

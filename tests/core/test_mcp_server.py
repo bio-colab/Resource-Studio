@@ -318,6 +318,49 @@ def test_tool_type_coercion_and_signature_tools() -> None:
         matched_ids = {m["controlId"] for m in corr_res["mappings"] if m["handlerFound"]}
         assert 8 in matched_ids
 
+        # Test false positive rejection (grid == 8, 108 == id, case 108)
+        trap_code = """
+        if (grid == 8) {
+            Ignored();
+        } else if (108 == id) {
+            Ignored2();
+        }
+        case 108:
+            Ignored3();
+        """
+        _, trap_res = await server.call_tool(
+            "correlate_dialog_behavior",
+            {
+                "file_path": str(FIXTURE_HEAVY),
+                "dialog_name": 201,
+                "decompiled_code": trap_code,
+            },
+        )
+        trap_matched = {m["controlId"] for m in trap_res["mappings"] if m["handlerFound"]}
+        assert 8 not in trap_matched
+
+        # Test snippet does not leak next case statement
+        snippet_test_code = """
+        case 8:
+            DoPrimary();
+            break;
+        case 9:
+            DoSecondary();
+            break;
+        """
+        _, snip_res = await server.call_tool(
+            "correlate_dialog_behavior",
+            {
+                "file_path": str(FIXTURE_HEAVY),
+                "dialog_name": 201,
+                "decompiled_code": snippet_test_code,
+            },
+        )
+        m8 = next(m for m in snip_res["mappings"] if m["controlId"] == 8)
+        assert m8["handlerFound"] is True
+        assert "case 9:" not in m8["codeSnippet"]
+        assert "DoPrimary();" in m8["codeSnippet"]
+
         # Test strip_pe_signature tool
         signed_src = ROOT / "tests" / "fixtures" / "mingw_x64_resource_heavy_test_signed.exe"
         with tempfile.TemporaryDirectory() as td:
