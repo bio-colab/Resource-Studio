@@ -191,7 +191,8 @@ class DialogResource:
             extra_size = reader.word()
             creation_data = reader.take(extra_size)
             controls.append(DialogControl(control_id, cx, cy, cw, ch, control_style, control_exstyle, class_name, control_title, creation_data, control_help))
-        if reader.offset != len(data):
+        remaining = data[reader.offset:]
+        if remaining and (len(remaining) > 3 or any(b != 0 for b in remaining)):
             raise DialogResourceError("trailing bytes after dialog resource")
         return cls(x, y, width, height, style, exstyle, title, menu, window_class, font_size, font_name, font_weight, font_italic, font_charset, controls, extended, help_id, version)
 

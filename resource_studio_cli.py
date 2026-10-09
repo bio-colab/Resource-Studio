@@ -148,6 +148,36 @@ def command_recipe(args: argparse.Namespace) -> int:
     return 0
 
 
+def command_mcp(args: argparse.Namespace) -> int:
+    from core.mcp_server import run_server
+
+    run_server(transport=args.transport, host=args.host, port=args.port)
+    return 0
+
+
+def command_xref(args: argparse.Namespace) -> int:
+    from core.xref_scanner import scan_pe_xrefs
+
+    report = scan_pe_xrefs(args.input)
+    _print(report.to_dict(), args.json)
+    return 0
+
+
+def command_ghidra(args: argparse.Namespace) -> int:
+    from core.ghidra_bridge import GhidraBridge
+
+    bridge = GhidraBridge(base_url=args.url)
+    if args.action == "status":
+        _print(bridge.check_connection(), args.json)
+        return 0
+    if args.action == "decompile":
+        if not args.target:
+            raise ValueError("ghidra decompile requires TARGET symbol or address")
+        _print(bridge.decompile_function(args.target), args.json)
+        return 0
+    return 0
+
+
 def command_export(args: argparse.Namespace) -> int:
     from core.project import Project
 
@@ -846,6 +876,24 @@ def parser() -> argparse.ArgumentParser:
     recipe_parser.add_argument("--output", required=True, type=Path, help="output recipe dir (for export) or output PE file (for apply)")
     recipe_parser.add_argument("--json", action="store_true")
     recipe_parser.set_defaults(handler=command_recipe)
+
+    mcp_parser = subparsers.add_parser("mcp", help="run Resource Studio Model Context Protocol (MCP) server")
+    mcp_parser.add_argument("--transport", choices=("stdio", "sse"), default="stdio", help="MCP transport protocol (default: stdio)")
+    mcp_parser.add_argument("--host", default="127.0.0.1", help="host to bind for SSE transport (default: 127.0.0.1)")
+    mcp_parser.add_argument("--port", type=int, default=8000, help="port to listen on for SSE transport (default: 8000)")
+    mcp_parser.set_defaults(handler=command_mcp)
+
+    xref_parser = subparsers.add_parser("xref", help="scan code sections for resource cross-references and dead resources")
+    xref_parser.add_argument("input", type=Path, help="PE file to scan")
+    xref_parser.add_argument("--json", action="store_true")
+    xref_parser.set_defaults(handler=command_xref)
+
+    ghidra_parser = subparsers.add_parser("ghidra", help="interact with GhidraMCP bridge")
+    ghidra_parser.add_argument("action", choices=("status", "decompile"), help="action to perform")
+    ghidra_parser.add_argument("target", nargs="?", help="target symbol or address for decompile")
+    ghidra_parser.add_argument("--url", default="http://127.0.0.1:8080", help="GhidraMCP server URL (default: http://127.0.0.1:8080)")
+    ghidra_parser.add_argument("--json", action="store_true")
+    ghidra_parser.set_defaults(handler=command_ghidra)
     return root
 
 

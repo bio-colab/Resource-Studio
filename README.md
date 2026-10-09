@@ -40,6 +40,9 @@
 | **كشف تسريب مسار PDB (Binary Forensics)** | ✅ **كشف وتنبيه ونسخ فوري** | ❌ لا يوجد | ❌ عرض فقط | ❌ عرض فقط |
 | **فحص تراكب الـ PE (Trailing Overlay Inspector)** | ✅ **حماية الحمولات الإضافية** | ❌ لا يوجد | ⚠️ جزئي | ⚠️ جزئي |
 | **نظام التباين اللوني القياسي (WCAG AAA)** | ✅ **تباين يتجاوز 15:1** | ❌ واجهة ويندوز قديمة | ❌ واجهة كلاسيكية | ❌ واجهة كلاسيكية |
+| **خادم الذكاء الاصطناعي (FastMCP Server)** | ✅ **12 أداة مدمجة لـ Claude و Cursor** | ❌ لا يوجد | ❌ لا يوجد | ❌ لا يوجد |
+| **محرك المراجع المتقاطعة (PE XRef Engine)** | ✅ **كشف تلقائي للموارد الميتة بالكود** | ❌ لا يوجد | ❌ لا يوجد | ❌ لا يوجد |
+| **جسر Ghidra وفهم سلوك الحوارات** | ✅ **ربط عناصر الواجهة بـ DialogProc** | ❌ لا يوجد | ❌ لا يوجد | ❌ لا يوجد |
 | **دعم الأنظمة المشتركة (Cross-Platform CLI)** | ✅ **Linux & Windows CLI** | ❌ Windows فقط | ❌ Windows فقط | ❌ Windows فقط |
 
 ---
@@ -94,6 +97,34 @@ python resource_studio_cli.py recipe export original.dll modified.dll --output .
 
 # تطبيق الوصفة آلياً في خطوط الـ CI/CD على أي ملف هدف
 python resource_studio_cli.py recipe apply target.dll ./my-recipe/recipe.json --output patched.dll --json
+```
+
+### 6. خادم الذكاء الاصطناعي القياسي (ResourceStudio FastMCP Server)
+يتضمن المشروع خادماً مدمجاً لبروتوكول **Model Context Protocol (MCP)** مبنياً بـ FastMCP، يتيح لوكلاء الذكاء الاصطناعي (Claude Desktop, Cursor, Antigravity) تشريح وتعديل الموارد برمجياً وبأمان مطلق عبر 12 أداة متخصصة وموجهين أذكياء (Prompts):
+```bash
+# تشغيل خادم MCP عبر stdio
+python resource_studio_cli.py mcp --transport stdio
+
+# أو كخادم شبكي عبر SSE / HTTP
+python resource_studio_cli.py mcp --transport sse --host 127.0.0.1 --port 8000
+```
+وثائق التكامل الكاملة متوفرة في [`docs/MCP-ARCHITECTURE.md`](docs/MCP-ARCHITECTURE.md).
+
+### 7. محرك المراجع المتقاطعة وكشف الموارد الميتة (Native PE XRef Engine)
+أول محرر موارد يمتلك محرك فحص كود داخلي (مدعوم بمفكك Capstone) يربط بين كود قسم `.text` وموارد `.rsrc`:
+* **كشف المراجع المباشرة:** مسح تعليمات الآلة (`push ID`, `mov edx, ID`) ورصد عناوين الاستدعاء الدقيقة (VAs/RVAs).
+* **كشف الموارد الميتة (Dead/Orphaned Resources):** تحديد الموارد غير المستدعاة نهائياً لتنظيف وتقليص حجم البرمجيات.
+* **رصد الحمولات المخفية (Concealed Payloads):** تمييز موارد `RCDATA` الضخمة غير المستدعاة بدوال Win32 المعتادة.
+```bash
+python resource_studio_cli.py xref target.exe --json
+```
+
+### 8. جسر Ghidra وفهم سلوك الحوارات (GhidraMCP Bridge & DialogProc)
+تكامل سلس مع بيئة **Ghidra** الرائدة للهندسة العكسية لربط عناصر واجهة الحوار بالكود المنفذ لها:
+* ربط نقرات الأزرار (`IDOK`, `IDCANCEL`, معرّفات الأزرار المخصصة) بتفريعات `WM_COMMAND` داخل دالة `DialogProc`.
+* فك التشفير السلوكي للواجهة من مجرد أبعاد هندسية إلى فهم منطقي شامل.
+```bash
+python resource_studio_cli.py ghidra status --json
 ```
 
 ---
