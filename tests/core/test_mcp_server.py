@@ -189,6 +189,85 @@ def test_tool_recipe_export_and_apply() -> None:
     asyncio.run(_run())
 
 
+def test_tool_inspect_pe_relocations() -> None:
+    async def _run() -> None:
+        server = create_mcp_server()
+        # Default: compact summary
+        _, insp_default = await server.call_tool("inspect_pe", {"file_path": str(FIXTURE_SAMPLE)})
+        assert "relocationsSummary" in insp_default
+        assert "relocations" not in insp_default
+        assert insp_default["relocationsSummary"]["blockCount"] >= 1
+        assert insp_default["relocationsSummary"]["totalEntries"] >= 1
+
+        # Explicit True: full array
+        _, insp_full = await server.call_tool("inspect_pe", {"file_path": str(FIXTURE_SAMPLE), "include_relocations": True})
+        assert "relocations" in insp_full
+        assert "relocationsSummary" not in insp_full
+        assert len(insp_full["relocations"]) == insp_default["relocationsSummary"]["blockCount"]
+
+    asyncio.run(_run())
+
+
+def test_tool_extract_resource_large_payload() -> None:
+    async def _run() -> None:
+        server = create_mcp_server()
+        with tempfile.TemporaryDirectory() as td:
+            large_pe = Path(td) / "large.dll"
+            large_data = b"<!--" + b"X" * (5 * 1024 * 1024 + 64) + b"-->"
+            LiefPEWriter().replace_resource(
+                FIXTURE_SAMPLE,
+                large_pe,
+                "MANIFEST",
+                1,
+                1033,
+                large_data,
+            )
+            # Test without output_path: should return status="exceeds_inline_limit" and notice
+            _, res = await server.call_tool(
+                "extract_resource",
+                {
+                    "file_path": str(large_pe),
+                    "resource_type": "MANIFEST",
+                    "resource_name": "1",
+                },
+            )
+            assert res["status"] == "exceeds_inline_limit"
+            assert res["base64"] is None
+            assert "exceeds 5 MB inline limit" in res["notice"]
+
+            # Test with output_path: should write to disk and return status="written_to_disk"
+            out_file = Path(td) / "large_extracted.bin"
+            _, res_disk = await server.call_tool(
+                "extract_resource",
+                {
+                    "file_path": str(large_pe),
+                    "resource_type": "MANIFEST",
+                    "resource_name": "1",
+                    "output_path": str(out_file),
+                },
+            )
+            assert res_disk["status"] == "written_to_disk"
+            assert out_file.is_file()
+            assert out_file.stat().st_size == len(large_data)
+
+    asyncio.run(_run())
+
+
+def test_tool_scan_resource_xrefs_cap() -> None:
+    async def _run() -> None:
+        server = create_mcp_server()
+        _, xref_res = await server.call_tool(
+            "scan_resource_xrefs",
+            {"file_path": str(FIXTURE_HEAVY), "max_references_per_resource": 2},
+        )
+        assert "resources" in xref_res
+        for r in xref_res["resources"]:
+            assert len(r["references"]) <= 2
+            assert "hasMoreReferences" in r
+
+    asyncio.run(_run())
+
+
 def test_cli_mcp_invocation() -> None:
     res = subprocess.run(
         [sys.executable, str(ROOT / "resource_studio_cli.py"), "mcp", "--help"],
@@ -203,12 +282,15 @@ def test_cli_mcp_invocation() -> None:
 def main() -> None:
     test_server_registration()
     test_tool_list_and_inspect_pe()
+    test_tool_inspect_pe_relocations()
     test_tool_validate_and_security()
     test_tool_extract_and_generate_code()
+    test_tool_extract_resource_large_payload()
+    test_tool_scan_resource_xrefs_cap()
     test_tool_diff_and_dialog_analysis()
     test_tool_recipe_export_and_apply()
     test_cli_mcp_invocation()
-    print("test_mcp_server: all 7 test suites passed successfully!")
+    print("test_mcp_server: all 10 test suites passed successfully!")
 
 
 if __name__ == "__main__":

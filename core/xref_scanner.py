@@ -68,7 +68,8 @@ class ResourceXRef:
     status: str  # "REFERENCED", "DEAD_ORPHAN", "CONCEALED_SUSPICIOUS"
     references: tuple[CodeReference, ...]
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self, max_references: int = 20) -> dict[str, Any]:
+        refs = self.references if max_references <= 0 else self.references[:max_references]
         return {
             "type": self.resource_type,
             "name": self.name,
@@ -77,7 +78,8 @@ class ResourceXRef:
             "sha256": self.sha256,
             "status": self.status,
             "referenceCount": len(self.references),
-            "references": [ref.to_dict() for ref in self.references[:20]],
+            "references": [ref.to_dict() for ref in refs],
+            "hasMoreReferences": len(self.references) > len(refs),
         }
 
 
@@ -90,14 +92,14 @@ class XRefReport:
     summary: dict[str, int]
     resources: tuple[ResourceXRef, ...]
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self, max_references_per_resource: int = 20) -> dict[str, Any]:
         return {
             "path": self.path,
             "machine": self.machine,
             "hasResourceApis": self.has_resource_apis,
             "importedResourceApis": [dict(api) for api in self.imported_resource_apis],
             "summary": dict(self.summary),
-            "resources": [r.to_dict() for r in self.resources],
+            "resources": [r.to_dict(max_references=max_references_per_resource) for r in self.resources],
         }
 
 

@@ -77,15 +77,16 @@ def create_mcp_server(
         ]
 
     @server.tool()
-    def inspect_pe(file_path: str) -> dict[str, Any]:
+    def inspect_pe(file_path: str, include_relocations: bool = False) -> dict[str, Any]:
         """Inspect detailed PE binary structure including architecture, sections, imports, exports, and debug/PDB directories.
 
         Args:
             file_path: Path to the Windows PE binary to inspect.
+            include_relocations: If true, include the full base relocations entry array (can be large). Defaults to false with summary counts.
         """
         path = Path(file_path).expanduser().resolve()
         report = PEInspector.inspect(path)
-        return report.to_dict()
+        return report.to_dict(include_relocations=include_relocations)
 
     @server.tool()
     def validate_pe(file_path: str, strict: bool = False) -> dict[str, Any]:
@@ -156,9 +157,16 @@ def create_mcp_server(
             out.write_bytes(data)
             written_path = str(out)
 
-        b64_content = base64.b64encode(data).decode("ascii") if len(data) <= 5 * 1024 * 1024 else None
+        exceeds_limit = len(data) > 5 * 1024 * 1024
+        b64_content = None if exceeds_limit else base64.b64encode(data).decode("ascii")
+        status = "written_to_disk" if written_path else ("exceeds_inline_limit" if exceeds_limit else "inline_base64")
+        notice = None
+        if exceeds_limit and not written_path:
+            mb_size = round(len(data) / (1024 * 1024), 2)
+            notice = f"Resource size ({mb_size} MB) exceeds 5 MB inline limit. Provide 'output_path' to save to disk."
 
-        return {
+        result_payload: dict[str, Any] = {
+            "status": status,
             "type": target.resource_type,
             "name": target.name,
             "language": target.language,
@@ -167,6 +175,9 @@ def create_mcp_server(
             "outputPath": written_path,
             "base64": b64_content,
         }
+        if notice:
+            result_payload["notice"] = notice
+        return result_payload
 
     @server.tool()
     def diff_pe_resources(left_path: str, right_path: str, typed: bool = False) -> dict[str, Any]:
@@ -391,17 +402,18 @@ def create_mcp_server(
         }
 
     @server.tool()
-    def scan_resource_xrefs(file_path: str) -> dict[str, Any]:
+    def scan_resource_xrefs(file_path: str, max_references_per_resource: int = 20) -> dict[str, Any]:
         """Scan PE code sections and import table to establish code-to-resource cross references, identifying dead/orphaned resources and code call sites.
 
         Args:
             file_path: Path to the Windows PE binary to analyze.
+            max_references_per_resource: Maximum number of code reference call sites to return per resource (default 20).
         """
         path = Path(file_path).expanduser().resolve()
         from .xref_scanner import scan_pe_xrefs
 
         report = scan_pe_xrefs(path)
-        return report.to_dict()
+        return report.to_dict(max_references_per_resource=max_references_per_resource)
 
     @server.tool()
     def correlate_dialog_behavior(

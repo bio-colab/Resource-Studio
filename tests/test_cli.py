@@ -164,6 +164,21 @@ def main() -> None:
         assert recipe_payload["status"] == "ok"
         assert recipe_payload["operationCount"] == 1
         assert (recipe_out / "recipe.json").is_file()
+
+        # Structured JSON error handling test
+        nonexistent = temporary_path / "does_not_exist.dll"
+        err_res = run_cli("list", str(nonexistent), "--json")
+        assert err_res.returncode == 2
+        err_payload = json.loads(err_res.stdout)
+        assert err_payload["status"] == "error"
+        assert err_payload["exitCode"] == 2
+        assert "error" in err_payload
+
+        extract_err = run_cli("extract", str(FIXTURE), "--type", "NONEXISTENT", "--name", "999", "--output", str(temporary_path / "out.bin"), "--json")
+        assert extract_err.returncode == 2
+        extract_err_payload = json.loads(extract_err.stdout)
+        assert extract_err_payload["status"] == "error"
+        assert "resource was not found" in extract_err_payload["error"]
     print("cli-tests: passed")
 
 

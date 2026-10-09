@@ -29,8 +29,8 @@ class PEInspectorReport:
     debug: tuple[dict[str, Any], ...]
     warnings: tuple[str, ...]
 
-    def to_dict(self) -> dict[str, Any]:
-        return {
+    def to_dict(self, include_relocations: bool = True) -> dict[str, Any]:
+        data: dict[str, Any] = {
             "path": self.path,
             "sha256": self.sha256,
             "size": self.size,
@@ -43,11 +43,19 @@ class PEInspectorReport:
             "sections": [dict(item) for item in self.sections],
             "imports": [dict(item) for item in self.imports],
             "exports": [dict(item) for item in self.exports],
-            "relocations": [dict(item) for item in self.relocations],
             "tls": dict(self.tls) if self.tls else None,
             "debug": [dict(item) for item in self.debug],
             "warnings": list(self.warnings),
         }
+        if include_relocations:
+            data["relocations"] = [dict(item) for item in self.relocations]
+        else:
+            total_entries = sum(len(block.get("entries", [])) for block in self.relocations)
+            data["relocationsSummary"] = {
+                "blockCount": len(self.relocations),
+                "totalEntries": total_entries,
+            }
+        return data
 
 
 class PEInspector:

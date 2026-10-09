@@ -932,10 +932,18 @@ def main(argv: list[str] | None = None) -> int:
             telemetry.set("exitCode", result)
             return result
     except (OSError, ValueError, KeyError, RuntimeError) as exc:
-        print(f"error: {exc}", file=sys.stderr)
+        is_json = getattr(arguments, "json", False) or (argv is not None and "--json" in argv) or "--json" in sys.argv
+        if is_json:
+            print(json.dumps({"status": "error", "error": str(exc), "exitCode": 2}, ensure_ascii=False, indent=2))
+        else:
+            print(f"error: {exc}", file=sys.stderr)
         return 2
     except Exception as exc:
-        print(f"error: unexpected failure: {exc}", file=sys.stderr)
+        is_json = getattr(arguments, "json", False) or (argv is not None and "--json" in argv) or "--json" in sys.argv
+        if is_json:
+            print(json.dumps({"status": "error", "error": f"unexpected failure: {exc}", "exitCode": 2}, ensure_ascii=False, indent=2))
+        else:
+            print(f"error: unexpected failure: {exc}", file=sys.stderr)
         return 2
 
 
