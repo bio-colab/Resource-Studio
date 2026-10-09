@@ -235,6 +235,34 @@ def create_mcp_server(
         }
 
     @server.tool()
+    def diff_pe_behavior(
+        old_path: str,
+        new_path: str,
+        decompiled_old_json: str | None = None,
+        decompiled_new_json: str | None = None,
+    ) -> dict[str, Any]:
+        """Perform semantic and behavioral version comparison between two Windows PE binaries.
+
+        Matches equivalent functions across binaries even if their addresses shifted or constants
+        changed, extracts fine-grained changes in Dialogs, Menus, Controls, and Strings, and establishes
+        causal links explaining what code change caused each resource difference.
+
+        Args:
+            old_path: Path to the original/baseline Windows PE binary (.exe, .dll).
+            new_path: Path to the modified/new version Windows PE binary (.exe, .dll).
+            decompiled_old_json: Optional JSON string mapping function RVAs/names to decompiled C pseudocode for old PE.
+            decompiled_new_json: Optional JSON string mapping function RVAs/names to decompiled C pseudocode for new PE.
+        """
+        import json
+        from .behavioral_diff import compare_pe_behavior
+
+        dec_old = json.loads(decompiled_old_json) if decompiled_old_json else None
+        dec_new = json.loads(decompiled_new_json) if decompiled_new_json else None
+
+        report = compare_pe_behavior(old_path, new_path, decompiled_old=dec_old, decompiled_new=dec_new)
+        return report.to_dict()
+
+    @server.tool()
     def analyze_dialog(file_path: str, dialog_name: str | int, language: int | str | None = None) -> dict[str, Any]:
         """Parse and analyze a Win32 DIALOG/DIALOGEX template, reporting controls, DLU dimensions, and text clipping risks.
 

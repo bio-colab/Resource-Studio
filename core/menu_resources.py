@@ -67,11 +67,29 @@ class MenuResource:
         if len(data) < 4:
             raise MenuResourceError("menu resource header is truncated")
         version, header_size = struct.unpack_from("<HH", data, 0)
-        if version != 0 or header_size < 4 or header_size > len(data):
+        if version != 0 or header_size > len(data):
             raise MenuResourceError("unsupported menu resource header")
-        items, offset = _parse_level(data, header_size)
-        if offset != len(data):
-            raise MenuResourceError("trailing bytes after menu resource")
+
+        items = None
+        if header_size == 0:
+            try:
+                items, _ = _parse_standard_win32_level(data, 4)
+            except Exception:
+                items = None
+
+        if items is None:
+            offset_start = header_size if header_size >= 4 else 4
+            try:
+                items, offset = _parse_level(data, offset_start)
+                if offset != len(data):
+                    items = None
+            except Exception:
+                items = None
+
+        if items is None:
+            # Fallback to standard Win32 parser
+            items, _ = _parse_standard_win32_level(data, 4)
+
         menu = cls(items, version, header_size)
         report = menu.validate()
         if report["errors"]:
@@ -87,7 +105,7 @@ class MenuResource:
     def validate(self) -> dict[str, object]:
         errors: list[str] = []
         warnings: list[str] = []
-        if self.version != 0 or self.header_size != 4:
+        if self.version != 0 or self.header_size not in (0, 4):
             errors.append("only standard version-0 menus are supported")
         if not self.items:
             errors.append("menu must contain at least one item")
@@ -209,6 +227,32 @@ def _restore_item(items: list[MenuItem], item: MenuItem) -> None:
 
 def _contains_item(item: MenuItem, item_id: int) -> bool:
     return item.item_id == item_id or any(_contains_item(child, item_id) for child in item.children)
+
+
+def _parse_standard_win32_level(data: bytes, offset: int) -> tuple[list[MenuItem], int]:
+    items: list[MenuItem] = []
+    while offset < len(data):
+        if offset + 2 > len(data):
+            break
+        options = struct.unpack_from("<H", data, offset)[0]
+        offset += 2
+        is_popup = bool(options & MF_POPUP)
+        is_end = bool(options & MF_END)
+        clean_flags = options & ~MF_END
+        item_id = 0
+        if not is_popup:
+            if offset + 2 > len(data):
+                break
+            item_id = struct.unpack_from("<H", data, offset)[0]
+            offset += 2
+        text, offset = _read_wstring(data, offset)
+        children: list[MenuItem] = []
+        if is_popup:
+            children, offset = _parse_standard_win32_level(data, offset)
+        items.append(MenuItem(item_id, text, clean_flags, children))
+        if is_end:
+            break
+    return items, offset
 
 
 def _parse_level(data: bytes, offset: int) -> tuple[list[MenuItem], int]:

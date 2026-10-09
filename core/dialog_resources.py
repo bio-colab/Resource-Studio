@@ -37,6 +37,10 @@ class DialogControl:
     help_id: int = 0
 
     @property
+    def id(self) -> int:
+        return self.control_id
+
+    @property
     def class_label(self) -> str:
         if isinstance(self.class_name, int):
             return STANDARD_CONTROL_CLASSES.get(self.class_name, f"ORDINAL(0x{self.class_name:04X})")
@@ -99,6 +103,14 @@ class DialogResource:
     extended: bool = False
     help_id: int = 0
     version: int = 1
+
+    @property
+    def cx(self) -> int:
+        return self.width
+
+    @property
+    def cy(self) -> int:
+        return self.height
 
     def clipping_warnings(self) -> list[str]:
         warnings = []

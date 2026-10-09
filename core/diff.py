@@ -122,10 +122,10 @@ def _typed_diff_nodes(old: ResourceEntry, new: ResourceEntry) -> list[DiffNode] 
             nodes = []
             if old_d.title != new_d.title:
                 nodes.append(DiffNode("title", "property", "modified", before={"value": old_d.title}, after={"value": new_d.title}))
-            if (old_d.x, old_d.y, old_d.cx, old_d.cy) != (new_d.x, new_d.y, new_d.cx, new_d.cy):
-                nodes.append(DiffNode("geometry", "property", "modified", before={"rect": [old_d.x, old_d.y, old_d.cx, old_d.cy]}, after={"rect": [new_d.x, new_d.y, new_d.cx, new_d.cy]}))
-            old_ctls = {c.id: c for c in old_d.controls}
-            new_ctls = {c.id: c for c in new_d.controls}
+            if (old_d.x, old_d.y, old_d.width, old_d.height) != (new_d.x, new_d.y, new_d.width, new_d.height):
+                nodes.append(DiffNode("geometry", "property", "modified", before={"rect": [old_d.x, old_d.y, old_d.width, old_d.height]}, after={"rect": [new_d.x, new_d.y, new_d.width, new_d.height]}))
+            old_ctls = {c.control_id: c for c in old_d.controls}
+            new_ctls = {c.control_id: c for c in new_d.controls}
             for cid in sorted(set(old_ctls) | set(new_ctls)):
                 oc = old_ctls.get(cid)
                 nc = new_ctls.get(cid)
@@ -135,6 +135,35 @@ def _typed_diff_nodes(old: ResourceEntry, new: ResourceEntry) -> list[DiffNode] 
                     nodes.append(DiffNode(f"control:{cid}", "control", "removed", before=oc.to_dict()))
                 elif oc.to_dict() != nc.to_dict():
                     nodes.append(DiffNode(f"control:{cid}", "control", "modified", before=oc.to_dict(), after=nc.to_dict()))
+            return nodes or None
+        elif rtype == "MENU":
+            from .menu_resources import MenuResource
+
+            old_m = MenuResource.parse(old.data)
+            new_m = MenuResource.parse(new.data)
+
+            def flatten_menu(items: list[Any], prefix: str = "") -> dict[str | int, dict[str, Any]]:
+                flat: dict[str | int, dict[str, Any]] = {}
+                for it in items:
+                    path = f"{prefix}/{it.text}" if prefix else it.text
+                    key = it.item_id if (it.item_id != 0 or not it.children) else f"item_{path}"
+                    flat[key] = {"id": it.item_id, "text": it.text, "flags": it.flags, "path": path}
+                    if it.children:
+                        flat.update(flatten_menu(it.children, path))
+                return flat
+
+            old_items = flatten_menu(old_m.items)
+            new_items = flatten_menu(new_m.items)
+            nodes = []
+            for k in sorted(set(old_items) | set(new_items), key=str):
+                oi = old_items.get(k)
+                ni = new_items.get(k)
+                if oi is None:
+                    nodes.append(DiffNode(f"menuitem:{k}", "menu-item", "added", after=ni))
+                elif ni is None:
+                    nodes.append(DiffNode(f"menuitem:{k}", "menu-item", "removed", before=oi))
+                elif oi != ni:
+                    nodes.append(DiffNode(f"menuitem:{k}", "menu-item", "modified", before=oi, after=ni))
             return nodes or None
         elif rtype in {"BITMAP", "GROUP_ICON", "GROUP_CURSOR"}:
             kind = "bitmap" if rtype == "BITMAP" else ("icon" if "ICON" in rtype else "cursor")

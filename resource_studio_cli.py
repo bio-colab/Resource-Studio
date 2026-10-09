@@ -26,18 +26,25 @@ def _entry_record(entry: ResourceEntry) -> dict[str, Any]:
     }
 
 
+def _safe_print_str(text: str) -> None:
+    try:
+        print(text)
+    except UnicodeEncodeError:
+        sys.stdout.buffer.write((text + "\n").encode("utf-8", errors="replace"))
+
+
 def _print(payload: Any, as_json: bool) -> None:
     if as_json:
-        print(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True))
+        _safe_print_str(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True))
         return
     if isinstance(payload, list):
         for item in payload:
-            print("\t".join(str(item.get(key, "")) for key in ("type", "name", "language", "size", "sha256")))
+            _safe_print_str("\t".join(str(item.get(key, "")) for key in ("type", "name", "language", "size", "sha256")))
     elif isinstance(payload, dict):
         for key, value in payload.items():
-            print(f"{key}: {value}")
+            _safe_print_str(f"{key}: {value}")
     else:
-        print(payload)
+        _safe_print_str(str(payload))
 
 
 def _diff_payload(left_path: Path, right_path: Path, *, typed: bool = False) -> dict[str, Any]:
@@ -120,7 +127,40 @@ def command_search(args: argparse.Namespace) -> int:
 
 
 def command_diff(args: argparse.Namespace) -> int:
+    if getattr(args, "behavioral", False):
+        from core.behavioral_diff import compare_pe_behavior
+
+        report = compare_pe_behavior(args.left, args.right)
+        if args.json:
+            _print(report.to_dict(), True)
+        else:
+            for line in report.human_summary:
+                _safe_print_str(line)
+        return 0
     _print(_diff_payload(args.left, args.right, typed=bool(getattr(args, "typed", False))), args.json)
+    return 0
+
+
+def command_behavioral_diff(args: argparse.Namespace) -> int:
+    import json
+    from core.behavioral_diff import compare_pe_behavior
+
+    dec_old = None
+    if getattr(args, "decompiled_old", None):
+        p = Path(args.decompiled_old).expanduser().resolve()
+        dec_old = json.loads(p.read_text(encoding="utf-8")) if p.suffix.lower() == ".json" else {0: p.read_text(encoding="utf-8")}
+
+    dec_new = None
+    if getattr(args, "decompiled_new", None):
+        p = Path(args.decompiled_new).expanduser().resolve()
+        dec_new = json.loads(p.read_text(encoding="utf-8")) if p.suffix.lower() == ".json" else {0: p.read_text(encoding="utf-8")}
+
+    report = compare_pe_behavior(args.left, args.right, decompiled_old=dec_old, decompiled_new=dec_new)
+    if args.json:
+        _print(report.to_dict(), True)
+    else:
+        for line in report.human_summary:
+            _safe_print_str(line)
     return 0
 
 
@@ -686,8 +726,17 @@ def parser() -> argparse.ArgumentParser:
     diff_parser.add_argument("left", type=Path)
     diff_parser.add_argument("right", type=Path)
     diff_parser.add_argument("--typed", action="store_true", help="include high-level typed diff for supported resources")
+    diff_parser.add_argument("--behavioral", action="store_true", help="perform deep behavioral and code-to-resource causal diff")
     diff_parser.add_argument("--json", action="store_true")
     diff_parser.set_defaults(handler=command_diff)
+
+    bdiff_parser = subparsers.add_parser("behavioral-diff", help="perform semantic PE version diff and explain resource changes via code")
+    bdiff_parser.add_argument("left", type=Path)
+    bdiff_parser.add_argument("right", type=Path)
+    bdiff_parser.add_argument("--decompiled-old", type=Path, help="JSON or C code file for old binary")
+    bdiff_parser.add_argument("--decompiled-new", type=Path, help="JSON or C code file for new binary")
+    bdiff_parser.add_argument("--json", action="store_true")
+    bdiff_parser.set_defaults(handler=command_behavioral_diff)
 
     export_parser = subparsers.add_parser("export", help="export a portable project directory")
     export_parser.add_argument("project", type=Path)
