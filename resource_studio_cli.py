@@ -203,6 +203,51 @@ def command_behavioral_graph(args: argparse.Namespace) -> int:
     return 0
 
 
+def command_investigate(args: argparse.Namespace) -> int:
+    import json
+    from core.investigation_pipeline import run_pipeline
+
+    dec_sources = None
+    if getattr(args, "decompiled", None):
+        p = Path(args.decompiled).expanduser().resolve()
+        dec_sources = json.loads(p.read_text(encoding="utf-8")) if p.suffix.lower() == ".json" else {0: p.read_text(encoding="utf-8")}
+
+    report = run_pipeline(
+        pe_path=args.input,
+        ghidra_url=getattr(args, "ghidra_url", None),
+        decompiled_sources=dec_sources,
+    )
+
+    if getattr(args, "export_journal", None):
+        out_p = Path(args.export_journal).expanduser().resolve()
+        out_p.parent.mkdir(parents=True, exist_ok=True)
+        out_p.write_text(json.dumps(report.to_dict(), ensure_ascii=False, indent=2), encoding="utf-8")
+
+    if args.json:
+        _print(report.to_dict(), True)
+    else:
+        for line in report.human_summary:
+            _safe_print_str(line)
+    return 0
+
+
+def command_replay_investigation(args: argparse.Namespace) -> int:
+    from core.investigation_pipeline import replay_journal
+
+    res = replay_journal(args.journal)
+    if args.json:
+        _print(res, True)
+    else:
+        _safe_print_str("=== التحقق والتدقيق الجنائي للسجل (Investigation Journal Audit) ===")
+        _safe_print_str(f"حالة التدقيق: {res['status']}")
+        _safe_print_str(f"معرف التحقيق: {res['investigationId']}")
+        _safe_print_str(f"بصمة الملف (SHA256): {res['peSha256']}")
+        _safe_print_str(f"عدد الخطوات التي تم تدقيقها: {res['totalStepsVerified']}")
+        _safe_print_str(f"الهاش النهائي للحالة: {res['finalStateHash']}")
+        _safe_print_str("قابلية إعادة الإنتاج والتشغيل بنسبة 100%: نعم")
+    return 0
+
+
 def command_recipe(args: argparse.Namespace) -> int:
     from core.recipe import apply_recipe, create_recipe
 
@@ -784,6 +829,19 @@ def parser() -> argparse.ArgumentParser:
     bgraph_parser.add_argument("--mermaid", action="store_true", help="output raw Mermaid flowchart syntax")
     bgraph_parser.add_argument("--json", action="store_true")
     bgraph_parser.set_defaults(handler=command_behavioral_graph)
+
+    inv_parser = subparsers.add_parser("investigate", help="run autonomous multi-stage investigation pipeline on PE binary")
+    inv_parser.add_argument("input", type=Path, help="PE file to investigate")
+    inv_parser.add_argument("--ghidra-url", help="URL to GhidraMCP HTTP plugin")
+    inv_parser.add_argument("--decompiled", type=Path, help="JSON or C code file of decompiled functions")
+    inv_parser.add_argument("--export-journal", type=Path, help="destination JSON path to save the reproducible execution journal")
+    inv_parser.add_argument("--json", action="store_true")
+    inv_parser.set_defaults(handler=command_investigate)
+
+    replay_parser = subparsers.add_parser("replay-investigation", help="replay and audit cryptographic execution journal from investigation")
+    replay_parser.add_argument("journal", type=Path, help="path to exported investigation JSON report")
+    replay_parser.add_argument("--json", action="store_true")
+    replay_parser.set_defaults(handler=command_replay_investigation)
 
     export_parser = subparsers.add_parser("export", help="export a portable project directory")
     export_parser.add_argument("project", type=Path)

@@ -291,6 +291,47 @@ def create_mcp_server(
         return graph.to_dict()
 
     @server.tool()
+    def run_automated_investigation(
+        file_path: str,
+        ghidra_url: str | None = None,
+        decompiled_sources_json: str | None = None,
+    ) -> dict[str, Any]:
+        """Execute autonomous multi-stage investigation pipeline on a Windows PE binary.
+
+        Ingests PE structures, triages ambiguities and anomalies (overlay, PDB leaks, dead/concealed resources),
+        formulates scientific hypotheses, gathers targeted evidence from disassembly and Ghidra decompilation,
+        and outputs a verifiable report with an unknowns ledger and cryptographic execution journal.
+
+        Args:
+            file_path: Path to the Windows PE binary to investigate.
+            ghidra_url: Optional base URL to a running GhidraMCP plugin instance (default: None).
+            decompiled_sources_json: Optional JSON string mapping function RVAs/names to decompiled C pseudocode.
+        """
+        import json
+        from .investigation_pipeline import run_pipeline
+
+        dec_sources = json.loads(decompiled_sources_json) if decompiled_sources_json else None
+        report = run_pipeline(
+            pe_path=file_path,
+            ghidra_url=ghidra_url,
+            decompiled_sources=dec_sources,
+        )
+        return report.to_dict()
+
+    @server.tool()
+    def replay_investigation_journal(journal_path: str) -> dict[str, Any]:
+        """Audit and cryptographically replay an exported investigation journal.
+
+        Verifies state hashes across all recorded stages and steps to ensure scientific auditability and reproducibility.
+
+        Args:
+            journal_path: Path to the JSON file containing the exported investigation journal.
+        """
+        from .investigation_pipeline import replay_journal
+
+        return replay_journal(journal_path)
+
+    @server.tool()
     def analyze_dialog(file_path: str, dialog_name: str | int, language: int | str | None = None) -> dict[str, Any]:
         """Parse and analyze a Win32 DIALOG/DIALOGEX template, reporting controls, DLU dimensions, and text clipping risks.
 
