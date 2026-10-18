@@ -3,12 +3,15 @@ from __future__ import annotations
 import hashlib
 import shutil
 import tempfile
+import sys
 from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[2]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 from core.pe_metadata import PEMetadataInspector
 
-
-ROOT = Path(__file__).resolve().parents[2]
 FIXTURE = ROOT / "tests" / "fixtures" / "sample.dll"
 
 
@@ -17,6 +20,8 @@ def main() -> None:
     regular = PEMetadataInspector.inspect(FIXTURE).to_dict()
     assert regular["isMui"] is False
     assert regular["isDotNet"] is False
+    assert regular["hasMuiResource"] is False
+    assert regular["isMuiBase"] is False
     assert regular["resourceSeparation"]["resourceDirectory"] == ".rsrc"
     with tempfile.TemporaryDirectory() as temporary:
         mui_dir = Path(temporary) / "en-US"

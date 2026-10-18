@@ -174,9 +174,19 @@ def classify(path: Path, *, binary: lief.PE.Binary | None = None) -> PEIdentity:
             "level": "info",
             "message": f"PDB Debug Path exposed: {pdb_path}",
         })
+    if meta.is_mui_base:
+        notices.append({
+            "code": "MUI_BASE_EXECUTABLE",
+            "level": "info",
+            "message": f"Windows MUI base executable detected with {len(meta.companion_mui_files)} companion MUI resource files.",
+        })
 
     satellite = {
         "mui": meta.is_mui,
+        "hasMuiResource": meta.has_mui_resource,
+        "isMuiBase": meta.is_mui_base,
+        "companionMuiFiles": list(meta.companion_mui_files),
+        "baseExecutable": meta.base_executable,
         "resourcesDll": path.name.lower().endswith(".resources.dll"),
         "languageHint": meta.language_hint,
     }

@@ -10,6 +10,7 @@ import lief
 
 from .parse_cache import shared_parse
 from .resource_reader import ResourceReader
+from .string_table import StringTableBlock
 
 KNOWN_RESOURCE_APIS: frozenset[str] = frozenset(
     {
@@ -163,9 +164,11 @@ def scan_pe_xrefs(path: Path) -> XRefReport:
     cs = capstone.Cs(capstone.CS_ARCH_X86, mode)
     cs.detail = True
 
-    # 3. Build Resource Target Map (Numeric IDs and String Names)
+    # 3. Build Resource Target Map (Numeric IDs, String Names, and StringTable slots)
     numeric_targets: dict[int, list[Any]] = {}
     string_targets: dict[str, list[Any]] = {}
+    string_id_to_entry: dict[int, list[Any]] = {}
+    entry_to_string_ids: dict[tuple[str, str, int | None], list[int]] = {}
 
     for entry in entries:
         raw_name = str(entry.name)
@@ -174,9 +177,30 @@ def scan_pe_xrefs(path: Path) -> XRefReport:
         else:
             string_targets.setdefault(raw_name.upper(), []).append(entry)
 
+        # Map Win32 STRING table blocks to constituent string IDs
+        if entry.resource_type == "STRING" and raw_name.isdigit():
+            blk_id = int(raw_name)
+            s_ids: list[int] = []
+            try:
+                blk = StringTableBlock.from_bytes(blk_id, entry.data)
+                for idx, text in enumerate(blk.strings):
+                    if text:
+                        sid = blk.first_string_id + idx
+                        s_ids.append(sid)
+                        string_id_to_entry.setdefault(sid, []).append(entry)
+            except Exception:
+                for sid in range((blk_id - 1) * 16 + 1, blk_id * 16 + 1):
+                    s_ids.append(sid)
+                    string_id_to_entry.setdefault(sid, []).append(entry)
+            entry_to_string_ids[entry.key] = s_ids
+
     # 4. Disassemble Code Sections and Collect Immediate Operands
     imagebase = binary.optional_header.imagebase
     immediate_refs: dict[int, list[CodeReference]] = {}
+    string_id_refs: dict[int, list[CodeReference]] = {}
+
+    NOISE_SHIFTS = frozenset({"shr", "shl", "sar", "sal", "ror", "rol", "rcr", "rcl"})
+    NOISE_LOGIC = frozenset({"and", "test", "bt", "bts", "btr", "btc"})
 
     for section in binary.sections:
         if not section.has_characteristic(lief.PE.Section.CHARACTERISTICS.MEM_EXECUTE):
@@ -186,9 +210,16 @@ def scan_pe_xrefs(path: Path) -> XRefReport:
         sec_va = imagebase + sec_rva
 
         for insn in cs.disasm(content, sec_va):
+            mnemonic = insn.mnemonic.lower()
             for op in insn.operands:
                 if op.type == capstone.x86.X86_OP_IMM:
                     imm_val = op.imm & 0xFFFFFFFF
+                    # Filter out shift count operations and small logic masks
+                    if mnemonic in NOISE_SHIFTS:
+                        continue
+                    if imm_val <= 8 and mnemonic in NOISE_LOGIC:
+                        continue
+
                     if imm_val in numeric_targets:
                         ref = CodeReference(
                             address=insn.address,
@@ -198,7 +229,80 @@ def scan_pe_xrefs(path: Path) -> XRefReport:
                         )
                         immediate_refs.setdefault(imm_val, []).append(ref)
 
-    # 5. String References Search
+                    if imm_val in string_id_to_entry:
+                        ref = CodeReference(
+                            address=insn.address,
+                            section=section.name,
+                            mnemonic=f"{insn.mnemonic}:str_id={imm_val}",
+                            operands=insn.op_str,
+                        )
+                        string_id_refs.setdefault(imm_val, []).append(ref)
+
+    # 5. Scan Read-Only Data Sections for Resource & String ID Tables
+    data_table_refs: dict[int, list[CodeReference]] = {}
+    SKIP_DATA_SECTIONS = frozenset({".rsrc", ".reloc", ".pdata", ".xdata", ".CRT", ".tls", ".bss", ".idata"})
+
+    for section in binary.sections:
+        sec_name = section.name
+        if sec_name in SKIP_DATA_SECTIONS or sec_name.startswith("/") or sec_name.startswith(".debug"):
+            continue
+        if section.has_characteristic(lief.PE.Section.CHARACTERISTICS.MEM_DISCARDABLE):
+            continue
+        if not section.has_characteristic(lief.PE.Section.CHARACTERISTICS.MEM_READ):
+            continue
+        if section.has_characteristic(lief.PE.Section.CHARACTERISTICS.MEM_EXECUTE):
+            continue
+
+        sec_bytes = bytes(section.content)
+        sec_rva = section.virtual_address
+
+        # Check numeric targets (IDs >= 100 to prevent small integer false matches in data)
+        for num_id in numeric_targets:
+            if num_id >= 100:
+                dw = num_id.to_bytes(4, "little")
+                pos = 0
+                match_count = 0
+                while match_count < 10:
+                    pos = sec_bytes.find(dw, pos)
+                    if pos == -1:
+                        break
+                    ref = CodeReference(
+                        address=imagebase + sec_rva + pos,
+                        section=section.name,
+                        mnemonic="data_table_ref",
+                        operands=f"DWORD {num_id}",
+                    )
+                    data_table_refs.setdefault(num_id, []).append(ref)
+                    pos += 4
+                    match_count += 1
+
+        # Check string IDs in data tables (only >= 100 to avoid small integer constants)
+        for sid in string_id_to_entry:
+            if sid >= 100:
+                dw = sid.to_bytes(4, "little")
+                pos = sec_bytes.find(dw)
+                if pos != -1:
+                    ref = CodeReference(
+                        address=imagebase + sec_rva + pos,
+                        section=section.name,
+                        mnemonic="data_table_ref",
+                        operands=f"DWORD {sid}",
+                    )
+                    data_table_refs.setdefault(sid, []).append(ref)
+                else:
+                    # Also check 16-bit word in data tables
+                    w = sid.to_bytes(2, "little")
+                    pos = sec_bytes.find(w)
+                    if pos != -1:
+                        ref = CodeReference(
+                            address=imagebase + sec_rva + pos,
+                            section=section.name,
+                            mnemonic="data_table_ref",
+                            operands=f"WORD {sid}",
+                        )
+                        data_table_refs.setdefault(sid, []).append(ref)
+
+    # 6. String References Search
     named_refs: dict[str, list[CodeReference]] = {}
     for name in string_targets:
         hits = _find_string_in_sections(binary, name)
@@ -211,7 +315,7 @@ def scan_pe_xrefs(path: Path) -> XRefReport:
             )
             named_refs.setdefault(name, []).append(ref)
 
-    # 6. Categorize each Resource Entry
+    # 7. Categorize each Resource Entry
     categorized: list[ResourceXRef] = []
     referenced_count = 0
     dead_count = 0
@@ -223,9 +327,16 @@ def scan_pe_xrefs(path: Path) -> XRefReport:
 
         if raw_name.isdigit():
             num_id = int(raw_name)
-            refs = immediate_refs.get(num_id, [])
+            refs = list(immediate_refs.get(num_id, []))
+            refs.extend(data_table_refs.get(num_id, []))
+
+            # Include references to string IDs belonging to this block
+            if entry.resource_type == "STRING":
+                for s_id in entry_to_string_ids.get(entry.key, []):
+                    refs.extend(string_id_refs.get(s_id, []))
+                    refs.extend(data_table_refs.get(s_id, []))
         else:
-            refs = named_refs.get(raw_name.upper(), [])
+            refs = list(named_refs.get(raw_name.upper(), []))
 
         # Classification rule
         if refs:

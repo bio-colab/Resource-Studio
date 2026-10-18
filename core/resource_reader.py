@@ -46,3 +46,24 @@ class ResourceReader:
             and (language is None or entry.language == language)
         ]
 
+    def read_mui_companion_entries(self, language: str | None = None) -> list[ResourceEntry]:
+        """Discovers companion .mui files in language subdirectories and reads their resources."""
+        from .pe_metadata import PEMetadataInspector
+
+        meta = PEMetadataInspector.inspect(self.path)
+        if not meta.companion_mui_files:
+            return []
+
+        companion_entries: list[ResourceEntry] = []
+        for mui_path_str in meta.companion_mui_files:
+            p = Path(mui_path_str)
+            if language is not None and language.lower() not in p.parent.name.lower():
+                continue
+            try:
+                reader = ResourceReader(p)
+                companion_entries.extend(reader.entries)
+            except Exception:
+                pass
+        return companion_entries
+
+

@@ -265,6 +265,18 @@ class AutomatedInvestigator:
                 }
             )
 
+        sat = sec_identity.get("satellite", {})
+        if sat.get("isMuiBase"):
+            companions = sat.get("companionMuiFiles", [])
+            ambiguities.append(
+                {
+                    "type": "MUI_BASE_EXECUTABLE",
+                    "target": "ARCHITECTURE/MUI_BASE",
+                    "details": f"PE delegates localized UI dialogs and text to {len(companions)} companion .mui language files.",
+                    "priority": "LOW",
+                }
+            )
+
         # Check for Unmapped Dialog Controls
         dialog_entries = [e for e in reader.entries if e.resource_type == "DIALOG"]
         for de in dialog_entries:
@@ -363,6 +375,19 @@ class AutomatedInvestigator:
                         confidence_level="LOW",
                     )
                 )
+            elif amb["type"] == "MUI_BASE_EXECUTABLE":
+                hypotheses.append(
+                    InvestigationHypothesis(
+                        id=hyp_id,
+                        title="Decoupled Multilingual User Interface (MUI) Architecture",
+                        target_type="ARCHITECTURE",
+                        target_name=amb["target"],
+                        description="Target PE is a language-neutral base binary delegating localized dialogs/strings to external .mui satellites.",
+                        verdict=HypothesisVerdict.INCONCLUSIVE.value,
+                        confidence=0.5,
+                        confidence_level="HIGH",
+                    )
+                )
 
         self._record_step(
             stage=InvestigationStage.HYPOTHESES,
@@ -453,6 +478,24 @@ class AutomatedInvestigator:
                             verification_rationale="IMAGE_DEBUG_TYPE_CODEVIEW directory contains literal ASCII/UTF-8 path string.",
                         )
                     )
+
+            elif hyp.target_type == "ARCHITECTURE" and "MUI" in hyp.target_name:
+                sat = sec_identity.get("satellite", {})
+                companions = sat.get("companionMuiFiles", [])
+                verdict = HypothesisVerdict.PROVEN
+                confidence = 1.0
+                conf_level = "HIGH"
+                supp_evidence.append(
+                    EvidenceRecord(
+                        source="PE_RESOURCE_DIRECTORY",
+                        address=None,
+                        instruction=None,
+                        code_snippet=None,
+                        confidence=1.0,
+                        confidence_level="HIGH",
+                        verification_rationale=f"PE declares RT_MUI resource and resolves to {len(companions)} companion .mui language files in subdirectories.",
+                    )
+                )
 
             elif hyp.target_type == "RESOURCE" and "CONCEALED" in hyp.title:
                 res_name = hyp.target_name.split("/")[-1]

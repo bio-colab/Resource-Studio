@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -23,6 +23,10 @@ class PEMetadataReport:
     clr_directory: dict[str, Any] | None
     resource_separation: dict[str, Any]
     warnings: tuple[str, ...]
+    has_mui_resource: bool = False
+    is_mui_base: bool = False
+    companion_mui_files: tuple[str, ...] = field(default_factory=tuple)
+    base_executable: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -34,6 +38,10 @@ class PEMetadataReport:
             "clrDirectory": dict(self.clr_directory) if self.clr_directory else None,
             "resourceSeparation": dict(self.resource_separation),
             "warnings": list(self.warnings),
+            "hasMuiResource": self.has_mui_resource,
+            "isMuiBase": self.is_mui_base,
+            "companionMuiFiles": list(self.companion_mui_files),
+            "baseExecutable": self.base_executable,
         }
 
 
@@ -60,6 +68,41 @@ class PEMetadataInspector:
             warnings.append("CLR directory detected; metadata tables are read-only and not decoded by this backend")
         if is_mui and language_hint is None:
             warnings.append("MUI filename does not expose a conventional language directory")
+
+        # Discover MUI resources and companions
+        has_mui_resource = False
+        if getattr(binary, "has_resources", False) and binary.resources is not None:
+            for child in binary.resources.childs:
+                if str(child.name).upper() == "MUI" or child.id == 222:
+                    has_mui_resource = True
+                    break
+
+        companion_mui: list[str] = []
+        base_exe: str | None = None
+
+        if has_mui_resource and not is_mui:
+            is_mui_base = True
+            try:
+                parent = path.parent
+                for sub in parent.iterdir():
+                    if sub.is_dir() and _LANGUAGE_PART.fullmatch(sub.name):
+                        cand = sub / f"{path.name}.mui"
+                        if cand.is_file():
+                            companion_mui.append(str(cand.resolve()))
+            except (OSError, PermissionError):
+                pass
+        elif is_mui:
+            is_mui_base = False
+            try:
+                base_name = path.name[:-4] if path.name.lower().endswith(".mui") else path.stem
+                cand = path.parent.parent / base_name
+                if cand.is_file():
+                    base_exe = str(cand.resolve())
+            except (OSError, PermissionError):
+                pass
+        else:
+            is_mui_base = False
+
         return PEMetadataReport(
             path=str(path),
             is_mui=is_mui,
@@ -73,6 +116,10 @@ class PEMetadataInspector:
                 "writeSupported": False,
             },
             warnings=tuple(warnings),
+            has_mui_resource=has_mui_resource,
+            is_mui_base=is_mui_base,
+            companion_mui_files=tuple(companion_mui),
+            base_executable=base_exe,
         )
 
 
