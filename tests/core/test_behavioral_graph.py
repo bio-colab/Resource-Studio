@@ -37,8 +37,8 @@ def test_behavioral_graph_structure_and_mermaid() -> None:
     assert d_node is not None
     assert d_node.attributes["type"] == "DIALOG"
 
-    # Check Control 8 node
-    c_node = next((n for n in graph.nodes if n.node_type == "CONTROL" and n.attributes.get("controlId") == 8), None)
+    # Check Control 1001 node
+    c_node = next((n for n in graph.nodes if n.node_type == "CONTROL" and n.attributes.get("controlId") == 1001), None)
     assert c_node is not None
 
     # Check CONTAINS_CONTROL edge
@@ -51,7 +51,7 @@ def test_behavioral_graph_structure_and_mermaid() -> None:
     # Check Mermaid diagram
     assert graph.mermaid_diagram.startswith("flowchart LR")
     assert "res_DIALOG_201" in graph.mermaid_diagram
-    assert "ctrl_201_8" in graph.mermaid_diagram
+    assert "ctrl_201_1001" in graph.mermaid_diagram
 
 
 def test_behavioral_graph_with_decompiled_dialog_proc() -> None:
@@ -62,7 +62,7 @@ def test_behavioral_graph_with_decompiled_dialog_proc() -> None:
         if (uMsg == 0x0111) { // WM_COMMAND
             int id = LOWORD(wParam);
             switch (id) {
-                case 8: {
+                case 1001: {
                     ProcessItem8(hDlg);
                     LoadStringW(g_hInst, 1, buffer, 256);
                     DeleteFileW(L"temp.dat");
@@ -110,8 +110,8 @@ def test_behavioral_graph_with_decompiled_dialog_proc() -> None:
     proc = next((n for n in graph.nodes if n.id == "func:0x1000"), None)
     assert proc is not None
 
-    # Check branch node for Control 8
-    branch = next((n for n in graph.nodes if n.node_type == "BRANCH" and n.attributes.get("controlId") == 8), None)
+    # Check branch node for Control 1001
+    branch = next((n for n in graph.nodes if n.node_type == "BRANCH" and n.attributes.get("controlId") == 1001), None)
     assert branch is not None
 
     # Check DISPATCHES_TO edge
@@ -120,7 +120,7 @@ def test_behavioral_graph_with_decompiled_dialog_proc() -> None:
     assert disp_edge.confidence >= 0.90
     assert disp_edge.confidence_level == "HIGH"
     assert disp_edge.evidence.source == "GHIDRA_DECOMPILER"
-    assert "case 8" in str(disp_edge.evidence.code_snippet)
+    assert "case 1001" in str(disp_edge.evidence.code_snippet)
 
     # Check called handler function
     handler = next((n for n in graph.nodes if "ProcessItem8" in n.label), None)
@@ -134,10 +134,10 @@ def test_behavioral_graph_with_decompiled_dialog_proc() -> None:
     assert len(graph.traces) >= 1
     t = graph.traces[0]
     assert t.resource_id == "DIALOG_201"
-    assert t.control_id == "8"
+    assert t.control_id == "1001"
     assert t.confidence >= 0.90
     assert t.confidence_level == "HIGH"
-    assert any("case 8" in ev for ev in t.evidence_summary)
+    assert any("case 1001" in ev for ev in t.evidence_summary)
 
 
 @pytest.mark.asyncio

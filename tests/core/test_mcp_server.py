@@ -145,7 +145,17 @@ def test_tool_diff_and_dialog_analysis() -> None:
         )
         assert dlg_res["dialogName"] == "201"
         assert dlg_res["controlCount"] == 2
-        assert dlg_res["clippingRiskCount"] >= 1
+        assert dlg_res["clippingRiskCount"] == 0
+        assert "clippingWarnings" in dlg_res
+
+        # If charmap.exe.mui is present, verify clipping risk on real-world system dialog
+        charmap_mui = Path(r"C:\Windows\System32\en-US\charmap.exe.mui")
+        if charmap_mui.is_file():
+            _, c_res = await server.call_tool(
+                "analyze_dialog",
+                {"file_path": str(charmap_mui), "dialog_name": "101"},
+            )
+            assert c_res["clippingRiskCount"] >= 1
 
     asyncio.run(_run())
 
@@ -301,9 +311,9 @@ def test_tool_type_coercion_and_signature_tools() -> None:
 
         # Test correlate_dialog_behavior with Ghidra dialects (padded hex and param_2 cast)
         ghidra_code = """
-        if ((ushort)param_2 == 8) {
+        if ((ushort)param_2 == 1001) {
             DoSomething();
-        } else if (param_2 == 0x00000008) {
+        } else if (param_2 == 0x000003e9) {
             DoOther();
         }
         """
@@ -316,11 +326,11 @@ def test_tool_type_coercion_and_signature_tools() -> None:
             },
         )
         matched_ids = {m["controlId"] for m in corr_res["mappings"] if m["handlerFound"]}
-        assert 8 in matched_ids
+        assert 1001 in matched_ids
 
-        # Test false positive rejection (grid == 8, 108 == id, case 108)
+        # Test false positive rejection (grid == 1001, 108 == id, case 108)
         trap_code = """
-        if (grid == 8) {
+        if (grid == 1001) {
             Ignored();
         } else if (108 == id) {
             Ignored2();
@@ -337,11 +347,11 @@ def test_tool_type_coercion_and_signature_tools() -> None:
             },
         )
         trap_matched = {m["controlId"] for m in trap_res["mappings"] if m["handlerFound"]}
-        assert 8 not in trap_matched
+        assert 1001 not in trap_matched
 
         # Test snippet does not leak next case statement
         snippet_test_code = """
-        case 8:
+        case 1001:
             DoPrimary();
             break;
         case 9:
@@ -356,10 +366,10 @@ def test_tool_type_coercion_and_signature_tools() -> None:
                 "decompiled_code": snippet_test_code,
             },
         )
-        m8 = next(m for m in snip_res["mappings"] if m["controlId"] == 8)
-        assert m8["handlerFound"] is True
-        assert "case 9:" not in m8["codeSnippet"]
-        assert "DoPrimary();" in m8["codeSnippet"]
+        m1001 = next(m for m in snip_res["mappings"] if m["controlId"] == 1001)
+        assert m1001["handlerFound"] is True
+        assert "case 9:" not in m1001["codeSnippet"]
+        assert "DoPrimary();" in m1001["codeSnippet"]
 
         # Test strip_pe_signature tool
         signed_src = ROOT / "tests" / "fixtures" / "mingw_x64_resource_heavy_test_signed.exe"

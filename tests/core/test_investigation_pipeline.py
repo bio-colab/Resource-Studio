@@ -84,12 +84,12 @@ def test_investigation_pipeline_overlay_and_unknowns_ledger(tmp_path: Path) -> N
 
 def test_investigation_pipeline_with_decompiled_evidence() -> None:
     """Verifies that supplying decompiled sources correctly refutes unmapped control hypotheses."""
-    # Decompiled source proving control 8 has active switch handling logic
+    # Decompiled source proving control 1001 has active switch handling logic
     decompiled_c = """
     INT_PTR CALLBACK DialogProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
         if (uMsg == 0x0111) {
             switch (LOWORD(wParam)) {
-                case 8:
+                case 1001:
                     ExecuteAction(hDlg);
                     break;
             }
@@ -99,14 +99,14 @@ def test_investigation_pipeline_with_decompiled_evidence() -> None:
     """
     report = run_pipeline(FIXTURE_HEAVY, decompiled_sources={0: decompiled_c})
 
-    ctrl8_hyp = next(
-        (h for h in report.hypotheses if h.target_type == "CONTROL" and "Control/8" in h.target_name),
+    ctrl1001_hyp = next(
+        (h for h in report.hypotheses if h.target_type == "CONTROL" and "Control/1001" in h.target_name),
         None,
     )
-    if ctrl8_hyp:
-        # Since decompiled source has case 8, it must be REFUTED with high confidence
-        assert ctrl8_hyp.verdict == HypothesisVerdict.REFUTED.value
-        assert len(ctrl8_hyp.refuting_evidence) >= 1
+    if ctrl1001_hyp:
+        # Since decompiled source has case 1001, it must be REFUTED with high confidence
+        assert ctrl1001_hyp.verdict == HypothesisVerdict.REFUTED.value
+        assert len(ctrl1001_hyp.refuting_evidence) >= 1
 
 
 def test_journal_replay_and_cryptographic_audit(tmp_path: Path) -> None:

@@ -61,13 +61,19 @@ class DialogControl:
             return False
         return self.estimated_required_width_dlu > self.width
 
+    def pixel_bounds(self, base_units: tuple[int, int] | None = None) -> tuple[int, int, int, int]:
+        bu_x, bu_y = base_units or (7, 16)
+        return (self.x * bu_x) // 4, (self.y * bu_y) // 8, (self.width * bu_x) // 4, (self.height * bu_y) // 8
+
     def to_dict(self) -> dict[str, Any]:
+        px, py, pw, ph = self.pixel_bounds()
         return {
             "controlId": self.control_id,
             "x": self.x,
             "y": self.y,
             "width": self.width,
             "height": self.height,
+            "pixelBounds": {"x": px, "y": py, "width": pw, "height": ph},
             "style": self.style,
             "exstyle": self.exstyle,
             "class": self.class_name,
@@ -112,6 +118,21 @@ class DialogResource:
     def cy(self) -> int:
         return self.height
 
+    def dlu_to_pixels(self, dlu_x: int, dlu_y: int, base_units: tuple[int, int] | None = None) -> tuple[int, int]:
+        if base_units is not None:
+            bu_x, bu_y = base_units
+        elif self.font_size:
+            bu_y = int(round(self.font_size * 96.0 / 72.0))
+            bu_x = max(4, int(round(bu_y * 0.5)))
+        else:
+            bu_x, bu_y = 7, 16
+        return (dlu_x * bu_x) // 4, (dlu_y * bu_y) // 8
+
+    def pixel_bounds(self, base_units: tuple[int, int] | None = None) -> tuple[int, int, int, int]:
+        px, py = self.dlu_to_pixels(self.x, self.y, base_units)
+        pw, ph = self.dlu_to_pixels(self.width, self.height, base_units)
+        return px, py, pw, ph
+
     def clipping_warnings(self) -> list[str]:
         warnings = []
         for ctrl in self.controls:
@@ -121,11 +142,13 @@ class DialogResource:
         return warnings
 
     def to_dict(self) -> dict[str, Any]:
+        px, py, pw, ph = self.pixel_bounds()
         return {
             "x": self.x,
             "y": self.y,
             "width": self.width,
             "height": self.height,
+            "pixelBounds": {"x": px, "y": py, "width": pw, "height": ph},
             "style": self.style,
             "exstyle": self.exstyle,
             "title": self.title,
@@ -191,8 +214,10 @@ class DialogResource:
                 control_help = reader.dword()
                 control_exstyle = reader.dword()
                 control_style = reader.dword()
-                control_id = reader.word()
                 cx, cy, cw, ch = reader.signed_words(4)
+                control_id = reader.dword()
+                if control_id == 0xFFFFFFFF:
+                    control_id = -1
             else:
                 control_help = 0
                 control_exstyle = reader.dword()
@@ -220,9 +245,9 @@ class DialogResource:
             errors.append("DS_SETFONT requires font_size and font_name")
         seen_ids: set[int] = set()
         for index, control in enumerate(self.controls):
-            if not 0 <= control.control_id <= 0xFFFF or not 0 <= control.help_id <= 0xFFFFFFFF:
+            if not -32768 <= control.control_id <= 0xFFFFFFFF or not 0 <= control.help_id <= 0xFFFFFFFF:
                 errors.append(f"control {index}: invalid identifier")
-            if control.control_id in seen_ids:
+            if control.control_id in seen_ids and control.control_id != -1:
                 warnings.append(f"control {index}: duplicate control ID {control.control_id}")
             seen_ids.add(control.control_id)
             if not isinstance(control.class_name, (int, str)) or not isinstance(control.title, (int, str)):
@@ -260,9 +285,9 @@ class DialogResource:
         for control in self.controls:
             _align4(out)
             if self.extended:
-                out.extend(struct.pack("<IIIHhhhh", control.help_id, control.exstyle, control.style, control.control_id, control.x, control.y, control.width, control.height))
+                out.extend(struct.pack("<IIIhhhhI", control.help_id, control.exstyle, control.style, control.x, control.y, control.width, control.height, control.control_id & 0xFFFFFFFF))
             else:
-                out.extend(struct.pack("<IIhhhhH", control.exstyle, control.style, control.x, control.y, control.width, control.height, control.control_id))
+                out.extend(struct.pack("<IIhhhhH", control.exstyle, control.style, control.x, control.y, control.width, control.height, control.control_id & 0xFFFF))
             out.extend(_encode_ordinal_or_string(control.class_name))
             out.extend(_encode_ordinal_or_string(control.title))
             if len(control.creation_data) > 0xFFFF:
@@ -280,7 +305,7 @@ class DialogResource:
         if not 0 <= self.font_weight <= 0xFFFF or not 0 <= self.font_charset <= 0xFF:
             raise DialogResourceError("invalid font attributes")
         for control in self.controls:
-            if not 0 <= control.control_id <= 0xFFFF or not 0 <= control.help_id <= 0xFFFFFFFF:
+            if not -32768 <= control.control_id <= 0xFFFFFFFF or not 0 <= control.help_id <= 0xFFFFFFFF:
                 raise DialogResourceError("invalid control identifier")
             for value, name in ((control.x, "control x"), (control.y, "control y"), (control.width, "control width"), (control.height, "control height")):
                 if not -32768 <= value <= 32767:

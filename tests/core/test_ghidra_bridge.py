@@ -30,7 +30,7 @@ INT_PTR CALLBACK MyDialogProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam
             case 2: // IDCANCEL
                 EndDialog(hDlg, 0);
                 return 1;
-            case 8: // Custom control ID 8 (as in fixture dialog 201)
+            case 1001: // Custom control ID 1001 (as in fixture dialog 201)
                 TriggerSpecialAction();
                 return 1;
         }
@@ -55,7 +55,7 @@ def test_dialog_proc_branch_parsing() -> None:
     controls = [
         {"controlId": 1, "title": "OK"},
         {"controlId": 2, "title": "Cancel"},
-        {"controlId": 8, "title": "SpecialBtn"},
+        {"controlId": 1001, "title": "SpecialBtn"},
         {"controlId": 999, "title": "Missing"},
     ]
     mappings = GhidraBridge.parse_dialog_proc_branches(SAMPLE_DECOMPILED_DIALOGPROC, controls)
@@ -69,9 +69,9 @@ def test_dialog_proc_branch_parsing() -> None:
     assert m_map[2].handler_found is True
     assert "case 2:" in m_map[2].matched_branch
 
-    assert m_map[8].handler_found is True
-    assert "case 8:" in m_map[8].matched_branch
-    assert "TriggerSpecialAction()" in m_map[8].code_snippet
+    assert m_map[1001].handler_found is True
+    assert "case 1001:" in m_map[1001].matched_branch
+    assert "TriggerSpecialAction()" in m_map[1001].code_snippet
 
     assert m_map[999].handler_found is False
     assert m_map[999].matched_branch is None
@@ -102,10 +102,10 @@ def test_mcp_correlate_dialog_behavior() -> None:
         )
         assert res["dialogName"] == "201"
         assert res["hasCodeMapping"] is True
-        assert len(res["mappings"]) == 2  # Dialog 201 has 2 controls (including ID 8)
-        c8 = next(m for m in res["mappings"] if m["controlId"] == 8)
-        assert c8["handlerFound"] is True
-        assert "TriggerSpecialAction()" in c8["codeSnippet"]
+        assert len(res["mappings"]) == 2  # Dialog 201 has 2 controls (including ID 1001)
+        c1001 = next(m for m in res["mappings"] if m["controlId"] == 1001)
+        assert c1001["handlerFound"] is True
+        assert "TriggerSpecialAction()" in c1001["codeSnippet"]
 
     asyncio.run(_run())
 
