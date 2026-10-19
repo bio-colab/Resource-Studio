@@ -194,7 +194,7 @@ class Project:
             raise ValueError(f"cannot open PE: {exc}") from exc
         if binary is None or not isinstance(binary, lief.PE.Binary):
             raise ValueError("source is not a supported PE file")
-        entries = _entries_from_lief(binary)
+        entries = _entries_from_lief(binary, path=source_path)
         project = cls(
             project_dir,
             original_path=str(source_path),
@@ -572,13 +572,45 @@ def _snapshot_workspace_path(snapshot_path: Path) -> Path:
     return snapshot_path.with_suffix(snapshot_path.suffix + ".workspace")
 
 
-def _entries_from_lief(binary: Any) -> list[ResourceEntry]:
+def _entries_from_raw(path: Path | str | None = None, data: bytes | None = None) -> list[ResourceEntry] | None:
+    try:
+        from .raw_resource_parser import parse_raw_resources
+        if data is None and path is not None:
+            p = Path(path)
+            if p.is_file():
+                data = p.read_bytes()
+        if data is None:
+            return None
+        report = parse_raw_resources(path=path, data=data)
+        if report.issues:
+            return None
+        entries: list[ResourceEntry] = []
+        for leaf in report.leaves:
+            payload = data[leaf.offset : leaf.offset + leaf.size]
+            entries.append(
+                ResourceEntry(
+                    leaf.resource_type,
+                    leaf.name,
+                    leaf.language,
+                    payload,
+                    {"offset": leaf.offset, "codePage": leaf.code_page, "rva": leaf.rva, "size": leaf.size},
+                )
+            )
+        return entries
+    except Exception:
+        return None
+
+
+def _entries_from_lief(binary: Any, path: Path | str | None = None, data: bytes | None = None) -> list[ResourceEntry]:
+    raw_entries = _entries_from_raw(path=path, data=data)
     type_names = {
         1: "CURSOR", 2: "BITMAP", 3: "ICON", 4: "MENU", 5: "DIALOG", 6: "STRING",
         7: "FONTDIR", 8: "FONT", 9: "ACCELERATORS", 10: "RCDATA", 11: "MESSAGETABLE",
         12: "GROUP_CURSOR", 14: "GROUP_ICON", 16: "VERSION", 24: "MANIFEST",
     }
-    if not binary.has_resources:
+    if not getattr(binary, "has_resources", False):
+        if raw_entries:
+            return raw_entries
         return []
     entries: list[ResourceEntry] = []
     for type_node in binary.resources.childs:
@@ -595,6 +627,8 @@ def _entries_from_lief(binary: Any) -> list[ResourceEntry]:
                         {"offset": int(getattr(leaf, "offset", 0)), "codePage": int(getattr(leaf, "code_page", 0))},
                     )
                 )
+    if raw_entries is not None and len(raw_entries) >= len(entries):
+        return raw_entries
     return entries
 
 

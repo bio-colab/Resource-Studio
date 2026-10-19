@@ -93,12 +93,18 @@ class RawResourceComparison:
         }
 
 
-def parse_raw_resources(path: Path) -> RawResourceReport:
-    path = Path(path).expanduser().resolve()
-    data = path.read_bytes()
+def parse_raw_resources(path: Path | str | None = None, data: bytes | None = None) -> RawResourceReport:
+    if data is None:
+        if path is None:
+            raise RawResourceParserError("path or data must be provided")
+        path_obj = Path(path).expanduser().resolve()
+        data = path_obj.read_bytes()
+        target_path = str(path_obj)
+    else:
+        target_path = str(path) if path is not None else "<bytes>"
     pe_offset, sections, resource_rva, resource_size = _headers(data)
     if not resource_rva or not resource_size:
-        return RawResourceReport(str(path), resource_rva, resource_size, ())
+        return RawResourceReport(target_path, resource_rva, resource_size, ())
     base = _rva_to_offset(resource_rva, sections, len(data))
     if base is None:
         raise RawResourceParserError("resource directory RVA is outside section bounds")
@@ -108,7 +114,7 @@ def parse_raw_resources(path: Path) -> RawResourceReport:
     visited: set[int] = set()
     _walk_directory(data, base, limit, base, (), leaves, issues, visited, 0)
     leaves.sort(key=lambda leaf: leaf.key)
-    return RawResourceReport(str(path), resource_rva, resource_size, tuple(leaves), tuple(dict.fromkeys(issues)))
+    return RawResourceReport(target_path, resource_rva, resource_size, tuple(leaves), tuple(dict.fromkeys(issues)))
 
 
 def compare_with_graph(report: RawResourceReport, graph: Mapping[str, Any]) -> RawResourceComparison:

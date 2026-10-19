@@ -65,7 +65,7 @@ class PEHealth:
                 sections=0, resource_count=0, signed=False, signature_count=0,
                 warnings=("file is not a supported PE",), status="NOT_PE",
             )
-        entries = _entries_from_lief(binary) if binary.has_resources else []
+        entries = _entries_from_lief(binary, path=path) if binary.has_resources else []
         resource_index = tuple(ResourceIndex.from_entries(entries).to_dicts())
         signed = bool(getattr(binary, "has_signatures", False))
         signature_count = len(list(binary.signatures)) if signed else 0

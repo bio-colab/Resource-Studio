@@ -25,7 +25,7 @@ class ResourceReader:
             raise ValueError(f"MALFORMED_PE: cannot open PE: {exc}") from exc
         if binary is None or not isinstance(binary, lief.PE.Binary):
             raise ValueError("NOT_PE: source is not a supported PE file")
-        self._entries = tuple(_entries_from_lief(binary))
+        self._entries = tuple(_entries_from_lief(binary, path=self.path))
 
     @property
     def entries(self) -> list[ResourceEntry]:
