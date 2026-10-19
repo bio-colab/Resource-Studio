@@ -27,6 +27,8 @@ class PEIdentity:
     packer_hint: dict[str, str] | None
     notices: tuple[dict[str, str], ...]
     pdb_path: str | None = None
+    managed_metadata: dict[str, Any] | None = None
+    toolchain: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -43,6 +45,8 @@ class PEIdentity:
             "packerHint": dict(self.packer_hint) if self.packer_hint else None,
             "notices": [dict(n) for n in self.notices],
             "pdbPath": self.pdb_path,
+            "managedMetadata": dict(self.managed_metadata) if self.managed_metadata else None,
+            "toolchain": dict(self.toolchain) if self.toolchain else None,
         }
 
 
@@ -180,6 +184,35 @@ def classify(path: Path, *, binary: lief.PE.Binary | None = None) -> PEIdentity:
             "level": "info",
             "message": f"Windows MUI base executable detected with {len(meta.companion_mui_files)} companion MUI resource files.",
         })
+    if meta.toolchain:
+        tt = meta.toolchain.get("toolchainType")
+        if tt == "GO":
+            go = meta.toolchain.get("go") or {}
+            ver = go.get("version") or "Go"
+            cnt = go.get("dependencyCount", 0)
+            notices.append({
+                "code": "TOOLCHAIN_GO",
+                "level": "info",
+                "message": f"Compiled Go binary detected ({ver}, {cnt} dependencies).",
+            })
+        elif tt == "RUST":
+            rust = meta.toolchain.get("rust") or {}
+            commit = rust.get("rustcCommit") or "unknown"
+            cnt = rust.get("dependencyCount", 0)
+            notices.append({
+                "code": "TOOLCHAIN_RUST",
+                "level": "info",
+                "message": f"Compiled Rust binary detected (rustc commit {commit[:10] if commit else 'unknown'}, {cnt} dependencies).",
+            })
+    if meta.managed_metadata:
+        clr = meta.managed_metadata.get("metadataVersion") or meta.managed_metadata.get("runtimeVersion") or "CLR"
+        rcnt = meta.managed_metadata.get("resourceCount", 0)
+        scnt = meta.managed_metadata.get("userStringCount", 0)
+        notices.append({
+            "code": "MANAGED_METADATA_DISCOVERED",
+            "level": "info",
+            "message": f".NET CLI Metadata: {clr} ({rcnt} manifest resources, {scnt} user strings).",
+        })
 
     satellite = {
         "mui": meta.is_mui,
@@ -205,4 +238,6 @@ def classify(path: Path, *, binary: lief.PE.Binary | None = None) -> PEIdentity:
         packer_hint=packer_hint,
         notices=tuple(notices),
         pdb_path=pdb_path,
+        managed_metadata=dict(meta.managed_metadata) if meta.managed_metadata else None,
+        toolchain=dict(meta.toolchain) if meta.toolchain else None,
     )

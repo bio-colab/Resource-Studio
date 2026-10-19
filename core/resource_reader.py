@@ -29,7 +29,14 @@ class ResourceReader:
 
     @property
     def entries(self) -> list[ResourceEntry]:
-        return list(self._entries)
+        all_entries = list(self._entries)
+        try:
+            managed = self.read_managed_resources()
+            if managed:
+                all_entries.extend(managed)
+        except Exception:
+            pass
+        return all_entries
 
     def find(
         self,
@@ -40,7 +47,7 @@ class ResourceReader:
         str_name = str(name) if name is not None else None
         return [
             entry
-            for entry in self._entries
+            for entry in self.entries
             if (resource_type is None or entry.resource_type == resource_type)
             and (str_name is None or entry.name == str_name)
             and (language is None or entry.language == language)
@@ -82,7 +89,7 @@ class ResourceReader:
                     ResourceEntry(
                         resource_type="MANIFEST_RESOURCE",
                         name=mr.name,
-                        language=None,
+                        language=0,
                         data=mr.data,
                     )
                 )

@@ -279,6 +279,48 @@ def command_mcp(args: argparse.Namespace) -> int:
     return 0
 
 
+def command_toolchain(args: argparse.Namespace) -> int:
+    from core.toolchain_auditor import ToolchainAuditor
+
+    report = ToolchainAuditor(args.input).audit()
+    _print(report.to_dict(), args.json)
+    return 0
+
+
+def command_managed(args: argparse.Namespace) -> int:
+    from core.managed_pe import ManagedPEParser
+
+    report = ManagedPEParser(args.input).parse()
+    _print(report.to_dict(), args.json)
+    return 0
+
+
+def command_value_flow(args: argparse.Namespace) -> int:
+    from core.xref_scanner import scan_pe_xrefs
+
+    report = scan_pe_xrefs(args.input)
+    api_calls: list[dict[str, Any]] = []
+    for r in report.resources:
+        for ref in r.references:
+            if ref.mnemonic.startswith("call:"):
+                api_calls.append({
+                    "resourceType": r.resource_type,
+                    "resourceName": r.name,
+                    "address": hex(ref.address),
+                    "api": ref.mnemonic.replace("call:", ""),
+                    "evidence": ref.operands,
+                    "section": ref.section,
+                })
+    payload = {
+        "path": str(args.input.resolve()),
+        "machine": report.machine,
+        "resolvedApiCallsCount": len(api_calls),
+        "apiCalls": api_calls,
+    }
+    _print(payload, args.json)
+    return 0
+
+
 def command_xref(args: argparse.Namespace) -> int:
     from core.xref_scanner import scan_pe_xrefs
 
@@ -1041,6 +1083,21 @@ def parser() -> argparse.ArgumentParser:
     xref_parser.add_argument("input", type=Path, help="PE file to scan")
     xref_parser.add_argument("--json", action="store_true")
     xref_parser.set_defaults(handler=command_xref)
+
+    toolchain_parser = subparsers.add_parser("toolchain", help="audit Go and Rust compiler toolchains and dependencies")
+    toolchain_parser.add_argument("input", type=Path, help="PE file to audit")
+    toolchain_parser.add_argument("--json", action="store_true")
+    toolchain_parser.set_defaults(handler=command_toolchain)
+
+    managed_parser = subparsers.add_parser("managed", help="inspect .NET CLI metadata streams, tables, and manifest resources")
+    managed_parser.add_argument("input", type=Path, help="PE file to inspect")
+    managed_parser.add_argument("--json", action="store_true")
+    managed_parser.set_defaults(handler=command_managed)
+
+    vf_parser = subparsers.add_parser("trace-values", help="track register value flow to Win32 resource API calls")
+    vf_parser.add_argument("input", type=Path, help="PE file to analyze")
+    vf_parser.add_argument("--json", action="store_true")
+    vf_parser.set_defaults(handler=command_value_flow)
 
     ghidra_parser = subparsers.add_parser("ghidra", help="interact with GhidraMCP bridge")
     ghidra_parser.add_argument("action", choices=("status", "decompile"), help="action to perform")

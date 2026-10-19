@@ -373,7 +373,36 @@ public partial class MainWindow : Window
 
         if (id.TryGetProperty("managed", out var mg) && mg.GetBoolean())
         {
-            AddChip(".NET Assembly", (Brush)FindResource("SignalCyanBrush"), (Brush)FindResource("SignalCyanBrush"), "CLR Managed Binary");
+            if (id.TryGetProperty("managedMetadata", out var mm) && mm.ValueKind == JsonValueKind.Object)
+            {
+                var clr = mm.TryGetProperty("metadataVersion", out var mv) && mv.ValueKind == JsonValueKind.String ? mv.GetString() : "CLR";
+                var resCount = mm.TryGetProperty("resourceCount", out var rc) ? rc.GetInt32() : 0;
+                var strCount = mm.TryGetProperty("userStringCount", out var sc) ? sc.GetInt32() : 0;
+                AddChip($".NET ({clr} · {resCount} Res)", (Brush)FindResource("SignalCyanBrush"), (Brush)FindResource("SignalCyanBrush"), $".NET Managed Assembly\nMetadata Version: {clr}\nManifest Resources: {resCount}\nUser Strings: {strCount}");
+            }
+            else
+            {
+                AddChip(".NET Assembly", (Brush)FindResource("SignalCyanBrush"), (Brush)FindResource("SignalCyanBrush"), "CLR Managed Binary");
+            }
+        }
+
+        if (id.TryGetProperty("toolchain", out var tc) && tc.ValueKind == JsonValueKind.Object)
+        {
+            var tt = tc.TryGetProperty("toolchainType", out var ttEl) ? ttEl.GetString() : "";
+            if (tt == "GO" && tc.TryGetProperty("go", out var go) && go.ValueKind == JsonValueKind.Object)
+            {
+                var gv = go.TryGetProperty("version", out var gvEl) && gvEl.ValueKind == JsonValueKind.String ? gvEl.GetString() : "Go";
+                var gdc = go.TryGetProperty("dependencyCount", out var gdcEl) ? gdcEl.GetInt32() : 0;
+                var gmm = go.TryGetProperty("mainModule", out var gmmEl) && gmmEl.ValueKind == JsonValueKind.String ? gmmEl.GetString() : "";
+                AddChip($"Go {gv} ({gdc} deps)", (Brush)FindResource("AnalysisBlueBrush"), (Brush)FindResource("AnalysisBlueBrush"), $"Compiled Go Binary\nVersion: {gv}\nMain Module: {gmm}\nDependencies: {gdc} modules");
+            }
+            else if (tt == "RUST" && tc.TryGetProperty("rust", out var rust) && rust.ValueKind == JsonValueKind.Object)
+            {
+                var rdc = rust.TryGetProperty("dependencyCount", out var rdcEl) ? rdcEl.GetInt32() : 0;
+                var commit = rust.TryGetProperty("rustcCommit", out var rcEl) && rcEl.ValueKind == JsonValueKind.String ? rcEl.GetString() : null;
+                var cShort = commit != null && commit.Length >= 8 ? commit.Substring(0, 8) : "release";
+                AddChip($"Rust ({cShort} · {rdc} deps)", (Brush)FindResource("TriageAmberBrush"), (Brush)FindResource("TriageAmberBrush"), $"Compiled Rust Binary\nCompiler Commit: {commit}\nAuditable Crates: {rdc}");
+            }
         }
 
         if (id.TryGetProperty("packerHint", out var ph) && ph.ValueKind == JsonValueKind.Object)
@@ -1059,6 +1088,347 @@ public partial class MainWindow : Window
         MessageBox.Show($"Automation recipe exported to:\n{outputDir}\n\nManifest: recipe.json", "Recipe Export", MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
+    private void ForensicsView_Changed(object sender, RoutedEventArgs e)
+    {
+        if (InvestigationPanel == null || BehaviorGraphPanel == null || XRefsPanel == null || ToolchainPanel == null) return;
+        InvestigationPanel.Visibility = RadioInvestigationView.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+        BehaviorGraphPanel.Visibility = RadioBehaviorGraphView.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+        XRefsPanel.Visibility = RadioXRefsView.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+        ToolchainPanel.Visibility = RadioToolchainView.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private async void Investigate_Click(object sender, RoutedEventArgs e)
+    {
+        if (!RequirePe()) return;
+        MainTabControl.SelectedItem = BehaviorTab;
+        RadioInvestigationView.IsChecked = true;
+        InvestigationSummaryCards.Children.Clear();
+        InvestigationReportBox.Text = "Running 5-stage autonomous forensic investigation pipeline...\nAnalyzing structural invariants, CodeView debug leaks, value flow, and unknowns ledger...";
+
+        var result = await RunCliCaptureAsync("investigate", _selectedPe!, "--json");
+        if (result.IsStale) return;
+
+        if (result.ExitCode != 0)
+        {
+            InvestigationReportBox.Text = $"Investigation failed:\n{result.StdoutOrError}";
+            StatusText.Text = "Investigation failed";
+            return;
+        }
+
+        InvestigationReportBox.Text = PrettyJson(result.StdoutOrError);
+        StatusText.Text = "Autonomous investigation complete";
+
+        try
+        {
+            using var doc = JsonDocument.Parse(result.StdoutOrError);
+            var root = doc.RootElement;
+            InvestigationSummaryCards.Children.Clear();
+
+            void AddSummaryCard(string title, string value, Brush borderBrush, Brush textBrush, string tooltip)
+            {
+                var card = new Border
+                {
+                    Background = (Brush)FindResource("SlateElevatedBrush"),
+                    BorderBrush = borderBrush,
+                    BorderThickness = new Thickness(1),
+                    CornerRadius = new CornerRadius(4),
+                    Padding = new Thickness(10, 5, 10, 5),
+                    Margin = new Thickness(0, 0, 8, 0),
+                    ToolTip = tooltip
+                };
+                var sp = new StackPanel();
+                sp.Children.Add(new TextBlock
+                {
+                    Text = title.ToUpperInvariant(),
+                    FontSize = 9,
+                    FontWeight = FontWeights.Bold,
+                    Foreground = (Brush)FindResource("MistBrush")
+                });
+                sp.Children.Add(new TextBlock
+                {
+                    Text = value,
+                    FontSize = 13,
+                    FontWeight = FontWeights.SemiBold,
+                    Foreground = textBrush,
+                    Margin = new Thickness(0, 2, 0, 0)
+                });
+                card.Child = sp;
+                InvestigationSummaryCards.Children.Add(card);
+            }
+
+            var invId = root.TryGetProperty("investigationId", out var idEl) ? idEl.GetString() : "RS-INV";
+            AddSummaryCard("Investigation ID", invId ?? "N/A", (Brush)FindResource("DividerBrush"), (Brush)FindResource("PaperBrush"), "Cryptographic run ID");
+
+            if (root.TryGetProperty("summary", out var sum))
+            {
+                var steps = sum.TryGetProperty("journalStepCount", out var sc) ? sc.GetInt32() : 0;
+                var proven = sum.TryGetProperty("provenCount", out var pc) ? pc.GetInt32() : 0;
+                var refuted = sum.TryGetProperty("refutedCount", out var rc) ? rc.GetInt32() : 0;
+                var unknowns = sum.TryGetProperty("unknownsCount", out var uc) ? uc.GetInt32() : 0;
+                var stateHash = sum.TryGetProperty("finalStateHash", out var fh) && fh.ValueKind == JsonValueKind.String ? fh.GetString()! : "";
+
+                AddSummaryCard("Audit Journal", $"{steps} Verified Steps", (Brush)FindResource("SignalCyanBrush"), (Brush)FindResource("SignalCyanBrush"), "Complete replayable execution steps in journal");
+                AddSummaryCard("Hypotheses", $"{proven} Proven / {refuted} Refuted", (Brush)FindResource("VerifiedGreenBrush"), (Brush)FindResource("VerifiedGreenBrush"), "Empirically verified factual assertions");
+                AddSummaryCard("Unknowns Ledger", $"{unknowns} Open Gaps", unknowns == 0 ? (Brush)FindResource("VerifiedGreenBrush") : (Brush)FindResource("TriageAmberBrush"), unknowns == 0 ? (Brush)FindResource("VerifiedGreenBrush") : (Brush)FindResource("TriageAmberBrush"), "Unresolved ambiguities or missing evidence");
+                if (!string.IsNullOrEmpty(stateHash))
+                {
+                    var shortHash = stateHash.Length >= 12 ? stateHash.Substring(0, 12) : stateHash;
+                    AddSummaryCard("Integrity Hash", shortHash, (Brush)FindResource("AnalysisBlueBrush"), (Brush)FindResource("AnalysisBlueBrush"), $"Full SHA-256 State Hash: {stateHash}");
+                }
+            }
+        }
+        catch { }
+    }
+
+    private async void BehaviorGraph_Click(object sender, RoutedEventArgs e)
+    {
+        if (!RequirePe()) return;
+        MainTabControl.SelectedItem = BehaviorTab;
+        RadioBehaviorGraphView.IsChecked = true;
+        MermaidDiagramBox.Text = "Building evidence-backed directed behavioral graph...";
+
+        var result = await RunCliCaptureAsync("behavioral-graph", _selectedPe!, "--mermaid", "--json");
+        if (result.IsStale) return;
+
+        if (result.ExitCode != 0)
+        {
+            MermaidDiagramBox.Text = $"Behavioral graph generation failed:\n{result.StdoutOrError}";
+            StatusText.Text = "Behavioral graph failed";
+            return;
+        }
+
+        try
+        {
+            using var doc = JsonDocument.Parse(result.StdoutOrError);
+            var root = doc.RootElement;
+            if (root.TryGetProperty("mermaid", out var m))
+            {
+                MermaidDiagramBox.Text = m.GetString();
+            }
+            else
+            {
+                MermaidDiagramBox.Text = PrettyJson(result.StdoutOrError);
+            }
+
+            var traces = new List<BehaviorTraceRow>();
+            if (root.TryGetProperty("traces", out var trArray) && trArray.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var tr in trArray.EnumerateArray())
+                {
+                    var conf = tr.TryGetProperty("confidenceLevel", out var cEl) ? cEl.GetString() : "MEDIUM";
+                    var desc = tr.TryGetProperty("pathDescription", out var dEl) ? dEl.GetString() : "";
+                    var path = tr.TryGetProperty("entrypointToTarget", out var pEl) ? pEl.GetString() : "";
+                    var evCount = tr.TryGetProperty("evidenceSummary", out var evEl) && evEl.ValueKind == JsonValueKind.Array ? evEl.GetArrayLength() : 0;
+                    traces.Add(new BehaviorTraceRow(conf ?? "MEDIUM", desc ?? "", $"{evCount} evidence items", path ?? ""));
+                }
+            }
+            BehaviorTracesGrid.ItemsSource = traces;
+            StatusText.Text = $"Behavioral graph: {traces.Count} causal traces mapped";
+        }
+        catch
+        {
+            MermaidDiagramBox.Text = result.StdoutOrError;
+        }
+    }
+
+    private async void XRefScan_Click(object sender, RoutedEventArgs e)
+    {
+        if (!RequirePe()) return;
+        MainTabControl.SelectedItem = BehaviorTab;
+        RadioXRefsView.IsChecked = true;
+        XRefStatusText.Text = "Scanning disasm for code references and tracking register value-flow...";
+
+        var result = await RunCliCaptureAsync("xref", _selectedPe!, "--json");
+        if (result.IsStale) return;
+
+        if (result.ExitCode != 0)
+        {
+            XRefStatusText.Text = "XRef scanning failed";
+            return;
+        }
+
+        try
+        {
+            using var doc = JsonDocument.Parse(result.StdoutOrError);
+            var root = doc.RootElement;
+            var rows = new List<XRefRow>();
+
+            if (root.TryGetProperty("resources", out var resArray) && resArray.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var res in resArray.EnumerateArray())
+                {
+                    var rType = res.TryGetProperty("type", out var tEl) ? tEl.GetString() : "";
+                    var rName = res.TryGetProperty("name", out var nEl) ? nEl.GetString() : "";
+                    var rStatus = res.TryGetProperty("status", out var sEl) ? sEl.GetString() : "";
+                    var resIdentifier = $"{rType} {rName}";
+
+                    if (res.TryGetProperty("references", out var refArray) && refArray.ValueKind == JsonValueKind.Array)
+                    {
+                        foreach (var rf in refArray.EnumerateArray())
+                        {
+                            var addr = rf.TryGetProperty("address", out var aEl) ? aEl.GetString() : "";
+                            var sec = rf.TryGetProperty("section", out var secEl) ? secEl.GetString() : "";
+                            var insn = rf.TryGetProperty("instruction", out var iEl) ? iEl.GetString() : "";
+                            var mnem = rf.TryGetProperty("mnemonic", out var mEl) ? mEl.GetString() : "";
+                            var op = rf.TryGetProperty("operands", out var oEl) ? oEl.GetString() : insn ?? "";
+
+                            rows.Add(new XRefRow(resIdentifier, rStatus ?? "", addr ?? "", sec ?? "", string.IsNullOrEmpty(mnem) ? "inst" : mnem, op ?? ""));
+                        }
+                    }
+                }
+            }
+
+            XRefsGrid.ItemsSource = rows;
+            var refCount = 0;
+            var deadCount = 0;
+            if (root.TryGetProperty("summary", out var sum))
+            {
+                refCount = sum.TryGetProperty("referenced", out var rf) ? rf.GetInt32() : 0;
+                deadCount = sum.TryGetProperty("deadOrphans", out var doEl) ? doEl.GetInt32() : 0;
+            }
+            XRefStatusText.Text = $"XRefs: {rows.Count} code references across {refCount} referenced resources ({deadCount} dead orphans)";
+            StatusText.Text = "Code XRef scan complete";
+        }
+        catch (Exception exc)
+        {
+            XRefStatusText.Text = $"Error parsing XRef results: {exc.Message}";
+        }
+    }
+
+    private async void ToolchainAudit_Click(object sender, RoutedEventArgs e)
+    {
+        if (!RequirePe()) return;
+        MainTabControl.SelectedItem = BehaviorTab;
+        RadioToolchainView.IsChecked = true;
+        ToolchainHeaderBlock.Text = "Auditing toolchain and extracting dependencies...";
+        ToolchainDetailBlock.Text = "Scanning Go buildinf, Rust compiler commits, or .NET CLI streams...";
+
+        var result = await RunCliCaptureAsync("toolchain", _selectedPe!, "--json");
+        if (result.IsStale) return;
+
+        if (result.ExitCode != 0)
+        {
+            ToolchainHeaderBlock.Text = "Toolchain Audit Unavailable";
+            ToolchainDetailBlock.Text = result.StdoutOrError;
+            return;
+        }
+
+        try
+        {
+            using var doc = JsonDocument.Parse(result.StdoutOrError);
+            var root = doc.RootElement;
+            var tt = root.TryGetProperty("toolchainType", out var ttEl) ? ttEl.GetString() : "NATIVE_WIN32";
+            var rows = new List<ToolchainDepRow>();
+
+            if (tt == "GO" && root.TryGetProperty("go", out var go) && go.ValueKind == JsonValueKind.Object)
+            {
+                var gv = go.TryGetProperty("version", out var gvEl) ? gvEl.GetString() : "Go";
+                var gmm = go.TryGetProperty("mainModule", out var mmEl) ? mmEl.GetString() : "main";
+                var depCount = go.TryGetProperty("dependencyCount", out var dcEl) ? dcEl.GetInt32() : 0;
+
+                ToolchainHeaderBlock.Text = $"Toolchain: Compiled Go Binary ({gv})";
+                ToolchainDetailBlock.Text = $"Main Module: {gmm} | Total Extracted Dependencies: {depCount}";
+
+                if (go.TryGetProperty("dependencies", out var deps) && deps.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var d in deps.EnumerateArray())
+                    {
+                        var path = d.TryGetProperty("path", out var pEl) ? pEl.GetString() : "";
+                        var ver = d.TryGetProperty("version", out var vEl) ? vEl.GetString() : "";
+                        var hash = d.TryGetProperty("hash", out var hEl) ? hEl.GetString() : "";
+                        rows.Add(new ToolchainDepRow(path ?? "", ver ?? "", hash ?? ""));
+                    }
+                }
+            }
+            else if (tt == "RUST" && root.TryGetProperty("rust", out var rust) && rust.ValueKind == JsonValueKind.Object)
+            {
+                var commit = rust.TryGetProperty("rustcCommit", out var rcEl) ? rcEl.GetString() : "unknown";
+                var pkg = rust.TryGetProperty("rootPackage", out var rpEl) ? rpEl.GetString() : "root";
+                var depCount = rust.TryGetProperty("dependencyCount", out var dcEl) ? dcEl.GetInt32() : 0;
+
+                ToolchainHeaderBlock.Text = $"Toolchain: Compiled Rust Binary (rustc: {commit})";
+                ToolchainDetailBlock.Text = $"Root Package: {pkg} | Total Cargo Crates: {depCount}";
+
+                if (rust.TryGetProperty("dependencies", out var deps) && deps.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var d in deps.EnumerateArray())
+                    {
+                        var name = d.TryGetProperty("name", out var nEl) ? nEl.GetString() : "";
+                        var ver = d.TryGetProperty("version", out var vEl) ? vEl.GetString() : "";
+                        var src = d.TryGetProperty("source", out var sEl) ? sEl.GetString() : "";
+                        rows.Add(new ToolchainDepRow(name ?? "", ver ?? "", src ?? ""));
+                    }
+                }
+            }
+            else
+            {
+                var managedRes = await RunCliCaptureAsync("managed", _selectedPe!, "--json");
+                if (managedRes.ExitCode == 0)
+                {
+                    using var mDoc = JsonDocument.Parse(managedRes.StdoutOrError);
+                    var mRoot = mDoc.RootElement;
+                    if (mRoot.TryGetProperty("isManaged", out var isM) && isM.GetBoolean())
+                    {
+                        var clr = mRoot.TryGetProperty("metadataVersion", out var mvEl) ? mvEl.GetString() : "CLR";
+                        var resCount = mRoot.TryGetProperty("resourceCount", out var rcEl) ? rcEl.GetInt32() : 0;
+                        var strCount = mRoot.TryGetProperty("userStringCount", out var scEl) ? scEl.GetInt32() : 0;
+
+                        ToolchainHeaderBlock.Text = $"Toolchain: .NET Managed Assembly ({clr})";
+                        ToolchainDetailBlock.Text = $"Embedded Manifest Resources: {resCount} | User Strings: {strCount}";
+
+                        if (mRoot.TryGetProperty("resources", out var resArr) && resArr.ValueKind == JsonValueKind.Array)
+                        {
+                            foreach (var r in resArr.EnumerateArray())
+                            {
+                                var rName = r.TryGetProperty("name", out var rn) ? rn.GetString() : "";
+                                var rSize = r.TryGetProperty("size", out var rs) ? rs.GetInt32() : 0;
+                                var rOffset = r.TryGetProperty("offset", out var ro) ? ro.GetInt32() : 0;
+                                rows.Add(new ToolchainDepRow(rName ?? "", $"{rSize:N0} bytes", $"Offset: 0x{rOffset:X} (ManifestResource)"));
+                            }
+                        }
+                    }
+                    else
+                    {
+                        ToolchainHeaderBlock.Text = "Toolchain: Native C/C++ Win32 PE";
+                        ToolchainDetailBlock.Text = "Standard Microsoft MSVC / MinGW native binary without Go/Rust/CLR runtime.";
+                    }
+                }
+            }
+
+            ToolchainDepsGrid.ItemsSource = rows;
+            StatusText.Text = $"Toolchain audit complete ({rows.Count} components)";
+        }
+        catch (Exception exc)
+        {
+            ToolchainHeaderBlock.Text = "Toolchain Parsing Failed";
+            ToolchainDetailBlock.Text = exc.Message;
+        }
+    }
+
+    private async void ExportForensicJournal_Click(object sender, RoutedEventArgs e)
+    {
+        if (!RequirePe()) return;
+        var dialog = new SaveFileDialog
+        {
+            Title = "Export Forensic Investigation Journal",
+            Filter = "Investigation Journal (*.investigation.json)|*.investigation.json|JSON File (*.json)|*.json",
+            FileName = $"{Path.GetFileNameWithoutExtension(_selectedPe)}.investigation.json"
+        };
+        if (dialog.ShowDialog() != true) return;
+
+        var result = await RunCliCaptureAsync("investigate", _selectedPe!, "--export-journal", dialog.FileName, "--json");
+        if (result.IsStale) return;
+
+        if (result.ExitCode != 0)
+        {
+            MessageBox.Show($"Export failed:\n{result.StdoutOrError}", "Export Journal", MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
+        StatusText.Text = "Forensic journal exported successfully";
+        MessageBox.Show($"Forensic investigation journal exported with cryptographic audit trail to:\n{dialog.FileName}", "Investigation Export", MessageBoxButton.OK, MessageBoxImage.Information);
+    }
+
     private async Task LoadResourcesAsync()
     {
         if (!RequirePe()) return;
@@ -1437,7 +1807,8 @@ public partial class MainWindow : Window
     {
         if (arguments.Count == 0) return false;
         return arguments[0] is "list" or "inspect" or "validate" or "search" or "diff" or "preview"
-            || (arguments[0] == "localization" && arguments.Count > 1 && arguments[1] == "compare");
+            || (arguments[0] == "localization" && arguments.Count > 1 && arguments[1] == "compare")
+            || arguments[0] is "xref" or "behavioral-graph" or "investigate" or "replay-investigation" or "toolchain" or "managed" or "trace-values";
     }
 
     private bool IsCurrentRequest(long requestId) => Volatile.Read(ref _requestGeneration) == requestId;
@@ -1517,4 +1888,8 @@ public partial class MainWindow : Window
     }
 
     private sealed record CliResult(int ExitCode, string StdoutOrError, CliOperationState State, long DurationMilliseconds, bool IsStale = false);
+
+    private sealed record BehaviorTraceRow(string Confidence, string Description, string EvidenceCount, string Path);
+    private sealed record XRefRow(string Resource, string Status, string Address, string Section, string Mnemonic, string Operands);
+    private sealed record ToolchainDepRow(string Name, string Version, string Details);
 }
