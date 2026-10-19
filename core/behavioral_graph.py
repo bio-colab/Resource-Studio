@@ -18,6 +18,7 @@ from .menu_resources import MenuResource
 from .parse_cache import shared_parse
 from .resource_reader import ResourceReader
 from .string_table import StringTableBlock
+from .value_flow_tracker import ValueFlowTracker
 from .xref_scanner import KNOWN_RESOURCE_APIS
 
 
@@ -544,15 +545,17 @@ class BehavioralGraphEngine:
             sec_rva = section.virtual_address
             sec_va = self.imagebase + sec_rva
 
-            # Maintain a short sliding window of preceding instructions to capture register parameter passing
+            tracker = ValueFlowTracker(is_64bit=self.is_64bit)
             recent_insns: list[capstone.CsInsn] = []
 
             for insn in self.cs.disasm(content, sec_va):
+                tracker.process_instruction(insn)
                 recent_insns.append(insn)
                 if len(recent_insns) > 8:
                     recent_insns.pop(0)
 
-                if insn.mnemonic == "call":
+                mnemonic = insn.mnemonic.lower()
+                if mnemonic == "call":
                     api_name = None
                     # Resolve call target
                     for op in insn.operands:
@@ -573,10 +576,16 @@ class BehavioralGraphEngine:
 
                     short_api = api_name.split("!")[-1]
                     if short_api in KNOWN_RESOURCE_APIS:
-                        # Inspect recent instructions for argument constants (Dialog ID, String ID, lpDialogFunc)
+                        # 1. First check ValueFlowTracker for proven register flow
                         res_id_val = None
-                        dialog_proc_rva = None
+                        evidence_insns = []
+                        binding = tracker.resolve_api_call(short_api, insn.address)
+                        if binding and binding.target_id > 0:
+                            res_id_val = binding.target_id
+                            evidence_insns = list(binding.evidence_instructions)
 
+                        # 2. Check recent instructions for dialog_proc_rva or fallback immediate
+                        dialog_proc_rva = None
                         for prev in reversed(recent_insns[:-1]):
                             for pop in prev.operands:
                                 if pop.type == capstone.x86.X86_OP_IMM:
@@ -588,6 +597,12 @@ class BehavioralGraphEngine:
 
                         res_type = "DIALOG" if "Dialog" in short_api else ("MENU" if "Menu" in short_api else ("STRING" if "String" in short_api else "RESOURCE"))
                         caller_rva = insn.address - self.imagebase
+                        conf = 1.0 if evidence_insns else (0.95 if res_id_val else 0.85)
+                        rationale = (
+                            f"Proven value-flow: {short_api} argument bound from {' -> '.join(evidence_insns)}"
+                            if evidence_insns
+                            else f"Explicit Win32 {short_api} API call instruction with resolved arguments in {section.name}"
+                        )
                         sites.append(
                             {
                                 "api": api_name,
@@ -598,14 +613,17 @@ class BehavioralGraphEngine:
                                 "section": section.name,
                                 "instruction": f"{insn.mnemonic} {insn.op_str}",
                                 "dialog_proc_rva_hex": hex(dialog_proc_rva) if dialog_proc_rva else None,
-                                "confidence": 0.95 if res_id_val else 0.85,
+                                "confidence": conf,
                                 "confidence_level": "HIGH" if res_id_val else "MEDIUM",
-                                "evidence_source": "CAPSTONE_DISASSEMBLER",
-                                "verification_rationale": f"Explicit Win32 {short_api} API call instruction with resolved arguments in {section.name}",
+                                "evidence_source": "VALUE_FLOW_TRACKER" if evidence_insns else "CAPSTONE_DISASSEMBLER",
+                                "verification_rationale": rationale,
                             }
                         )
+                elif mnemonic in ("ret", "jmp"):
+                    tracker.reset_block()
 
         return sites
+
 
     def _analyze_control_branch(
         self,

@@ -66,4 +66,28 @@ class ResourceReader:
                 pass
         return companion_entries
 
+    def read_managed_resources(self) -> list[ResourceEntry]:
+        """Reads embedded .NET ManifestResource entries and returns them as ResourceEntry items."""
+        from .managed_pe import ManagedPEParser
+
+        try:
+            parser = ManagedPEParser(self.path)
+            report = parser.parse()
+            if not report.is_managed or not report.manifest_resources:
+                return []
+
+            results: list[ResourceEntry] = []
+            for mr in report.manifest_resources:
+                results.append(
+                    ResourceEntry(
+                        resource_type="MANIFEST_RESOURCE",
+                        name=mr.name,
+                        language=None,
+                        data=mr.data,
+                    )
+                )
+            return results
+        except Exception:
+            return []
+
 

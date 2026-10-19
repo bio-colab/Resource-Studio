@@ -11,6 +11,7 @@ import lief
 from .parse_cache import shared_parse
 from .resource_reader import ResourceReader
 from .string_table import StringTableBlock
+from .value_flow_tracker import ValueFlowTracker
 
 KNOWN_RESOURCE_APIS: frozenset[str] = frozenset(
     {
@@ -152,10 +153,15 @@ def scan_pe_xrefs(path: Path) -> XRefReport:
 
     # 1. Identify Imported Win32 Resource APIs
     imported_apis: list[dict[str, str]] = []
+    iat_map: dict[int, str] = {}
+    imagebase = binary.optional_header.imagebase
+
     for imp in binary.imports:
         for entry in imp.entries:
             if entry.name in KNOWN_RESOURCE_APIS:
                 imported_apis.append({"dll": imp.name, "api": entry.name})
+                va = entry.iat_address if entry.iat_address >= imagebase else imagebase + entry.iat_address
+                iat_map[va] = entry.name
 
     has_resource_apis = len(imported_apis) > 0
 
@@ -198,8 +204,7 @@ def scan_pe_xrefs(path: Path) -> XRefReport:
                     string_id_to_entry.setdefault(sid, []).append(entry)
             entry_to_string_ids[entry.key] = s_ids
 
-    # 4. Disassemble Code Sections and Collect Immediate Operands
-    imagebase = binary.optional_header.imagebase
+    # 4. Disassemble Code Sections and Collect Immediate & Value-Flow Operands
     immediate_refs: dict[int, list[CodeReference]] = {}
     string_id_refs: dict[int, list[CodeReference]] = {}
 
@@ -213,8 +218,44 @@ def scan_pe_xrefs(path: Path) -> XRefReport:
         sec_rva = section.virtual_address
         sec_va = imagebase + sec_rva
 
+        tracker = ValueFlowTracker(is_64bit=is_64bit)
+
         for insn in cs.disasm(content, sec_va):
             mnemonic = insn.mnemonic.lower()
+            tracker.process_instruction(insn)
+
+            # A. Value-flow call resolution (e.g. call qword ptr [LoadStringW])
+            if mnemonic == "call":
+                target_va = None
+                for op in insn.operands:
+                    if op.type == capstone.x86.X86_OP_MEM:
+                        if is_64bit:
+                            target_va = (insn.address + insn.size + op.mem.disp) & 0xFFFFFFFFFFFFFFFF
+                        else:
+                            target_va = op.mem.disp & 0xFFFFFFFF
+                    elif op.type == capstone.x86.X86_OP_IMM:
+                        target_va = op.imm & 0xFFFFFFFF
+
+                if target_va in iat_map:
+                    api_name = iat_map[target_va]
+                    binding = tracker.resolve_api_call(api_name, insn.address)
+                    if binding and binding.target_id > 0:
+                        bid = binding.target_id
+                        ref = CodeReference(
+                            address=insn.address,
+                            section=section.name,
+                            mnemonic=f"call:{api_name}",
+                            operands=f"id={bid} [{' -> '.join(binding.evidence_instructions)}]",
+                        )
+                        if bid in numeric_targets:
+                            immediate_refs.setdefault(bid, []).append(ref)
+                        if bid in string_id_to_entry:
+                            string_id_refs.setdefault(bid, []).append(ref)
+
+            elif mnemonic in ("ret", "jmp"):
+                tracker.reset_block()
+
+            # B. Immediate operands
             for op in insn.operands:
                 if op.type == capstone.x86.X86_OP_IMM:
                     imm_val = op.imm & 0xFFFFFFFF
@@ -241,6 +282,27 @@ def scan_pe_xrefs(path: Path) -> XRefReport:
                             operands=insn.op_str,
                         )
                         string_id_refs.setdefault(imm_val, []).append(ref)
+
+                # C. Effective LEA displacement (e.g. lea edx, [rax + 0x71])
+                elif op.type == capstone.x86.X86_OP_MEM and mnemonic == "lea":
+                    mem = op.mem
+                    disp = mem.disp & 0xFFFFFFFF
+                    if disp in numeric_targets:
+                        ref = CodeReference(
+                            address=insn.address,
+                            section=section.name,
+                            mnemonic="lea:res_id",
+                            operands=insn.op_str,
+                        )
+                        immediate_refs.setdefault(disp, []).append(ref)
+                    if disp in string_id_to_entry:
+                        ref = CodeReference(
+                            address=insn.address,
+                            section=section.name,
+                            mnemonic=f"lea:str_id={disp}",
+                            operands=insn.op_str,
+                        )
+                        string_id_refs.setdefault(disp, []).append(ref)
 
     # 5. Scan Read-Only Data Sections for Resource & String ID Tables
     data_table_refs: dict[int, list[CodeReference]] = {}

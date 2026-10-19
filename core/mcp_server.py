@@ -18,6 +18,9 @@ from .pe_integrity import inspect_integrity
 from .recipe import apply_recipe as core_apply_recipe, create_recipe as core_create_recipe
 from .resource_reader import ResourceReader
 from .signature import resign_authenticode, strip_authenticode
+from .managed_pe import ManagedPEParser
+from .toolchain_auditor import ToolchainAuditor
+from .value_flow_tracker import ValueFlowTracker
 
 
 def _coerce_language(val: int | str | None) -> int | None:
@@ -619,6 +622,78 @@ def create_mcp_server(
             out = Path(output_path).expanduser().resolve()
         res = resign_authenticode(path, out, cert, password_env=password_env, strip_existing=strip_existing)
         return res.to_dict()
+
+    @server.tool()
+    def inspect_managed_artifact(file_path: str, max_user_strings: int = 50) -> dict[str, Any]:
+        """Inspect PE/CLI metadata headers, ECMA-335 table row counts, streams, and embedded ManifestResource blobs.
+
+        Args:
+            file_path: Path to the Windows managed PE binary (.exe or .dll).
+            max_user_strings: Maximum user string literals to return from #US stream (default: 50).
+        """
+        path = Path(file_path).expanduser().resolve()
+        if not path.is_file():
+            raise FileNotFoundError(f"File not found: {file_path}")
+        parser = ManagedPEParser(path)
+        report = parser.parse()
+        return report.to_dict(max_user_strings=max_user_strings)
+
+    @server.tool()
+    def inspect_toolchain(file_path: str, max_dependencies: int = 50) -> dict[str, Any]:
+        """Audit embedded Go runtime build info and module dependency tree, or Rust compiler commit and cargo-auditable records.
+
+        Args:
+            file_path: Path to the Windows PE binary to audit.
+            max_dependencies: Maximum dependencies to return in the report (default: 50).
+        """
+        path = Path(file_path).expanduser().resolve()
+        if not path.is_file():
+            raise FileNotFoundError(f"File not found: {file_path}")
+        auditor = ToolchainAuditor(path)
+        report = auditor.audit()
+        res = report.to_dict()
+        if res.get("go") and "dependencies" in res["go"]:
+            res["go"]["dependencies"] = res["go"]["dependencies"][:max_dependencies]
+        if res.get("rust") and "dependencies" in res["rust"]:
+            res["rust"]["dependencies"] = res["rust"]["dependencies"][:max_dependencies]
+        return res
+
+    @server.tool()
+    def trace_native_values(file_path: str, section_name: str = ".text") -> dict[str, Any]:
+        """Perform intra-basic-block register value-flow tracing on Win32 resource API calls.
+
+        Args:
+            file_path: Path to the Windows PE binary to trace.
+            section_name: Executable section name to analyze (default: '.text').
+        """
+        from .xref_scanner import scan_pe_xrefs
+
+        path = Path(file_path).expanduser().resolve()
+        if not path.is_file():
+            raise FileNotFoundError(f"File not found: {file_path}")
+        xref_rep = scan_pe_xrefs(path)
+
+        proven_calls: list[dict[str, Any]] = []
+        for r in xref_rep.resources:
+            for ref in r.references:
+                if "call:" in ref.mnemonic:
+                    proven_calls.append(
+                        {
+                            "address": hex(ref.address),
+                            "section": ref.section,
+                            "api": ref.mnemonic.replace("call:", ""),
+                            "operands": ref.operands,
+                            "resourceType": r.resource_type,
+                            "resourceName": r.name,
+                        }
+                    )
+        return {
+            "path": str(path),
+            "machine": xref_rep.machine,
+            "hasResourceApis": xref_rep.has_resource_apis,
+            "provenCallCount": len(proven_calls),
+            "provenCalls": proven_calls,
+        }
 
     @server.prompt()
     def triage_pe_resources(file_path: str) -> str:

@@ -27,6 +27,8 @@ class PEMetadataReport:
     is_mui_base: bool = False
     companion_mui_files: tuple[str, ...] = field(default_factory=tuple)
     base_executable: str | None = None
+    managed_metadata: dict[str, Any] | None = None
+    toolchain: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -42,6 +44,8 @@ class PEMetadataReport:
             "isMuiBase": self.is_mui_base,
             "companionMuiFiles": list(self.companion_mui_files),
             "baseExecutable": self.base_executable,
+            "managedMetadata": dict(self.managed_metadata) if self.managed_metadata else None,
+            "toolchain": dict(self.toolchain) if self.toolchain else None,
         }
 
 
@@ -79,6 +83,7 @@ class PEMetadataInspector:
 
         companion_mui: list[str] = []
         base_exe: str | None = None
+        is_mui_base = False
 
         if has_mui_resource and not is_mui:
             is_mui_base = True
@@ -100,8 +105,26 @@ class PEMetadataInspector:
                     base_exe = str(cand.resolve())
             except (OSError, PermissionError):
                 pass
-        else:
-            is_mui_base = False
+        # Discover Managed (.NET) Metadata
+        managed_meta_dict: dict[str, Any] | None = None
+        if is_dotnet:
+            try:
+                from .managed_pe import ManagedPEParser
+                m_rep = ManagedPEParser(path).parse()
+                if m_rep.is_managed:
+                    managed_meta_dict = m_rep.to_dict()
+            except Exception:
+                pass
+
+        # Discover Go / Rust / Toolchain Metadata
+        toolchain_dict: dict[str, Any] | None = None
+        try:
+            from .toolchain_auditor import ToolchainAuditor
+            t_rep = ToolchainAuditor(path).audit()
+            if t_rep.toolchain_type != "NATIVE_WIN32" or t_rep.go_info or t_rep.rust_info:
+                toolchain_dict = t_rep.to_dict()
+        except Exception:
+            pass
 
         return PEMetadataReport(
             path=str(path),
@@ -120,6 +143,8 @@ class PEMetadataInspector:
             is_mui_base=is_mui_base,
             companion_mui_files=tuple(companion_mui),
             base_executable=base_exe,
+            managed_metadata=managed_meta_dict,
+            toolchain=toolchain_dict,
         )
 
 
