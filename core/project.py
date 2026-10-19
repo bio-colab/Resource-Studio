@@ -257,7 +257,7 @@ class Project:
         _atomic_copy(source_workspace, project.workspace_path)
         from .pe_writer import LiefPEWriter
 
-        actual = _entries_from_lief(LiefPEWriter()._parse(project.workspace_path))
+        actual = _entries_from_lief(LiefPEWriter()._parse(project.workspace_path), path=project.workspace_path)
         if {(entry.key, entry.sha256) for entry in actual} != {(entry.key, entry.sha256) for entry in project.entries.values()}:
             raise ValueError("portable workspace failed resource verification")
         project.audit.append("project.import_git", sourcePath=str(source_dir), resourceCount=len(project.entries), verified=True)
@@ -274,7 +274,7 @@ class Project:
         from .health import PEHealth
         from .pe_writer import LiefPEWriter
 
-        workspace_entries = _entries_from_lief(LiefPEWriter()._parse(self.workspace_path))
+        workspace_entries = _entries_from_lief(LiefPEWriter()._parse(self.workspace_path), path=self.workspace_path)
         expected = {(entry.key, entry.sha256) for entry in self.entries.values()}
         actual = {(entry.key, entry.sha256) for entry in workspace_entries}
         if expected != actual:
@@ -283,7 +283,7 @@ class Project:
         report = PEHealth.inspect(output)
         if not report.is_pe:
             raise ValueError("build output is not a supported PE")
-        reopened_entries = _entries_from_lief(LiefPEWriter()._parse(output))
+        reopened_entries = _entries_from_lief(LiefPEWriter()._parse(output), path=output)
         if {(entry.key, entry.sha256) for entry in reopened_entries} != actual:
             raise ValueError("build output failed resource round-trip verification")
         from .provenance import build_provenance, write_provenance
@@ -329,7 +329,7 @@ class Project:
         backup = self.workspace_path.with_suffix(self.workspace_path.suffix + ".before-typed.bak")
         shutil.copy2(self.workspace_path, backup)
         _atomic_copy(candidate, self.workspace_path)
-        self.entries = {entry.key: entry for entry in _entries_from_lief(writer._parse(self.workspace_path))}
+        self.entries = {entry.key: entry for entry in _entries_from_lief(writer._parse(self.workspace_path), path=self.workspace_path)}
         self.dirty = True
         self.save()
         self.audit.append(
@@ -397,7 +397,7 @@ class Project:
         backup = self.workspace_path.with_suffix(self.workspace_path.suffix + ".before-res.bak")
         shutil.copy2(self.workspace_path, backup)
         _atomic_copy(candidate, self.workspace_path)
-        self.entries = {entry.key: entry for entry in _entries_from_lief(writer._parse(self.workspace_path))}
+        self.entries = {entry.key: entry for entry in _entries_from_lief(writer._parse(self.workspace_path), path=self.workspace_path)}
         self.dirty = True
         self.save()
         self.audit.append(
@@ -430,7 +430,7 @@ class Project:
         backup = self.workspace_path.with_suffix(self.workspace_path.suffix + ".before-apply.bak")
         shutil.copy2(self.workspace_path, backup)
         _atomic_copy(candidate, self.workspace_path)
-        self.entries = {entry.key: entry for entry in _entries_from_lief(LiefPEWriter()._parse(self.workspace_path))}
+        self.entries = {entry.key: entry for entry in _entries_from_lief(LiefPEWriter()._parse(self.workspace_path), path=self.workspace_path)}
         self.dirty = True
         self.save()
         self.audit.append(
@@ -505,7 +505,7 @@ class Project:
             _atomic_copy(workspace_snapshot, self.workspace_path)
             from .pe_writer import LiefPEWriter
 
-            actual_entries = _entries_from_lief(LiefPEWriter()._parse(self.workspace_path))
+            actual_entries = _entries_from_lief(LiefPEWriter()._parse(self.workspace_path), path=self.workspace_path)
             actual = {(entry.key, entry.sha256) for entry in actual_entries}
             if actual != expected:
                 raise ValueError("snapshot workspace failed resource verification")

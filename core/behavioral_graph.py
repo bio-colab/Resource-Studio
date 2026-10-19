@@ -174,7 +174,15 @@ class BehavioralGraphEngine:
 
         # Cache of parsed resources
         self.reader = ResourceReader(self.path)
-        self.entries = self.reader.entries
+        self.entries = list(self.reader.entries)
+        try:
+            existing_keys = {e.key for e in self.entries}
+            for me in self.reader.read_mui_companion_entries():
+                if me.key not in existing_keys:
+                    self.entries.append(me)
+                    existing_keys.add(me.key)
+        except Exception:
+            pass
         self.import_map = self._build_import_map()
 
     def _build_import_map(self) -> dict[int, str]:

@@ -51,11 +51,15 @@ class CodeReference:
     mnemonic: str
     operands: str
 
+    @property
+    def instruction(self) -> str:
+        return f"{self.mnemonic} {self.operands}".strip()
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "address": hex(self.address),
             "section": self.section,
-            "instruction": f"{self.mnemonic} {self.operands}".strip(),
+            "instruction": self.instruction,
         }
 
 
