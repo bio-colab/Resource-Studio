@@ -43,6 +43,11 @@
 | **خادم الذكاء الاصطناعي (FastMCP Server)** | ✅ **12 أداة مدمجة لـ Claude و Cursor** | ❌ لا يوجد | ❌ لا يوجد | ❌ لا يوجد |
 | **محرك المراجع المتقاطعة (PE XRef Engine)** | ✅ **كشف تلقائي للموارد الميتة بالكود** | ❌ لا يوجد | ❌ لا يوجد | ❌ لا يوجد |
 | **جسر Ghidra وفهم سلوك الحوارات** | ✅ **ربط عناصر الواجهة بـ DialogProc** | ❌ لا يوجد | ❌ لا يوجد | ❌ لا يوجد |
+| **تتبع تدفق قيم المسجلات (Register Value-Flow)** | ✅ **تفكيك ذكي ومسح دلالي لتعليمات الآلة** | ❌ لا يوجد | ❌ لا يوجد | ❌ لا يوجد |
+| **تشريح هياكل وتدفقات .NET (Managed Metadata)** | ✅ **فحص CLR Header وجداول Metadata** | ❌ لا يوجد | ❌ لا يوجد | ⚠️ محدود |
+| **تدقيق سلاسل أدوات المترجمين (Toolchain Audit)** | ✅ **كشف الشذوذ والتلاعب بسلاسل البناء** | ❌ لا يوجد | ❌ لا يوجد | ❌ لا يوجد |
+| **فحص وتشخيص المحركات والبيئة (`doctor`)** | ✅ **فحص 8 محركات مع إرشادات إصلاح** | ❌ لا يوجد | ❌ لا يوجد | ❌ لا يوجد |
+| **تصفية وحماية ذاكرة السياق للـ LLMs** | ✅ **تصفية ذاتية وضبط توكنز (`--token-limit`)** | ❌ لا يوجد | ❌ لا يوجد | ❌ لا يوجد |
 | **دعم الأنظمة المشتركة (Cross-Platform CLI)** | ✅ **Linux & Windows CLI** | ❌ Windows فقط | ❌ Windows فقط | ❌ Windows فقط |
 
 ---
@@ -127,6 +132,37 @@ python resource_studio_cli.py xref target.exe --json
 python resource_studio_cli.py ghidra status --json
 ```
 
+### 9. محركات التحليل الجنائي المتقدمة وتدفق قيم المسجلات (Forensic Engines & Register Tracing)
+محركات متقدمة مستوحاة من أحدث تقنيات الهندسة العكسية التجريبية (REA):
+* **تتبع تدفق قيم المسجلات (Register Value-Flow Tracing):** تحليل متسلسل لتعليمات التفكيك وتتبع انتقال القيم والثوابت عبر المسجلات (`EAX`, `EDX`, `ECX`) وحتى استدعاء واجهات الموارد.
+* **فحص هياكل وتدفقات .NET (Managed Artifact Engine):** استخراج بيانات الـ CLR Header وجداول الـ Metadata وتدفقات البايتات (`#~`, `#Strings`, `#Blob`, `#GUID`) للملفات المدارة.
+* **تدقيق سلاسل أدوات البناء (Toolchain Auditor):** كشف بصمات المترجمين (MSVC, MinGW, Clang, Rust, Go) وتحليل التلاعب برؤوس COFF و Rich Header.
+* **خط أنابيب التحقيق وإعادة التشغيل (Investigation & Replay Pipeline):** تسجيل دورة التحقيق في يوميات جنائية JSONL قابلة لإعادة الفحص والتدقيق التلقائي.
+```bash
+python resource_studio_cli.py trace-values target.dll --json
+python resource_studio_cli.py managed target.dll --json
+python resource_studio_cli.py toolchain target.dll --json
+```
+
+### 10. واجهة سطر أوامر معيارية للوكلاء والذكاء الاصطناعي (REA-Grade CLI & Token Budgeting)
+واجهة CLI هجينة صممت خصيصاً لحماية سياق نماذج الذكاء الاصطناعي (Context Window) ورفع كفاءة المعالجة:
+* **تصفية فورية للمسارات المتداخلة (`--filter-output`):** استخراج قيم كـ `identity.machine` أو `identity.sections[0].name` فورياً دون استدعاء `jq`.
+* **ضبط واحتساب التوكنز (`--token-count` و `--token-limit`):** تقدير استهلاك التوكنز واقتطاع النتائج الضخمة بأمان مع تذييل قياسي يوضح النطاق المستعرض.
+* **التصدير التعددي (`--format yaml|json|toon|md`):** دعم تنسيقات متنوعة مع محول YAML مدمج وخفيف بدون أي اعتماديات خارجية.
+* **التوثيق الذاتي وفهرس الوكلاء (`--schema` و `--llms`):** إنتاج JSON Schema فوري لأي أمر، واستخراج دليل الأدوات الكامل لوكلاء الذكاء الاصطناعي.
+* **تشخيص صحة البيئة والمحركات (`resource-studio doctor`):** فحص شامل لـ 8 محركات مع تصنيفات معيارية وإرشادات إصلاح فورية.
+* **أغلفة الأدلة الجنائية (`--envelope`):** تغليف المخرجات بمعرّف محتوى تشفيري `evidenceId: ev_<sha256>`.
+```bash
+# تشخيص صحة البيئة
+python resource_studio_cli.py doctor
+
+# تصفية حقل محدد بصيغة YAML مع تقنين التوكنز
+python resource_studio_cli.py inspect app.exe --json --filter-output identity --format yaml --token-limit 50
+
+# استخراج مخطط الأداة فورياً
+python resource_studio_cli.py inspect --schema
+```
+
 ---
 
 ## 🎨 تجربة المستخدم ونظام التباين القياسي (WCAG AAA)
@@ -181,18 +217,30 @@ windows\ResourceStudio.Windows\bin\Release\net8.0-windows\ResourceStudio.Windows
 يعمل محرك سطر الأوامر `resource_studio_cli.py` بشكل مستقل بالكامل ويدعم مخرجات JSON لكافة الأوامر:
 
 ```bash
-# استكشاف الموارد
+# تشخيص صحة البيئة والمحركات (Doctor Diagnostics)
+python resource_studio_cli.py doctor
+python resource_studio_cli.py doctor --json
+
+# استكشاف الموارد والبيانات
 python resource_studio_cli.py list app.exe --json
-
-# فحص بنية الـ PE وسلامته
 python resource_studio_cli.py inspect app.exe --json
-python resource_studio_cli.py validate app.exe --json
 
-# استخراج مورد محدد
-python resource_studio_cli.py extract app.exe --type ICON --name 1 --output icon.ico
+# تصفية المخرجات الذاتية وحماية التوكنز للـ LLMs
+python resource_studio_cli.py inspect app.exe --json --filter-output identity.machine
+python resource_studio_cli.py inspect app.exe --json --format yaml --token-limit 50
 
-# مقارنة الموارد دلالياً بين ملفين
-python resource_studio_cli.py diff original.dll modified.dll --json
+# فحص وتدقيق سلاسل الأدوات والمترجمات
+python resource_studio_cli.py toolchain app.exe --json
+
+# تشريح هياكل وبيانات الدوت نت المدارة
+python resource_studio_cli.py managed app.exe --json
+
+# تتبع تدفق قيم المسجلات وتعليمات التفكيك
+python resource_studio_cli.py trace-values app.exe --json
+
+# التوثيق الذاتي وفهرس الوكلاء الأذكياء
+python resource_studio_cli.py inspect --schema
+python resource_studio_cli.py --llms
 
 # فحص التوقيع الرقمي Authenticode
 python resource_studio_cli.py signature inspect app.exe --json
@@ -212,7 +260,7 @@ python resource_studio_cli.py hex app.exe --type MANIFEST --name 1 --length 256 
 يخضع المشروع لحزم اختبارات مؤتمتة صارمة تحقق نسبة نجاح **100%**:
 
 ```powershell
-# تشغيل كامل حزمة الاختبارات الأساسية
+# تشغيل كامل حزمة الاختبارات الأساسية (75 اختباراً)
 python -m pytest
 
 # تشغيل اختبارات الإجهاد والمدخلات التالفة (Stress Test Sprint)
@@ -223,10 +271,12 @@ python tests/core/test_recipe.py
 ```
 
 ```text
-=== ALL TEST SUITES VERIFIED ===
+=== ALL TEST SUITES VERIFIED (75/75 PASSED) ===
 [✓] Core Invariants & PE Integrity: PASSED (100%)
 [✓] Real Windows Kernel Oracle (Win32): PASSED (100%)
-[✓] Dialog, Menu & Resource Editors: PASSED (100%)
+[✓] Dialog, Menu & Resource Editors (100% Byte-for-Byte REA Match): PASSED (100%)
+[✓] Forensic Engines (Register Tracing, Managed, Toolchain): PASSED (100%)
+[✓] REA-Grade CLI Output Pipeline, Doctor & Token Budgeting: PASSED (100%)
 [✓] Recipe Export & Apply Headless: PASSED (100%)
 [✓] Stress Test Sprint (Corrupt PE, Fuzzing, Boundary Conditions): 0 Errors
 [✓] WPF Build (Debug & Release): 0 Warnings, 0 Errors

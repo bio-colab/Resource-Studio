@@ -17,7 +17,32 @@
 
 ### أُضيف
 
-- إضافة `LiveAnalysisAdapter` read-only وعقد `resource_studio.live_analysis.v1`: جلسات مرتبطة بـSHA-256 واستيراد behavioral telemetry وmemory analysis وAPI call traces الخارجية مع `sessionId` و`sourceSha256` و`evidenceSha256` وlimitations، دون تشغيل process أو attach أو قراءة live memory أو تنفيذ debugger commands.
+- **بنية وميزات REA-Grade CLI المتقدمة:**
+  - إضافة وحدة `core/cli_output.py` لتقديم معالجة احترافية للمخرجات: التصفية اللحظية للمسارات المتداخلة والمصفوفات عبر `--filter-output <path.to.key[idx]>` بدون الحاجة لأدوات خارجية مثل `jq`.
+  - حماية ذاكرة سياق نماذج الذكاء الاصطناعي (LLM Context Window) عبر `--token-count` لحساب استهلاك الرموز، و`--token-limit <N>` و`--token-offset <N>` للاقتطاع الآمن مع تذييل قياسي `[truncated: showing tokens X-Y of Z]`.
+  - التصدير التعددي الذاتي بصيغ `yaml`, `json`, `toon`, و`md` بمحول YAML خفيف وذاتي (Zero-Dependency).
+  - التوثيق الذاتي وفهرس الوكلاء الأذكياء عبر `--schema` لإنتاج JSON Schema دون طلب ملفات وهمية، و`--llms` / `--llms-full` لفهرسة كافة أوامر المشروع الـ 35+ لتمكين الوكلاء.
+  - غلاف الأدلة الجنائية التشفيري `--envelope` بمعرف محتوى فريد (`evidenceId: ev_<sha256>`) مع توثيق حدود التحليل والمزود.
+  - أمر الفحص والتشخيص الشامل `resource-studio doctor` و`doctor --json` لفحص بيئة بايثون، LIEF، مفكك Capstone، أدوات Windows SDK Authenticode SignTool، حزمة .NET SDK، قنوات اتصال WPF IPC، وجسر Ghidra، مع تصنيف الحالات وإرشادات الإصلاح `remediation`.
+  - هيكل أخطاء معياري موجه لنماذج الذكاء الاصطناعي عند حدوث أخطاء بصيغة JSON مع فئات دلالية (`validation_error`, `runtime_error`).
+  - إضافة 14 اختباراً شاملاً في `tests/core/test_cli_output_and_doctor.py` واجتياز حزمة الاختبارات بالكامل (75/75 فحصاً ناجحاً).
+- **محركات التحليل الجنائي المتقدمة المستوحاة من REA:**
+  - تتبع تدفق قيم المسجلات وتعليمات التفكيك في الـ CLI عبر `trace-values` في `core/xref_scanner.py`.
+  - فحص وفهرسة البيانات الوصفية وهياكل الدوت نت وCLR streams عبر `managed` في `core/managed_engine.py`.
+  - تدقيق وتصنيف بصمات سلاسل أدوات المترجمين وكشف الشذوذ عبر `toolchain` في `core/toolchain_auditor.py`.
+  - خط أنابيب التحقيق الجنائي وإعادة التشغيل التلقائي عبر `investigate` و`replay-investigation`.
+- **تكامل التحليل الجنائي وسلاسل الأدوات في واجهة WPF الرسومية:**
+  - تبويب التحقيق الجنائي المباشر (Forensic Investigation) بشريط تقدم وسجل تشغيلي تفاعلي.
+  - لوحة فحص تدفق قيم المسجلات وتفكيك تعليمات الآلة المباشرة.
+  - لوحة تدقيق وتصنيف المترجمات وكشف تلاعب سلاسل الأدوات.
+  - لوحة استعراض تدفقات وبيانات .NET Managed Streams.
+
+### أُصلح
+
+- **المطابقة التجريبية الكاملة (100% Byte-for-Byte Conformance) مع REA:**
+  - تصحيح ترتيب حزم عناصر `DLGITEMTEMPLATEEX`، معالجة معرفات التحكم المزدوجة `DWORD Control IDs`، وتوحيد مقاييس بكسلات DLU لضمان تطابق ثنائي دقيق عند دورات التصدير والتعديل.
+  - تصحيح حساب كتل جداول النصوص `STRINGTABLE` وفق صيغة Win32 القياسية `(bundle_id - 1) * 16 + i`، مع تصفية ضوضاء السلاسل وتحديد معمارية الموارد التابعة MUI/LN بدقة.
+  - مسار احتياطي مباشر لفهارس PE الخام (`raw PE resource directory fallback`) لعزل التشويهات غير القياسية في قراءة الموارد.
 - إضافة أدوات MCP وموارد live-analysis للجلسات والتقارير، مع اختبار core واختبار stdio يثبتان تطابق الهدف وبقاء المصدر والعملية خارج نطاق التعديل.
 - إضافة MCP Observability Contract: موارد read-only لـ`resource://tools/metadata` و`resource://session/state` و`resource://session/events`، مع side-effect/precondition/confirmation/audit metadata وسجل أحداث محدود للجلسة، دون منح صلاحيات جديدة أو تغيير evidence وverification.
 - إصلاح بوابة CI بإعلان `httpx` صراحةً ضمن dependencies لأن اختبار MCP HTTP يستخدم `httpx.ASGITransport` و`AsyncClient`، مع توسيع أمر المساهمين ليشغّل اختبارات MCP نفسها.
