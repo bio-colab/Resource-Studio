@@ -33,18 +33,79 @@ def _safe_print_str(text: str) -> None:
         sys.stdout.buffer.write((text + "\n").encode("utf-8", errors="replace"))
 
 
-def _print(payload: Any, as_json: bool) -> None:
-    if as_json:
-        _safe_print_str(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True))
-        return
-    if isinstance(payload, list):
-        for item in payload:
-            _safe_print_str("\t".join(str(item.get(key, "")) for key in ("type", "name", "language", "size", "sha256")))
-    elif isinstance(payload, dict):
-        for key, value in payload.items():
-            _safe_print_str(f"{key}: {value}")
+_CURRENT_GLOBAL_OPTIONS: dict[str, Any] = {}
+
+
+def _print(payload: Any, as_json: bool = False, *, args: argparse.Namespace | None = None) -> None:
+    from core.cli_output import (
+        filter_data,
+        estimate_token_count,
+        apply_token_window,
+        format_output,
+        wrap_in_evidence_envelope,
+    )
+
+    opts = dict(_CURRENT_GLOBAL_OPTIONS)
+    if args is not None:
+        if getattr(args, "filter_output", None):
+            opts["filter_output"] = args.filter_output
+        if getattr(args, "envelope", False):
+            opts["envelope"] = True
+        if getattr(args, "token_count", False):
+            opts["token_count"] = True
+        if getattr(args, "token_limit", None) is not None:
+            opts["token_limit"] = args.token_limit
+        if getattr(args, "token_offset", None) is not None:
+            opts["token_offset"] = args.token_offset
+        if getattr(args, "output_format", None):
+            opts["format"] = args.output_format
+
+    # 1. Filter output by key path if requested
+    filter_expr = opts.get("filter_output")
+    if filter_expr:
+        payload = filter_data(payload, filter_expr)
+
+    # 2. Envelope wrapping if requested
+    if opts.get("envelope"):
+        op = getattr(args, "command", "operation") if args else "operation"
+        target = getattr(args, "input", None) or getattr(args, "left", None) or getattr(args, "original", None) if args else None
+        payload = wrap_in_evidence_envelope(payload, operation=str(op), target_path=target)
+
+    # 3. Format determination
+    fmt = opts.get("format")
+    if not fmt and (as_json or (args and getattr(args, "json", False))):
+        fmt = "json"
+
+    if not fmt or fmt == "text":
+        if isinstance(payload, list):
+            for item in payload:
+                if isinstance(item, dict):
+                    _safe_print_str("\t".join(str(item.get(key, "")) for key in ("type", "name", "language", "size", "sha256")))
+                else:
+                    _safe_print_str(str(item))
+            return
+        elif isinstance(payload, dict):
+            for key, value in payload.items():
+                _safe_print_str(f"{key}: {value}")
+            return
+        else:
+            rendered = str(payload)
     else:
-        _safe_print_str(str(payload))
+        rendered = format_output(payload, fmt)
+
+    # 4. Token count
+    if opts.get("token_count"):
+        count = estimate_token_count(rendered)
+        _safe_print_str(str(count))
+        return
+
+    # 5. Token windowing
+    limit = opts.get("token_limit")
+    offset = opts.get("token_offset")
+    if limit is not None or offset is not None:
+        rendered, _ = apply_token_window(rendered, token_limit=limit, token_offset=offset)
+
+    _safe_print_str(rendered)
 
 
 def _diff_payload(left_path: Path, right_path: Path, *, typed: bool = False) -> dict[str, Any]:
@@ -319,6 +380,25 @@ def command_value_flow(args: argparse.Namespace) -> int:
     }
     _print(payload, args.json)
     return 0
+
+
+def command_doctor(args: argparse.Namespace) -> int:
+    from core.cli_output import run_doctor_checks
+
+    report = run_doctor_checks()
+    if getattr(args, "json", False) or _CURRENT_GLOBAL_OPTIONS.get("format") == "json":
+        _print(report, as_json=True)
+    else:
+        _safe_print_str("=== فحص وتشخيص بيئة ومحركات Resource Studio (Doctor) ===")
+        for c in report.get("checks", []):
+            mark = "✓" if c["ok"] else ("i" if c.get("classification") == "optional_provider_offline" else "✗")
+            _safe_print_str(f"[{mark}] {c['name']}: {c['detail']}")
+            if not c["ok"] and c.get("remediation"):
+                _safe_print_str(f"    -> الحل / الإصلاح: {c['remediation']}")
+        _safe_print_str("")
+        st = "سليم وجاهز بنسبة 100%" if report["status"] == "healthy" else "متاح مع بعض التحذيرات / التنبيهات"
+        _safe_print_str(f"الحالة العامة: {st} ({report['passedChecks']}/{report['totalChecks']} فحص ناجح)")
+    return 0 if report["status"] == "healthy" else 1
 
 
 def command_xref(args: argparse.Namespace) -> int:
@@ -812,6 +892,11 @@ def _key(entry: ResourceEntry) -> tuple[str, str, int | None]:
 def parser() -> argparse.ArgumentParser:
     root = argparse.ArgumentParser(prog="resource-studio", description="Resource Studio core CLI")
     subparsers = root.add_subparsers(dest="command", required=True)
+    root._subparsers_action = subparsers
+
+    doctor_parser = subparsers.add_parser("doctor", help="diagnose environment, prerequisites, engines, and host status")
+    doctor_parser.add_argument("--json", action="store_true", help="output diagnostic report in JSON")
+    doctor_parser.set_defaults(handler=command_doctor)
 
     list_parser = subparsers.add_parser("list", help="list PE resources")
     list_parser.add_argument("input", type=Path)
@@ -1108,33 +1193,125 @@ def parser() -> argparse.ArgumentParser:
     return root
 
 
+def _extract_global_flags(argv: list[str]) -> tuple[list[str], dict[str, Any]]:
+    opts: dict[str, Any] = {}
+    cleaned_argv: list[str] = []
+    i = 0
+    while i < len(argv):
+        arg = argv[i]
+        if arg == "--filter-output" and i + 1 < len(argv):
+            opts["filter_output"] = argv[i + 1]
+            i += 2
+        elif arg == "--token-count":
+            opts["token_count"] = True
+            i += 1
+        elif arg == "--token-limit" and i + 1 < len(argv) and argv[i + 1].isdigit():
+            opts["token_limit"] = int(argv[i + 1])
+            i += 2
+        elif arg == "--token-offset" and i + 1 < len(argv) and argv[i + 1].isdigit():
+            opts["token_offset"] = int(argv[i + 1])
+            i += 2
+        elif arg == "--envelope":
+            opts["envelope"] = True
+            i += 1
+        elif arg in ("--output-format", "--format") and i + 1 < len(argv) and argv[i + 1] in ("json", "yaml", "jsonl", "md", "toon"):
+            if any(cmd in argv for cmd in ("report", "image-payload")) and argv[i + 1] in ("raw", "bmp", "auto"):
+                cleaned_argv.append(arg)
+                i += 1
+            else:
+                opts["format"] = argv[i + 1]
+                i += 2
+        else:
+            cleaned_argv.append(arg)
+            i += 1
+    return cleaned_argv, opts
+
+
 def main(argv: list[str] | None = None) -> int:
-    arguments = parser().parse_args(argv)
+    raw_argv = list(argv) if argv is not None else sys.argv[1:]
+    cleaned_argv, global_opts = _extract_global_flags(raw_argv)
+    global _CURRENT_GLOBAL_OPTIONS
+    _CURRENT_GLOBAL_OPTIONS = global_opts
+
+    root_parser = parser()
+
+    # Self-documenting schema generation
+    if "--schema" in raw_argv:
+        cmd = None
+        sub_action = getattr(root_parser, "_subparsers_action", None)
+        if sub_action:
+            for a in raw_argv:
+                if not a.startswith("-") and a in sub_action.choices:
+                    cmd = a
+                    break
+        from core.cli_output import generate_subcommand_schema
+
+        if sub_action:
+            if cmd and cmd in sub_action.choices:
+                sub = sub_action.choices[cmd]
+                print(json.dumps(generate_subcommand_schema(sub), ensure_ascii=False, indent=2))
+                return 0
+            else:
+                manifest = {
+                    "prog": "resource-studio",
+                    "description": "Resource Studio core CLI",
+                    "commands": {
+                        name: generate_subcommand_schema(sub)
+                        for name, sub in sub_action.choices.items()
+                    },
+                }
+                print(json.dumps(manifest, ensure_ascii=False, indent=2))
+                return 0
+
+    # LLM-readable tool manifest
+    if any(a in ("--llms", "--llms-full") for a in raw_argv):
+        from core.cli_output import generate_subcommand_schema
+
+        sub_action = getattr(root_parser, "_subparsers_action", None)
+        commands_manifest = []
+        if sub_action:
+            for name, sub in sorted(sub_action.choices.items()):
+                sch = generate_subcommand_schema(sub)
+                commands_manifest.append({
+                    "command": name,
+                    "description": sch.get("description", ""),
+                    "required": sch.get("required", []),
+                    "options": list(sch.get("properties", {}).keys()),
+                })
+        print(json.dumps({
+            "name": "resource-studio",
+            "version": "1.0.0",
+            "commandsCount": len(commands_manifest),
+            "commands": commands_manifest,
+        }, ensure_ascii=False, indent=2))
+        return 0
+
+    arguments = root_parser.parse_args(cleaned_argv)
     if arguments.command == "hex":
         resource_mode = all(value is not None for value in (arguments.type, arguments.name, arguments.language))
         if arguments.offset is None and not resource_mode:
-            parser().error("hex requires --offset or --type/--name/--language")
+            root_parser.error("hex requires --offset or --type/--name/--language")
         if arguments.offset is not None and resource_mode:
-            parser().error("hex cannot combine --offset with resource selectors")
+            root_parser.error("hex cannot combine --offset with resource selectors")
         if arguments.offset is not None and arguments.offset < 0:
-            parser().error("hex --offset must be non-negative")
+            root_parser.error("hex --offset must be non-negative")
     if arguments.command == "report" and arguments.kind in {"diff", "image-diff"} and arguments.right is None:
-        parser().error(f"report {arguments.kind} requires LEFT and RIGHT inputs")
+        root_parser.error(f"report {arguments.kind} requires LEFT and RIGHT inputs")
     if arguments.command in {"string-table", "version-resource", "manifest-resource", "menu-resource", "image-resource"} and arguments.action == "apply" and arguments.model is None:
-        parser().error("string-table apply requires --model")
+        root_parser.error("string-table apply requires --model")
     if arguments.command == "image-payload" and arguments.action == "apply" and arguments.payload is None:
-        parser().error("image-payload apply requires --payload")
+        root_parser.error("image-payload apply requires --payload")
     if arguments.command == "localization" and arguments.action == "pseudo" and arguments.output is None:
-        parser().error("localization pseudo requires --output")
+        root_parser.error("localization pseudo requires --output")
     if arguments.command == "signature":
         if arguments.action == "inspect" and arguments.input is None:
-            parser().error("signature inspect requires INPUT")
+            root_parser.error("signature inspect requires INPUT")
         if arguments.action in {"strip", "re-sign"} and (arguments.input is None or arguments.output is None):
-            parser().error(f"signature {arguments.action} requires INPUT and --output")
+            root_parser.error(f"signature {arguments.action} requires INPUT and --output")
         if arguments.action == "re-sign" and arguments.certificate is None:
-            parser().error("signature re-sign requires --certificate")
+            root_parser.error("signature re-sign requires --certificate")
         if arguments.action == "create-test-cert" and arguments.output is None:
-            parser().error("signature create-test-cert requires --output")
+            root_parser.error("signature create-test-cert requires --output")
     try:
         from core.p0_telemetry import measure
 
@@ -1143,16 +1320,40 @@ def main(argv: list[str] | None = None) -> int:
             telemetry.set("exitCode", result)
             return result
     except (OSError, ValueError, KeyError, RuntimeError) as exc:
-        is_json = getattr(arguments, "json", False) or (argv is not None and "--json" in argv) or "--json" in sys.argv
+        is_json = getattr(arguments, "json", False) or (argv is not None and "--json" in argv) or "--json" in sys.argv or _CURRENT_GLOBAL_OPTIONS.get("format") == "json"
         if is_json:
-            print(json.dumps({"status": "error", "error": str(exc), "exitCode": 2}, ensure_ascii=False, indent=2))
+            error_payload = {
+                "status": "error",
+                "error": str(exc),
+                "code": exc.__class__.__name__,
+                "category": "validation_error" if isinstance(exc, (ValueError, KeyError)) else "io_error",
+                "message": str(exc),
+                "retryable": False,
+                "remediation": {
+                    "action": "Check parameters, verify target path exists and is an accessible PE file."
+                },
+                "exitCode": 2,
+            }
+            print(json.dumps(error_payload, ensure_ascii=False, indent=2))
         else:
             print(f"error: {exc}", file=sys.stderr)
         return 2
     except Exception as exc:
-        is_json = getattr(arguments, "json", False) or (argv is not None and "--json" in argv) or "--json" in sys.argv
+        is_json = getattr(arguments, "json", False) or (argv is not None and "--json" in argv) or "--json" in sys.argv or _CURRENT_GLOBAL_OPTIONS.get("format") == "json"
         if is_json:
-            print(json.dumps({"status": "error", "error": f"unexpected failure: {exc}", "exitCode": 2}, ensure_ascii=False, indent=2))
+            error_payload = {
+                "status": "error",
+                "error": f"unexpected failure: {exc}",
+                "code": exc.__class__.__name__,
+                "category": "runtime_error",
+                "message": str(exc),
+                "retryable": False,
+                "remediation": {
+                    "action": "Verify execution environment and inspect logs for stack trace."
+                },
+                "exitCode": 2,
+            }
+            print(json.dumps(error_payload, ensure_ascii=False, indent=2))
         else:
             print(f"error: unexpected failure: {exc}", file=sys.stderr)
         return 2
